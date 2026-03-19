@@ -1,14 +1,15 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
-import { useState } from "react";
-import "../global.css";
+import "../global.css"; // Chỉ import css ở file Root này
+
+// Đưa QueryClient ra ngoài để không bị re-render liên tục trên Mobile
+const queryClient = new QueryClient();
 
 export default function RootLayout() {
-  const [queryClient] = useState(() => new QueryClient());
-
   return (
     <QueryClientProvider client={queryClient}>
-      <Stack />
+      {/* Thêm screenOptions={{ headerShown: false }} để tắt thanh tiêu đề màu trắng ở trên cùng */}
+      <Stack screenOptions={{ headerShown: false }} />
     </QueryClientProvider>
   );
 }
