@@ -1,6 +1,12 @@
+// app/login.tsx
+import { useLoginUser } from "@/hooks/useAuth";
+import { usePushToken } from "@/hooks/usePushToken";
 import { AntDesign, Feather } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { Link } from "expo-router";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,7 +17,37 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// Cấu hình thông báo hiển thị khi app đang mở (Foreground)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, // Thêm dòng này (Hiển thị banner thả xuống)
+    shouldShowList: true,   // Thêm dòng này (Hiển thị trong trung tâm thông báo)
+  }),
+});
+
 export default function LoginScreen() {
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // State lưu token
+
+  const { mutate: login, isPending } = useLoginUser();
+
+  // Tự động xin quyền và lấy Token khi mở màn hình Login
+  const fcmToken = usePushToken();
+
+  const handleLogin = () => {
+    if (!identifier.trim() || !password) return;
+
+    login({
+      identifier: identifier.trim(),
+      password: password,
+      fcmToken: fcmToken || "no_token_available",
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
@@ -53,6 +89,9 @@ export default function LoginScreen() {
                 placeholderTextColor="#A0A0A0"
                 className="flex-1 text-lg text-black ml-4 font-space-regular"
                 autoCapitalize="none"
+                keyboardType="email-address"
+                value={identifier}
+                onChangeText={setIdentifier}
               />
             </View>
 
@@ -62,11 +101,13 @@ export default function LoginScreen() {
               <TextInput
                 placeholder="Mật khẩu"
                 placeholderTextColor="#A0A0A0"
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 className="flex-1 text-lg text-black ml-4 font-space-regular"
+                value={password}
+                onChangeText={setPassword}
               />
-              <Pressable>
-                <Feather name="eye-off" size={20} color="#888" />
+              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2 -mr-2">
+                <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#888" />
               </Pressable>
             </View>
 
@@ -80,14 +121,27 @@ export default function LoginScreen() {
 
           {/* Nút hành động chính */}
           <View className="mt-8">
-            <Pressable className="w-full py-5 rounded-full flex-row items-center justify-center shadow-md active:opacity-80 bg-primary">
-              <Text className="text-primary-text text-xl mx-4 font-space-bold">
-                ĐĂNG NHẬP
-              </Text>
-              <AntDesign name="arrow-right" size={22} color="white" />
+            <Pressable
+              onPress={handleLogin}
+              disabled={isPending || !identifier || !password}
+              className={`w-full py-5 rounded-full flex-row items-center justify-center shadow-md bg-primary ${(isPending || !identifier || !password) ? 'opacity-70' : 'active:opacity-80'}`}
+            >
+              {isPending ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Text className="text-primary-text text-xl mx-4 font-space-bold">
+                    ĐĂNG NHẬP
+                  </Text>
+                  <AntDesign name="arrow-right" size={22} color="white" />
+                </>
+              )}
             </Pressable>
 
-            <Pressable className="items-center mt-8 p-2">
+            <Pressable
+              className="items-center mt-8 p-2"
+            // onPress={() => router.push("/register")}
+            >
               <Text className="text-black text-base font-space-regular">
                 Chưa có tài khoản?{" "}
                 <Text className="font-space-bold">Đăng ký ngay</Text>
@@ -99,3 +153,4 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
+
