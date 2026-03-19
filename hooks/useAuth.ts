@@ -20,7 +20,7 @@ export function useLoginUser() {
                 queryClient.invalidateQueries({ queryKey: ["families"] });
 
                 // Chuyển sang Home và xóa lịch sử các màn hình trước đó
-                router.replace("/home");
+                // router.replace("/home");
             } else {
                 Alert.alert("Lỗi", res.message || "Đăng nhập thất bại");
             }
@@ -41,7 +41,7 @@ export function useRegisterUser() {
                         {
                             text: "Nhập mã OTP",
                             // Truyền luôn email sang màn OTP để không bắt user nhập lại
-                            onPress: () => router.push({ pathname: "/verify-otp", params: { email: variables.email } })
+                            // onPress: () => router.push({ pathname: "/verify-otp", params: { email: variables.email } })
                         }
                     ]
                 );

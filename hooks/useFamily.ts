@@ -1,7 +1,6 @@
 // hooks/useFamily.ts
 import * as FamilyApi from "@/apis/family.api";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
 import { Alert } from "react-native";
 
 export function useCreatePersonalFamily() {
@@ -14,9 +13,9 @@ export function useCreatePersonalFamily() {
                 // Refresh lại danh sách families để Trang chủ cập nhật giao diện ngay lập tức
                 queryClient.invalidateQueries({ queryKey: ["families"] });
 
-                Alert.alert("Thành công", "Hồ sơ cá nhân của bạn đã được khởi tạo!", [
-                    { text: "Về trang chủ", onPress: () => router.replace("/home") }
-                ]);
+                // Alert.alert("Thành công", "Hồ sơ cá nhân của bạn đã được khởi tạo!", [
+                //     { text: "Về trang chủ", onPress: () => router.replace("/home") }
+                // ]);
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể tạo hồ sơ.");
             }
@@ -36,9 +35,9 @@ export function useCreateSharedFamily() {
                 // Làm mới dữ liệu trang chủ
                 queryClient.invalidateQueries({ queryKey: ["families"] });
 
-                Alert.alert("Thành công", "Nhóm gia đình đã được tạo! Bạn có thể mời thành viên khác tham gia.", [
-                    { text: "Tuyệt vời", onPress: () => router.replace("/home") }
-                ]);
+                // Alert.alert("Thành công", "Nhóm gia đình đã được tạo! Bạn có thể mời thành viên khác tham gia.", [
+                //     { text: "Tuyệt vời", onPress: () => router.replace("/home") }
+                // ]);
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể tạo nhóm gia đình.");
             }
