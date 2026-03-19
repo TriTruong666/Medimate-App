@@ -1,6 +1,10 @@
+// app/login.tsx
+import { useLoginUser } from "@/hooks/useAuth";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import { Link } from "expo-router";
+import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +16,26 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [fcmToken, setFcmToken] = useState(""); // State lưu token
+
+  // Gọi hook API
+  const { mutate: login, isPending } = useLoginUser();
+
+
+
+  const handleLogin = () => {
+    if (!identifier.trim() || !password) return;
+
+    login({
+      identifier: identifier.trim(),
+      password: password,
+      fcmToken: "dummy_device_token", // Cập nhật token thật nếu dùng Push Notification
+    });
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
@@ -53,6 +77,9 @@ export default function LoginScreen() {
                 placeholderTextColor="#A0A0A0"
                 className="flex-1 text-lg text-black ml-4 font-space-regular"
                 autoCapitalize="none"
+                keyboardType="email-address"
+                value={identifier}
+                onChangeText={setIdentifier}
               />
             </View>
 
@@ -62,11 +89,13 @@ export default function LoginScreen() {
               <TextInput
                 placeholder="Mật khẩu"
                 placeholderTextColor="#A0A0A0"
-                secureTextEntry
+                secureTextEntry={!showPassword}
                 className="flex-1 text-lg text-black ml-4 font-space-regular"
+                value={password}
+                onChangeText={setPassword}
               />
-              <Pressable>
-                <Feather name="eye-off" size={20} color="#888" />
+              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2 -mr-2">
+                <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#888" />
               </Pressable>
             </View>
 
@@ -80,14 +109,28 @@ export default function LoginScreen() {
 
           {/* Nút hành động chính */}
           <View className="mt-8">
-            <Pressable className="w-full py-5 rounded-full flex-row items-center justify-center shadow-md active:opacity-80 bg-primary">
-              <Text className="text-primary-text text-xl mx-4 font-space-bold">
-                ĐĂNG NHẬP
-              </Text>
-              <AntDesign name="arrow-right" size={22} color="white" />
+            <Pressable
+              onPress={handleLogin}
+              disabled={isPending || !identifier || !password}
+              className={`w-full py-5 rounded-full flex-row items-center justify-center shadow-md bg-primary ${(isPending || !identifier || !password) ? 'opacity-70' : 'active:opacity-80'
+                }`}
+            >
+              {isPending ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <>
+                  <Text className="text-primary-text text-xl mx-4 font-space-bold">
+                    ĐĂNG NHẬP
+                  </Text>
+                  <AntDesign name="arrow-right" size={22} color="white" />
+                </>
+              )}
             </Pressable>
 
-            <Pressable className="items-center mt-8 p-2">
+            <Pressable
+              className="items-center mt-8 p-2"
+            // onPress={() => router.push("/register")}
+            >
               <Text className="text-black text-base font-space-regular">
                 Chưa có tài khoản?{" "}
                 <Text className="font-space-bold">Đăng ký ngay</Text>
