@@ -18,10 +18,10 @@ export type RegisterRequest = {
 };
 export type VerifyOtpRequest = {
     email: string;
-    otp: string;
+    verifyCode: string;
 };
 
 export type LoginDependentRequest = {
-    syncToken: string;
+    qrData: string;
     fcmToken?: string; // Token quét được từ mã QR (VD: chuỗi 32 ký tự)
 };

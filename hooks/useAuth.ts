@@ -22,10 +22,12 @@ export function useLoginUser() {
                 // Chuyển sang Home và xóa lịch sử các màn hình trước đó
                 // router.replace("/home");
             } else {
-                Alert.alert("Lỗi", res.message || "Đăng nhập thất bại");
+                Alert.alert("Đăng nhập thất bại", res.message || "Tài khoản hoặc mật khẩu không đúng.");
             }
         },
-        // ... onError giữ nguyên
+        onError: (error: any) => {
+            Alert.alert("Lỗi kết nối", error?.message || "Không thể kết nối đến máy chủ.");
+        },
     });
 }
 
@@ -40,13 +42,13 @@ export function useRegisterUser() {
                     [
                         {
                             text: "Nhập mã OTP",
-                            // Truyền luôn email sang màn OTP để không bắt user nhập lại
+                            // Đẩy sang trang OTP và truyền kèm email
                             // onPress: () => router.push({ pathname: "/verify-otp", params: { email: variables.email } })
                         }
                     ]
                 );
             } else {
-                Alert.alert("Lỗi", res.message || "Đăng ký thất bại. Vui lòng thử lại.");
+                Alert.alert("Lỗi đăng ký", res.message || "Đăng ký thất bại. Vui lòng thử lại.");
             }
         },
         onError: (error: any) => {
@@ -66,7 +68,7 @@ export function useVerifyOtp() {
                     [{ text: "Đăng nhập", onPress: () => router.replace("/login") }]
                 );
             } else {
-                Alert.alert("Lỗi", res.message || "Mã xác thực không chính xác.");
+                Alert.alert("Lỗi xác thực", res.message || "Mã xác thực không chính xác.");
             }
         },
         onError: (error: any) => {
@@ -81,13 +83,39 @@ export function useLoginDependent() {
         onSuccess: async (res) => {
             if (res.success && res.data?.token) {
                 await SecureStore.setItemAsync("accessToken", res.data.token);
-                router.replace("/");
+                // Tùy luồng dependent của bạn, có thể chuyển hướng về home
+                // router.replace("/home"); 
             } else {
-                Alert.alert("Lỗi", res.message || "Mã QR không hợp lệ hoặc đã hết hạn.");
+                Alert.alert("Lỗi xác thực", res.message || "Mã QR không hợp lệ hoặc đã hết hạn.");
             }
         },
         onError: (error: any) => {
-            Alert.alert("Lỗi kết nối", error?.message || "Không thể xác thực mã QR.");
+            Alert.alert("Lỗi kết nối", error?.message || "Không thể kết nối đến máy chủ.");
+        },
+    });
+}
+
+export function useLogoutUser() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: AuthApi.logoutUser,
+        onSuccess: async (res) => {
+            if (res.success) {
+                // Xóa token khỏi thiết bị
+                await SecureStore.deleteItemAsync("accessToken");
+
+                // Xóa toàn bộ cache dữ liệu cũ (để user khác đăng nhập vào không thấy)
+                queryClient.clear();
+
+                // Đẩy người dùng về màn hình Chào mừng
+                // router.replace("/welcome");
+            } else {
+                Alert.alert("Lỗi", res.message || "Đăng xuất thất bại.");
+            }
+        },
+        onError: (error: any) => {
+            Alert.alert("Lỗi kết nối", error?.message || "Không thể kết nối đến máy chủ.");
         },
     });
 }
