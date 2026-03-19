@@ -1,5 +1,5 @@
 import { AntDesign, Feather } from "@expo/vector-icons";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +12,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function LoginScreen() {
+  const router = useRouter();
+
+  const handleLogin = () => {
+    // Giả lập đăng nhập thành công
+    router.replace("/(manager)");
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-background">
       <KeyboardAvoidingView
@@ -80,7 +87,10 @@ export default function LoginScreen() {
 
           {/* Nút hành động chính */}
           <View className="mt-8">
-            <Pressable className="w-full py-5 rounded-full flex-row items-center justify-center shadow-md active:opacity-80 bg-primary">
+            <Pressable
+              onPress={handleLogin}
+              className="w-full py-5 rounded-full flex-row items-center justify-center shadow-md active:opacity-80 bg-primary"
+            >
               <Text className="text-primary-text text-xl mx-4 font-space-bold">
                 ĐĂNG NHẬP
               </Text>
