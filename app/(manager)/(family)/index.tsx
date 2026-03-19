@@ -1,12 +1,16 @@
 import { useRouter } from "expo-router";
+import { useSetAtom } from "jotai";
 import {
     ArrowLeft,
     Heart,
     MoreHorizontal,
+    Settings,
     UserPlus
 } from "lucide-react-native";
 import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import FamilyDropdown from "../../../components/dropdown/FamilyDropdown";
+import { showDropdownAtom } from "../../../stores/dropdownStore";
 
 const FAMILY_MEMBERS = [
     {
@@ -53,6 +57,7 @@ const FAMILY_MEMBERS = [
 
 export default function FamilyListScreen() {
     const router = useRouter();
+    const showDropdown = useSetAtom(showDropdownAtom);
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
@@ -72,7 +77,22 @@ export default function FamilyListScreen() {
                         {FAMILY_MEMBERS.length} thành viên
                     </Text>
                 </View>
-                <Pressable className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center active:opacity-80">
+                <Pressable
+                    onPress={() =>
+                        showDropdown({
+                            anchorPosition: { top: 120, right: 30 },
+                            items: [
+                                {
+                                    label: "Cài đặt gia đình",
+                                    icon: Settings,
+                                    onPress: () => console.log("Cài đặt"),
+                                    color: "#87CEFA",
+                                },
+                            ],
+                        })
+                    }
+                    className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center active:opacity-80"
+                >
                     <MoreHorizontal size={22} color="#000" strokeWidth={2.5} />
                 </Pressable>
             </View>
@@ -113,6 +133,7 @@ export default function FamilyListScreen() {
                     {FAMILY_MEMBERS.map((member) => (
                         <Pressable
                             key={member.id}
+                            onPress={() => router.push({ pathname: "/(manager)/(family)/member", params: { id: member.id } } as any)}
                             className="bg-white border-2 border-black rounded-[24px] p-4 shadow-sm active:opacity-90 flex-row items-center"
                         >
                             {/* Avatar */}
@@ -164,6 +185,9 @@ export default function FamilyListScreen() {
                     </Text>
                 </Pressable>
             </ScrollView>
+
+            {/* Global Dropdown Component */}
+            <FamilyDropdown />
         </SafeAreaView>
     );
 }
