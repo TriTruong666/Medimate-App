@@ -137,10 +137,8 @@ export default function FamilyMembersScreen() {
                 {/* Nút Thêm thành viên (Chỉ dành cho Shared Family) */}
                 {family?.type === "Shared" && (
                     <Pressable
-                        onPress={() => {
-                            // TODO: Chuyển sang form tạo member mới
-                            console.log("Go to Add Member");
-                        }}
+                        // SỬA DÒNG NÀY: Truyền familyId sang trang add-member
+                        onPress={() => router.push({ pathname: "/(manager)/(family)/add-member", params: { familyId } } as any)}
                         className="bg-black border-2 border-black rounded-[24px] py-5 mt-6 shadow-lg flex-row items-center justify-center active:opacity-90"
                     >
                         <UserPlus size={22} color="#FFFFFF" strokeWidth={2.5} />

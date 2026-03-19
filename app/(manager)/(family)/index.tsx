@@ -70,7 +70,7 @@ export default function FamilyListScreen() {
                             <Pressable
                                 key={family.familyId}
                                 // 👉 Click vào Card để XEM THÀNH VIÊN
-                                onPress={() => router.push({ pathname: "/(manager)/(family)/members", params: { familyId: family.familyId } } as any)}
+                                onPress={() => router.push({ pathname: "/(manager)/(family)/family-members", params: { familyId: family.familyId } } as any)}
                                 className="bg-white border-2 border-black rounded-[32px] p-5 shadow-sm active:bg-gray-50"
                             >
                                 <View className="flex-row items-center justify-between mb-4">
@@ -93,16 +93,18 @@ export default function FamilyListScreen() {
                                 {/* Các nút hành động */}
                                 <View className="flex-row items-center justify-between pt-4 border-t-2 border-black/5">
                                     <View className="flex-row gap-2">
-                                        {/* 👉 Nút SỬA GIA ĐÌNH */}
-                                        <Pressable
-                                            onPress={(e) => { e.stopPropagation(); router.push({ pathname: "/(manager)/(family)/edit", params: { id: family.familyId } } as any); }}
-                                            className="w-10 h-10 bg-gray-100 border-2 border-black rounded-xl items-center justify-center active:bg-gray-200"
-                                        >
-                                            <Edit3 size={18} color="#000" />
-                                        </Pressable>
+                                        {/* 👉 Nút SỬA GIA ĐÌNH (Chỉ hiện cho Shared Family) */}
+                                        {family.type === 'Shared' && (
+                                            <Pressable
+                                                onPress={(e) => { e.stopPropagation(); router.push({ pathname: "/(manager)/(family)/edit", params: { id: family.familyId } } as any); }}
+                                                className="w-10 h-10 bg-gray-100 border-2 border-black rounded-xl items-center justify-center active:bg-gray-200"
+                                            >
+                                                <Edit3 size={18} color="#000" />
+                                            </Pressable>
+                                        )}
 
-                                        {/* Nút XÓA GIA ĐÌNH */}
-                                        {family.type !== 'Personal' && (
+                                        {/* Nút XÓA GIA ĐÌNH (Chỉ hiện cho Shared Family) */}
+                                        {family.type === 'Shared' && (
                                             <Pressable
                                                 onPress={(e) => { e.stopPropagation(); handleDelete(family.familyId, family.familyName); }}
                                                 className="w-10 h-10 bg-[#FFA07A] border-2 border-black rounded-xl items-center justify-center active:opacity-80"

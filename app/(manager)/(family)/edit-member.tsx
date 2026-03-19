@@ -19,10 +19,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function EditMemberScreen() {
     const router = useRouter();
-    // Lấy memberId từ URL
     const { memberId } = useLocalSearchParams<{ memberId: string }>();
 
-    // Trạng thái Form
     const [fullName, setFullName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
     const [gender, setGender] = useState<"Male" | "Female" | "Other">("Other");
@@ -30,12 +28,10 @@ export default function EditMemberScreen() {
     const [avatarFile, setAvatarFile] = useState<any>(null);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    // Hooks gọi API
     const { data: member, isLoading: isFetching } = useGetMemberById(memberId);
     const { mutate: updateMember, isPending: isUpdating } = useUpdateMember();
     const { mutate: deleteMember, isPending: isDeleting } = useDeleteMember();
 
-    // Điền dữ liệu cũ vào Form
     useEffect(() => {
         if (member && !isInitialized) {
             setFullName(member.fullName || "");
@@ -46,7 +42,6 @@ export default function EditMemberScreen() {
         }
     }, [member, isInitialized]);
 
-    // Hàm format ngày sinh (YYYY-MM-DD)
     const handleDateChange = (text: string) => {
         const cleaned = text.replace(/\D/g, "");
         let formatted = cleaned;
@@ -58,7 +53,6 @@ export default function EditMemberScreen() {
         setDateOfBirth(formatted);
     };
 
-    // Chọn ảnh
     const handlePickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ["images"],
@@ -77,7 +71,6 @@ export default function EditMemberScreen() {
         }
     };
 
-    // Xử lý Lưu
     const handleSave = () => {
         if (!fullName.trim() || !memberId) return;
 
@@ -104,7 +97,6 @@ export default function EditMemberScreen() {
         );
     };
 
-    // Xử lý Xóa
     const handleDelete = () => {
         if (!memberId) return;
 
@@ -148,7 +140,7 @@ export default function EditMemberScreen() {
                             <AntDesign name="arrow-left" size={24} color="black" />
                         </Pressable>
                         <Text className="text-2xl text-black font-space-bold">Hồ sơ thành viên</Text>
-                        <View className="w-12 h-12" /> {/* Spacer */}
+                        <View className="w-12 h-12" />
                     </View>
 
                     {/* Avatar Section */}
@@ -167,7 +159,7 @@ export default function EditMemberScreen() {
                         </Pressable>
                     </View>
 
-                    {/* Dấu hiệu nhận biết Chủ gia đình (Tùy chọn hiển thị) */}
+                    {/* Dấu hiệu nhận biết Chủ gia đình */}
                     {member?.role === "Owner" && (
                         <View className="bg-[#FFD700] border-2 border-black rounded-xl py-2 px-4 self-center mb-6 shadow-sm">
                             <Text className="text-black font-space-bold text-xs uppercase tracking-widest">Chủ gia đình</Text>
@@ -230,8 +222,7 @@ export default function EditMemberScreen() {
                         <Pressable
                             onPress={handleSave}
                             disabled={isProcessing || !fullName.trim()}
-                            className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isProcessing || !fullName.trim() ? "opacity-70" : "active:opacity-90"
-                                }`}
+                            className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isProcessing || !fullName.trim() ? "opacity-70" : "active:opacity-90"}`}
                         >
                             {isUpdating ? (
                                 <ActivityIndicator color="#FFF" />
@@ -240,13 +231,12 @@ export default function EditMemberScreen() {
                             )}
                         </Pressable>
 
-                        {/* Nút Xóa (Ẩn nếu là Chủ gia đình - Owner không thể tự xóa mình khỏi đây) */}
+                        {/* Nút Xóa */}
                         {member?.role !== "Owner" && (
                             <Pressable
                                 onPress={handleDelete}
                                 disabled={isProcessing}
-                                className={`bg-[#FFA07A] border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isProcessing ? "opacity-70" : "active:opacity-90"
-                                    }`}
+                                className={`bg-[#FFA07A] border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isProcessing ? "opacity-70" : "active:opacity-90"}`}
                             >
                                 {isDeleting ? (
                                     <ActivityIndicator color="#000" />
