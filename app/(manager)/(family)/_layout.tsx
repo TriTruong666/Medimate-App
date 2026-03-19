@@ -5,7 +5,9 @@ export default function FamilyLayout() {
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="new" />
-            <Stack.Screen name="member" />
+            <Stack.Screen name="members" />
+            <Stack.Screen name="edit" />
+            <Stack.Screen name="edit-member" />
         </Stack>
     );
 }
