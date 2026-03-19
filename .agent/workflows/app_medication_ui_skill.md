@@ -1,108 +1,69 @@
 ---
-description: Medimate App - UI Component Generator Skill
+description: Medimate App - Cẩm nang Tạo Giao Diện Ứng dụng Uống Thuốc
 ---
 
-# Medimate Reminder App - UI/UX Component Generator Skill
+# Kỹ năng Tạo UI cho App Nhắc Nhở Uống Thuốc (Medimate)
 
-This document defines the design system, logic, and structures required for AI agents to consistently generate UI components tailored for senior citizens using a medication reminder application. The primary UI language is Vietnamese.
+Tài liệu này định nghĩa hệ thống thiết kế (Design System) và quy tắc tạo giao diện cho ứng dụng **Medimate** (App nhắc nhở uống thuốc, nhắm đến người lớn tuổi). 
+**TUYỆT ĐỐI KHÔNG** nhầm lẫn với các app theo dõi cảm xúc hay tâm trạng. Mọi nội dung text sinh ra phải là **Tiếng Việt**.
 
-## 1. Design Language & Accessibility Rules
+## 1. Ngôn ngữ Thiết kế & Thẩm mỹ
 
-### Typography
-- **Core Font**: Space Grotesk
-- **Rule**: Must be highly legible. Minimum body text size is 16pt.
-- **Weights**:
-  - **Extra Bold**: Times and quantities.
-  - **Bold**: Drug names, primary questions.
-  - **Regular**: Instructions.
+### Typography (Chữ)
+- **Font chữ bắt buộc**: `Space Grotesk` (Vô cùng hiện đại, bo tròn nhẹ, rõ ràng dễ đọc).
+- **Quy tắc**: Phải to, rõ ràng, phân cấp tốt vì người dùng có thể là người lớn tuổi mắt kém.
+- **Trọng lượng chữ**:
+  - **Extra Bold / Bold**: Dành cho Lời chào, Tên thuốc, Thời gian uống (VD: "Đến giờ uống thuốc!", "08:00 Sáng").
+  - **SemiBold**: Tiêu đề thẻ, nút bấm chính.
+  - **Medium / Regular**: Văn bản hướng dẫn, chi tiết liều lượng.
 
-### Color Palette
-- `#B8FFA9` (Active Green): Use for "Đã uống" (Taken) actions, positive feedback, and Sáng (Morning) indicators.
-- `#FFC6A8` (Peach): Use for upcoming/urgent medications or Chiều (Afternoon) indicators.
-- `#EACEFF` (Lavender): Use for daily progress/stats or Tối (Evening) indicators.
-- `#000000` (Main Black): For primary text, high-contrast readability, active tab indicator, and thick borders.
-- `#FFFFFF` (Background White): For negative space, secondary buttons, and text over dark colors.
+### Bảng màu (Color Palette)
+Giao diện áp dụng phong cách Soft UI (kẹo ngọt) để giảm căng thẳng khi dùng app y tế:
+- **Nền app (Background)**: Trắng kem (Off-White) `#F9F6FC` hoặc `#FFFFFF`.
+- **Màu Pastel cho Thẻ (Cards)**:
+  - **Xanh lá (Green)**: `#A3E6A1` (Dùng cho trạng thái Tích cực: "Đã uống", "Đúng giờ").
+  - **Tím (Purple)**: `#D9AEF6` (Dùng cho Buổi tối hoặc Lịch sử).
+  - **Cam (Orange)**: `#FFA07A` (Dùng cho Buổi chiều, Cảnh báo chưa uống).
+  - **Vàng (Yellow)**: `#FFD700` (Dùng cho Buổi sáng trưa, Năng lượng).
+  - **Xanh lơ (Blue)**: `#87CEFA` (Giấc ngủ ban đêm hoặc thông tin phụ).
+- **Màu chữ và Tương phản**:
+  - **Chữ chính**: Đen tuyền `#000000`.
+  - **Nút bấm hành động (Primary Action)**: Nút màu đen `#000000` với chữ màu trắng `#FFFFFF` để tạo độ tương phản cực mạnh, dễ bấm.
 
-### Layout & Visual Style
-- **Structure**: Bento Grid layout for the dashboard.
-- **Touch Targets**: Minimum 48x48dp for any clickable area (accommodates motor skill limitations in the elderly).
-- **Style**: **Soft Neo-Brutalism**.
-  - Large border-radius (24-32px).
-  - Bold 2-3px black (`#000000`) borders on all cards for maximum contrast and visual separation.
-  - **NO soft blur shadows** (they decrease legibility for aging eyes).
-- **Icons**: Literal and easily recognizable (e.g., pill, glass of water, clock, sun, moon).
+### 1.3 Bố cục & Hình khối (Neo-Brutalism Hybrid)
+Giao diện kết hợp giữa **Soft UI** (mềm mại) và **Neo-Brutalism** (táo bạo, hiện đại):
+- **Cấu trúc Bento Grid**: Sử dụng thẻ (card) hình vuông và chữ nhật xen kẽ giống như khay bento.
+- **Đặc điểm thẻ (Thẻ Neo-Brutalism)**:
+  - **Màu nền**: Luôn ưu tiên màu trắng (`#FFFFFF`) để tạo cảm giác chuyên nghiệp, sạch sẽ.
+  - **Viền (Borders)**: Bắt buộc sử dụng viền đen dày (`border-2 border-black`) cho các card chính. Đây là đặc trưng của phong cách Neo-Brutalism, giúp UI trông bản sắc và cực kỳ dễ định vị.
+  - **Đổ bóng (Shadow)**: Dùng shadow sắc nét hoặc không shadow (tùy vị trí) nhưng phải kết hợp với viền đen.
+  - **Bo góc cực lớn (Border Radius)**: Bo góc tròn trịa từ `24px` đến `32px` (`rounded-[32px]`) để làm "mềm" đi sự cứng cáp của viền đen, tạo ra một phong cách Hybrid thân thiện.
+- **Icon**: **TUYỆT ĐỐI KHÔNG** dùng emoji text. Bắt buộc sử dụng vector icons (Feather, AntDesign) được đặt trong các khối bo tròn có màu sắc pastel nhẹ nhàng.
 
----
-
-## 2. Component Specifications
-
-When requested to generate the dashboard, assemble the following components according to these strict rules:
-
-### 2.1 Personalization & Greeting Section
-- **Structure**: Top horizontal banner. Includes a prominent user avatar.
-- **Text**: 
-  - Sub-greeting: "Chào buổi sáng, [Tên Ông/Bà]" (Space Grotesk Regular, 18pt)
-  - Headline: "Đến giờ uống thuốc rồi!" (Space Grotesk Extra Bold, 28pt+)
-
-### 2.2 Time-of-Day Selector (Filters)
-- **Structure**: Row of 4 horizontal cards acting as a timeline: `Sáng`, `Trưa`, `Chiều`, `Tối`.
-- **Visuals**: Distinct literal icons for each time (Sunrise, Sun, Sunset, Moon).
-- **Logic**: Auto-select the current time of day. 
-  - **Active State**: Fill card background with designated color (e.g., `#B8FFA9` for Sáng). 
-  - **Inactive State**: Background white `#FFFFFF` with thick black border `#000000`.
-
-### 2.3 Core Data Cards (Bento Grid)
-- **Next Dose Card (Thuốc sắp uống)**
-  - Background: `#FFC6A8` (Attention-grabbing)
-  - Content: Huge time display (e.g., "08:00 Sáng" - Extra Bold). Drug name (e.g., "Panadol x2 viên" - Bold). Instruction (e.g., "Uống sau khi ăn" - Regular).
-  - Icon: Large 3D Pill icon.
-- **Daily Progress Card (Tiến độ hôm nay)**
-  - Background: `#EACEFF`
-  - Content: Circular or simple bar progress indicator. Text: "Đã uống 2/4 liều" (Extra Bold). Helps the elderly user know if they forgot something today.
-
-### 2.4 Primary Action Card (Xác nhận uống thuốc)
-- **Structure**: Massive, full-width card placed centrally.
-- **Background**: `#B8FFA9`
-- **Text**: "Ông/Bà đã uống [Tên Thuốc] chưa?" (Space Grotesk Bold).
-- **Action Buttons** (Extremely large):
-  - **Button 1 (Primary)**: Black background `#000000`, White text `#FFFFFF` -> Label: "ĐÃ UỐNG"
-  - **Button 2 (Secondary)**: White background `#FFFFFF`, Black text `#000000`, Black border -> Label: "BỎ QUA"
-- **Interaction Logic**: Tapping "ĐÃ UỐNG" logs the time, triggers a rewarding sound/animation, and then queues the next medication.
-
-### 2.5 Bottom Navigation Bar
-- **Structure**: High-contrast bottom bar with large icons and clear Vietnamese labels.
-- **Items**: `Trang chủ` (Home), `Lịch uống` (Schedule), `Tủ thuốc` (Pillbox), `Cài đặt` (Settings).
-- **Active State**: Indicated by a thick black `#000000` underline or a filled black icon.
 
 ---
 
-## 3. Data Structure Definition (JSON format)
+## 2. Thông số Các Component
 
-When injecting dynamic data into these components, utilize the following JSON structure template:
+Khi được yêu cầu tạo UI, hãy tuân theo các quy tắc sau:
 
-```json
-{
-  "user": {
-    "name": "Ông Dũng",
-    "avatarUrl": "https://example.com/avatar.png"
-  },
-  "currentTimePeriod": "Sáng",
-  "dailyProgress": {
-    "taken": 2,
-    "total": 4
-  },
-  "nextMedication": {
-    "time": "08:00 Sáng",
-    "drugName": "Panadol",
-    "quantity": 2,
-    "unit": "viên",
-    "instruction": "Uống sau khi ăn"
-  }
-}
-```
+### 2.1 Thẻ Nhắc Thuốc Sắp Tới (Next Dose Card - Quan trọng nhất)
+- **Màu nền**: Xanh lá `#A3E6A1` hoặc Cam `#FFA07A`.
+- **Nội dung**: Giờ uống siêu to (VD: 08:00), Tên thuốc in đậm (VD: Panadol 2 viên).
+- **Nút bấm**: Nút Đen chữ Trắng cực lớn ghi "XÁC NHẬN ĐÃ UỐNG".
 
-## 4. Output Generation Rule
-When generating code (React, React Native, or standard HTML/CSS):
-1. **Color & Border Mapping**: Strictly map these styles to the provided CSS/StyleSheet classes or inline objects. Ensure 2px+ borders exist on every block-level container.
-2. **Hit Slopes / Touch Targets**: Strictly enforce the `min-height: 48px` and `min-width: 48px` constraints for anything clickable (Buttons, Nav items, Cards).
-3. **Typography Enforcement**: Validate that the `Space Grotesk` font family stack is correctly applied via context or styles with the minimum sizings respected.
+### 2.2 Bộ chọn Buổi (Filter Sáng/Trưa/Chiều/Tối)
+- **Hình thức**: Nút hình viên thuốc (pill-shaped) nằm ngang `rounded-full`.
+- **Trạng thái**: Nếu đang chọn thì hiện nền Đen chữ Trắng, nếu chưa chọn thì nền Trắng chữ Đen.
+
+### 2.3 Bottom Navigation (Thanh điều hướng dưới)
+- **Thiết kế**: Thanh điều hướng Floating hoặc nằm đáy màn hình với **Nền Đen** (`#000000`), bo tròn hai góc trên cùng (`rounded-t-[32px]`).
+- **Icon**: Trắng sáng (active) và Xám mờ (inactive). Không bổ sung text nhỏ gây rối mắt.
+
+---
+
+## 3. Quy tắc Triển khai (NativeWind First)
+1. **Bắt buộc dùng `className`**: Mọi thuộc tính style (màu sắc, padding, margin, layout, bo góc) phải được đưa vào `className` bằng cú pháp Tailwind. **HẠN CHẾ TỐI ĐA** việc dùng inline `style={{ ... }}` trừ các trường hợp bất khả kháng liên quan đến animation hoặc các thuộc tính NativeWind không hỗ trợ.
+2. **Xử lý Màu sắc**: Dùng mã màu HEX dán trực tiếp vào class (VD: `bg-[#A3E6A1]`, `border-[#D9AEF6]`) để khớp chính xác với bảng màu Soft UI.
+3. **Xử lý Font chữ**: Mặc dù font load qua `useFonts` cần chuỗi định danh, hãy cố gắng áp dụng nó qua `style={{ fontFamily: '...' }}` nhưng vẫn phải kết hợp các class Tailwind (`text-2xl`, `font-bold`, `leading-relaxed`) trong `className` để quản lý phần còn lại của văn bản.
+4. **Kích thước chạm**: Luôn đảm bảo `min-h-[56px]` hoặc `py-5` cho mọi nút bấm và input để tối ưu UX cho người lớn tuổi.

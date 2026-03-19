@@ -11,6 +11,8 @@
     "lint": "expo lint"
   },
   "dependencies": {
+    "@expo-google-fonts/space-grotesk": "^0.4.1",
+    "@expo-google-fonts/zen-tokyo-zoo": "^0.4.1",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
@@ -19,10 +21,12 @@
     "axios": "^1.13.6",
     "babel-preset-expo": "^55.0.12",
     "expo": "~54.0.33",
+    "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
     "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",
     "expo-image": "~3.0.11",
+    "expo-image-picker": "~17.0.10",
     "expo-linking": "~8.0.11",
     "expo-router": "~6.0.23",
     "expo-splash-screen": "~31.0.13",
