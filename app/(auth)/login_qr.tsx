@@ -1,5 +1,6 @@
 // app/login-qr.tsx
 import { useLoginDependent } from "@/hooks/useAuth";
+import { usePushToken } from "@/hooks/usePushToken";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -42,6 +43,7 @@ function ScanLine() {
 export default function LoginQRScreen() {
     const isFocused = useIsFocused();
     const [permission, requestPermission] = useCameraPermissions();
+    const fcmToken = usePushToken();
 
     // Cờ khóa quét để không gọi API liên tục
     const [hasScanned, setHasScanned] = useState(false);
@@ -69,7 +71,10 @@ export default function LoginQRScreen() {
 
         // Gọi API Đăng nhập
         loginDependent(
-            { qrData: scanResult.data }, // Chỉnh sửa key "qrCode" cho khớp với Type LoginDependentRequest của bạn
+            {
+                qrData: scanResult.data,
+                fcmToken: fcmToken || "no_token_available", // Truyền token thật lên API
+            },
             {
                 onError: () => {
                     // Nếu lỗi (mã sai/hết hạn), mở khóa để người dùng quét lại
@@ -78,7 +83,6 @@ export default function LoginQRScreen() {
             }
         );
     };
-
     // ... (Giữ nguyên các khối lệnh kiểm tra quyền Camera của bạn ở đây)
     if (!permission) {
         return (

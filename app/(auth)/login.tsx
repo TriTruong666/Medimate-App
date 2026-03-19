@@ -1,6 +1,8 @@
 // app/login.tsx
 import { useLoginUser } from "@/hooks/useAuth";
+import { usePushToken } from "@/hooks/usePushToken";
 import { AntDesign, Feather } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
 import { Link } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -15,16 +17,26 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+// Cấu hình thông báo hiển thị khi app đang mở (Foreground)
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, // Thêm dòng này (Hiển thị banner thả xuống)
+    shouldShowList: true,   // Thêm dòng này (Hiển thị trong trung tâm thông báo)
+  }),
+});
+
 export default function LoginScreen() {
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [fcmToken, setFcmToken] = useState(""); // State lưu token
+  const [showPassword, setShowPassword] = useState(false); // State lưu token
 
-  // Gọi hook API
   const { mutate: login, isPending } = useLoginUser();
 
-
+  // Tự động xin quyền và lấy Token khi mở màn hình Login
+  const fcmToken = usePushToken();
 
   const handleLogin = () => {
     if (!identifier.trim() || !password) return;
@@ -32,7 +44,7 @@ export default function LoginScreen() {
     login({
       identifier: identifier.trim(),
       password: password,
-      fcmToken: "dummy_device_token", // Cập nhật token thật nếu dùng Push Notification
+      fcmToken: fcmToken || "no_token_available",
     });
   };
 
@@ -112,8 +124,7 @@ export default function LoginScreen() {
             <Pressable
               onPress={handleLogin}
               disabled={isPending || !identifier || !password}
-              className={`w-full py-5 rounded-full flex-row items-center justify-center shadow-md bg-primary ${(isPending || !identifier || !password) ? 'opacity-70' : 'active:opacity-80'
-                }`}
+              className={`w-full py-5 rounded-full flex-row items-center justify-center shadow-md bg-primary ${(isPending || !identifier || !password) ? 'opacity-70' : 'active:opacity-80'}`}
             >
               {isPending ? (
                 <ActivityIndicator color="white" />
@@ -142,3 +153,4 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
+

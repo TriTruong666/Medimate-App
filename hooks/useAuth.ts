@@ -20,7 +20,7 @@ export function useLoginUser() {
                 queryClient.invalidateQueries({ queryKey: ["families"] });
 
                 // Chuyển sang Home và xóa lịch sử các màn hình trước đó
-                // router.replace("/home");
+                router.replace("/demo");
             } else {
                 Alert.alert("Đăng nhập thất bại", res.message || "Tài khoản hoặc mật khẩu không đúng.");
             }
