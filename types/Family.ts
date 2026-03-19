@@ -1,12 +1,4 @@
-export type FamilyMember = {
-    memberId: string;
-    fullName: string;
-    phoneNumber: string;
-    role: string; // "Owner", "Member", v.v.
-    avatarUrl?: string;
-};
 
-// types/Home.ts
 
 // Type cho API GET /api/v1/families (image_10.png)
 export type FamilyData = {
