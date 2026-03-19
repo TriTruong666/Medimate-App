@@ -1,8 +1,11 @@
 import { useCreatePersonalFamily, useDeleteFamily, useGetFamilies } from "@/hooks/useFamily";
+// Giả định bạn có hook useCreateSharedFamily (hoặc tên tương tự) trong useFamily.ts
+// Nhớ import đúng tên hook tạo nhóm gia đình mà bạn đã viết nhé!
+import { useCreateSharedFamily } from "@/hooks/useFamily";
 import { useRouter } from "expo-router";
-import { ChevronRight, Edit3, Plus, Trash2, User, Users } from "lucide-react-native";
-import React from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
+import { ChevronRight, Edit3, Plus, Trash2, User, Users, X } from "lucide-react-native";
+import React, { useState } from "react";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
 
@@ -14,10 +17,17 @@ export default function FamilyListScreen() {
     const { mutate: deleteFamily } = useDeleteFamily();
     const { mutate: createPersonal, isPending: isCreatingPersonal } = useCreatePersonalFamily();
 
-    // 2. Logic kiểm tra hồ sơ cá nhân
+    // Thêm Hook tạo gia đình dùng chung (Shared Family)
+    const { mutate: createShared, isPending: isCreatingShared } = useCreateSharedFamily();
+
+    // 2. States cho Popup
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [newFamilyName, setNewFamilyName] = useState("");
+
+    // 3. Logic kiểm tra hồ sơ cá nhân
     const hasPersonalFamily = families?.some(family => family.type === "Personal");
 
-    // 3. Logic Xóa Gia đình
+    // 4. Logic Xóa Gia đình
     const handleDelete = (id: string, name: string) => {
         Alert.alert(
             "Xóa gia đình",
@@ -26,6 +36,22 @@ export default function FamilyListScreen() {
                 { text: "Hủy", style: "cancel" },
                 { text: "Xóa vĩnh viễn", style: "destructive", onPress: () => deleteFamily(id) }
             ]
+        );
+    };
+
+    // 5. Logic Tạo Gia đình
+    const handleCreateFamily = () => {
+        if (!newFamilyName.trim()) return;
+
+        // Truyền thẳng chuỗi string vào thay vì truyền object {}
+        createShared(
+            newFamilyName.trim(),
+            {
+                onSuccess: () => {
+                    setNewFamilyName("");
+                    setIsModalVisible(false);
+                }
+            }
         );
     };
 
@@ -41,7 +67,7 @@ export default function FamilyListScreen() {
                     </Text>
                 </View>
 
-                {/* 1️⃣ TẠO HỒ SƠ CÁ NHÂN (Chỉ hiện khi chưa có) */}
+                {/* 1️⃣ TẠO HỒ SƠ CÁ NHÂN */}
                 {!isLoading && !hasPersonalFamily && (
                     <Pressable
                         onPress={() => createPersonal()}
@@ -69,7 +95,6 @@ export default function FamilyListScreen() {
                         {families?.map((family) => (
                             <Pressable
                                 key={family.familyId}
-                                // 👉 Click vào Card để XEM THÀNH VIÊN
                                 onPress={() => router.push({ pathname: "/(manager)/(family)/family-members", params: { familyId: family.familyId } } as any)}
                                 className="bg-white border-2 border-black rounded-[32px] p-5 shadow-sm active:bg-gray-50"
                             >
@@ -93,7 +118,7 @@ export default function FamilyListScreen() {
                                 {/* Các nút hành động */}
                                 <View className="flex-row items-center justify-between pt-4 border-t-2 border-black/5">
                                     <View className="flex-row gap-2">
-                                        {/* 👉 Nút SỬA GIA ĐÌNH (Chỉ hiện cho Shared Family) */}
+                                        {/* SỬA GIA ĐÌNH (Chỉ Shared) */}
                                         {family.type === 'Shared' && (
                                             <Pressable
                                                 onPress={(e) => { e.stopPropagation(); router.push({ pathname: "/(manager)/(family)/edit", params: { id: family.familyId } } as any); }}
@@ -103,7 +128,7 @@ export default function FamilyListScreen() {
                                             </Pressable>
                                         )}
 
-                                        {/* Nút XÓA GIA ĐÌNH (Chỉ hiện cho Shared Family) */}
+                                        {/* XÓA GIA ĐÌNH (Chỉ Shared) */}
                                         {family.type === 'Shared' && (
                                             <Pressable
                                                 onPress={(e) => { e.stopPropagation(); handleDelete(family.familyId, family.familyName); }}
@@ -123,15 +148,95 @@ export default function FamilyListScreen() {
                     </View>
                 )}
 
-                {/* 3️⃣ TẠO GIA ĐÌNH MỚI */}
+                {/* 3️⃣ TẠO GIA ĐÌNH MỚI (MỞ POPUP) */}
                 <Pressable
-                    // onPress={() => router.push("/(manager)/(family)/create-shared")}
+                    onPress={() => setIsModalVisible(true)}
                     className="bg-[#FFD700] border-2 border-black rounded-[32px] p-5 flex-row items-center justify-center shadow-md active:opacity-90 mt-2 mb-10"
                 >
                     <Plus size={24} color="#000" strokeWidth={2.5} />
                     <Text className="text-lg text-black font-space-bold ml-2">TẠO GIA ĐÌNH MỚI</Text>
                 </Pressable>
             </ScrollView>
+
+            {/* 🌟 MODAL (POPUP) TẠO GIA ĐÌNH MỚI 🌟 */}
+            <Modal
+                visible={isModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setIsModalVisible(false)}
+            >
+                {/* Vùng nền đen mờ, bấm vào đây cũng đóng modal được */}
+                <Pressable
+                    className="flex-1 bg-black/60 justify-center items-center px-6"
+                    onPress={() => setIsModalVisible(false)}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        className="w-full"
+                    >
+                        {/* Ngăn Pressable cha nhận sự kiện khi bấm vào trong form */}
+                        <Pressable
+                            className="bg-white border-2 border-black rounded-[32px] p-6 shadow-lg w-full"
+                            onPress={(e) => e.stopPropagation()}
+                        >
+                            {/* Nút đóng góc phải */}
+                            <Pressable
+                                onPress={() => setIsModalVisible(false)}
+                                className="absolute top-4 right-4 w-8 h-8 bg-gray-100 rounded-full items-center justify-center border border-black/10 active:bg-gray-200 z-10"
+                            >
+                                <X size={18} color="#000" />
+                            </Pressable>
+
+                            <View className="items-center mb-6 mt-2">
+                                <View className="w-16 h-16 bg-[#FFD700] border-2 border-black rounded-2xl items-center justify-center mb-4">
+                                    <Users size={32} color="#000" />
+                                </View>
+                                <Text className="text-2xl text-black font-space-bold text-center">Tạo nhóm gia đình</Text>
+                                <Text className="text-sm text-gray-500 font-space-medium text-center mt-2 leading-5">
+                                    Tạo một không gian chung để mời người thân cùng quản lý sức khỏe.
+                                </Text>
+                            </View>
+
+                            <View className="mb-6">
+                                <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Tên gia đình</Text>
+                                <View className="px-5 py-4 rounded-[24px] border-2 border-black bg-gray-50">
+                                    <TextInput
+                                        value={newFamilyName}
+                                        onChangeText={setNewFamilyName}
+                                        placeholder="VD: Gia đình nhà Cam..."
+                                        className="text-lg text-black font-space-bold"
+                                        autoFocus={true} // Tự động mở bàn phím
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Các nút hành động trong Modal */}
+                            <View className="flex-row gap-3">
+                                <Pressable
+                                    onPress={() => setIsModalVisible(false)}
+                                    className="flex-1 py-4 rounded-[24px] border-2 border-black bg-white items-center justify-center active:bg-gray-100"
+                                >
+                                    <Text className="text-base font-space-bold text-black">Hủy</Text>
+                                </Pressable>
+
+                                <Pressable
+                                    onPress={handleCreateFamily}
+                                    disabled={isCreatingShared || !newFamilyName.trim()}
+                                    className={`flex-1 py-4 rounded-[24px] border-2 border-black bg-black items-center justify-center ${isCreatingShared || !newFamilyName.trim() ? "opacity-70" : "active:opacity-80"}`}
+                                >
+                                    {isCreatingShared ? (
+                                        <ActivityIndicator color="#FFF" />
+                                    ) : (
+                                        <Text className="text-base font-space-bold text-white">Tạo nhóm</Text>
+                                    )}
+                                </Pressable>
+                            </View>
+
+                        </Pressable>
+                    </KeyboardAvoidingView>
+                </Pressable>
+            </Modal>
+
         </SafeAreaView>
     );
 }
