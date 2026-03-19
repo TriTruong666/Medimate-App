@@ -24,7 +24,7 @@ Notifications.setNotificationHandler({
     shouldPlaySound: true,
     shouldSetBadge: false,
     shouldShowBanner: true, // Thêm dòng này (Hiển thị banner thả xuống)
-    shouldShowList: true,   // Thêm dòng này (Hiển thị trong trung tâm thông báo)
+    shouldShowList: true, // Thêm dòng này (Hiển thị trong trung tâm thông báo)
   }),
 });
 
@@ -106,8 +106,15 @@ export default function LoginScreen() {
                 value={password}
                 onChangeText={setPassword}
               />
-              <Pressable onPress={() => setShowPassword(!showPassword)} className="p-2 -mr-2">
-                <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#888" />
+              <Pressable
+                onPress={() => setShowPassword(!showPassword)}
+                className="p-2 -mr-2"
+              >
+                <Feather
+                  name={showPassword ? "eye" : "eye-off"}
+                  size={20}
+                  color="#888"
+                />
               </Pressable>
             </View>
 
@@ -124,7 +131,7 @@ export default function LoginScreen() {
             <Pressable
               onPress={handleLogin}
               disabled={isPending || !identifier || !password}
-              className={`w-full py-5 rounded-full flex-row items-center justify-center shadow-md bg-primary ${(isPending || !identifier || !password) ? 'opacity-70' : 'active:opacity-80'}`}
+              className={`w-full py-5 rounded-full flex-row items-center justify-center shadow-md bg-primary ${isPending || !identifier || !password ? "opacity-70" : "active:opacity-80"}`}
             >
               {isPending ? (
                 <ActivityIndicator color="white" />
@@ -140,7 +147,7 @@ export default function LoginScreen() {
 
             <Pressable
               className="items-center mt-8 p-2"
-            // onPress={() => router.push("/register")}
+              // onPress={() => router.push("/register")}
             >
               <Text className="text-black text-base font-space-regular">
                 Chưa có tài khoản?{" "}
@@ -153,4 +160,3 @@ export default function LoginScreen() {
     </SafeAreaView>
   );
 }
-
