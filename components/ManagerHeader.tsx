@@ -23,7 +23,7 @@ export default function ManagerHeader({
             const decoded = await getDecodedToken();
             if (decoded) {
                 setUserId(decoded.Id);
-                setMemberId(decoded.memberId);
+                setMemberId(decoded.MemberId);
             }
         };
         fetchToken();

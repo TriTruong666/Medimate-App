@@ -4,7 +4,7 @@ import { jwtDecode } from "jwt-decode";
 
 export interface CustomJwtPayload {
     Id?: string;
-    memberId?: string;
+    MemberId?: string;
     exp?: number;
 }
 

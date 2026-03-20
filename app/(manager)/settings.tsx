@@ -72,7 +72,7 @@ export default function SettingsScreen() {
       const decoded = await getDecodedToken();
       if (decoded) {
         setUserId(decoded.Id);
-        setMemberId(decoded.memberId);
+        setMemberId(decoded.MemberId);
       }
     };
     fetchToken();

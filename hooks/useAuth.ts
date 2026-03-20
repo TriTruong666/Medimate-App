@@ -78,11 +78,15 @@ export function useVerifyOtp() {
 }
 
 export function useLoginDependent() {
+    const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async (data: LoginDependentRequest) => AuthApi.loginDependent(data),
         onSuccess: async (res) => {
             if (res.success && res.data?.token) {
                 await SecureStore.setItemAsync("accessToken", res.data.token);
+
+                queryClient.clear();
+
                 // Tùy luồng dependent của bạn, có thể chuyển hướng về home
                 router.replace("/(manager)/home");
             } else {
