@@ -34,9 +34,13 @@ const MENU_ITEMS = [
   },
   {
     icon: Shield,
-    label: "Bảo mật & Quyền riêng tư",
-    subtitle: "Mật khẩu, xác thực 2 lớp",
+    label: "Bảo mật tài khoản",
+    subtitle: "Thay đổi mật khẩu",
     color: "#D9AEF6",
+    // 👉 SỬA TẠI ĐÂY: Trỏ trực tiếp vào tên file change-password
+    // Không dùng /(password)/ vì nó là group ảo
+    route: "/(manager)/(password)/change-password" as const,
+    onlyUser: true,
   },
   {
     icon: HelpCircle,
