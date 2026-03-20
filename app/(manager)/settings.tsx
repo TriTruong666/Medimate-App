@@ -39,7 +39,7 @@ const MENU_ITEMS = [
     color: "#D9AEF6",
     // 👉 SỬA TẠI ĐÂY: Trỏ trực tiếp vào tên file change-password
     // Không dùng /(password)/ vì nó là group ảo
-    route: "/(manager)/change-password" as const,
+    route: "/(manager)/(password)/change-password" as const,
     onlyUser: true,
   },
   {
