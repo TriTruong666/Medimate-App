@@ -34,11 +34,13 @@ const MENU_ITEMS = [
   },
   {
     icon: Shield,
-    label: "Bảo mật tài khoản", // Đổi tên cho rõ ràng
+    label: "Bảo mật tài khoản",
     subtitle: "Thay đổi mật khẩu",
     color: "#D9AEF6",
-    route: "/(manager)/(family)/change-password" as const, // Thêm route mới
-    onlyUser: true, // Cờ đánh dấu chỉ dành cho User
+    // 👉 SỬA TẠI ĐÂY: Trỏ trực tiếp vào tên file change-password
+    // Không dùng /(password)/ vì nó là group ảo
+    route: "/(manager)/change-password" as const,
+    onlyUser: true,
   },
   {
     icon: HelpCircle,
