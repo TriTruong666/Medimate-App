@@ -9,7 +9,7 @@ export default function ManagerLayout() {
         >
             <Tabs.Screen name="home" />
             <Tabs.Screen name="calendar" />
-            <Tabs.Screen name="members" />
+            <Tabs.Screen name="doctor" />
             <Tabs.Screen name="settings" />
             <Tabs.Screen name="familyview" />
         </Tabs>
