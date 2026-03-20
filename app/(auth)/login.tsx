@@ -3,7 +3,7 @@ import { useLoginUser } from "@/hooks/useAuth";
 import { usePushToken } from "@/hooks/usePushToken";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -147,11 +147,16 @@ export default function LoginScreen() {
 
             <Pressable
               className="items-center mt-8 p-2"
-              // onPress={() => router.push("/register")}
+            // onPress={() => router.push("/register")}
             >
               <Text className="text-black text-base font-space-regular">
                 Chưa có tài khoản?{" "}
-                <Text className="font-space-bold">Đăng ký ngay</Text>
+                <Pressable
+                  onPress={() => router.push("/register")}
+                  className="active:opacity-70" // Hiệu ứng mờ đi khi nhấn
+                >
+                  <Text className="font-space-bold border-b border-black">Đăng ký ngay</Text>
+                </Pressable>
               </Text>
             </Pressable>
           </View>

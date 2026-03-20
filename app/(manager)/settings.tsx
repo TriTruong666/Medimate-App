@@ -34,9 +34,11 @@ const MENU_ITEMS = [
   },
   {
     icon: Shield,
-    label: "Bảo mật & Quyền riêng tư",
-    subtitle: "Mật khẩu, xác thực 2 lớp",
+    label: "Bảo mật tài khoản", // Đổi tên cho rõ ràng
+    subtitle: "Thay đổi mật khẩu",
     color: "#D9AEF6",
+    route: "/(manager)/(family)/change-password" as const, // Thêm route mới
+    onlyUser: true, // Cờ đánh dấu chỉ dành cho User
   },
   {
     icon: HelpCircle,

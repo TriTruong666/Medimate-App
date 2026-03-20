@@ -1,11 +1,9 @@
 import { useCreateDependentMember } from "@/hooks/useMember";
 import { AntDesign, Feather } from "@expo/vector-icons";
-import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
-    Image,
     KeyboardAvoidingView,
     Platform,
     Pressable,
@@ -23,8 +21,6 @@ export default function AddMemberScreen() {
     const [fullName, setFullName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
     const [gender, setGender] = useState<"Male" | "Female" | "Other">("Other");
-    const [avatarUri, setAvatarUri] = useState<string | null>(null);
-    const [avatarFile, setAvatarFile] = useState<any>(null);
 
     const { mutate: createMember, isPending: isCreating } = useCreateDependentMember();
 
@@ -39,43 +35,21 @@ export default function AddMemberScreen() {
         setDateOfBirth(formatted);
     };
 
-    const handlePickImage = async () => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-        });
-
-        if (!result.canceled) {
-            setAvatarUri(result.assets[0].uri);
-            setAvatarFile({
-                uri: result.assets[0].uri,
-                name: "avatar.jpg",
-                type: "image/jpeg",
-            });
-        }
-    };
-
     const handleSave = () => {
         if (!fullName.trim() || !familyId) return;
 
-        // Tạo object chuẩn theo interface CreateDependentRequest
         const payload: any = {
             familyId: familyId,
             fullName: fullName.trim(),
             gender: gender,
         };
 
-        // Chỉ format ngày sinh nếu người dùng có nhập
         if (dateOfBirth) {
             payload.dateOfBirth = `${dateOfBirth}T00:00:00.000Z`;
         }
 
-        // Gọi API gửi dạng JSON
         createMember(payload, {
             onError: (error: any) => {
-                // Thêm dòng này để in lỗi chi tiết ra Terminal (rất hữu ích để fix bug)
                 console.log("Lỗi tạo member chi tiết:", error.response?.data || error);
             }
         });
@@ -92,23 +66,18 @@ export default function AddMemberScreen() {
                         <Text className="text-2xl text-black font-space-bold">Thêm thành viên</Text>
                         <View className="w-12 h-12" />
                     </View>
+
                     <View className="bg-[#A3E6A1] border-2 border-black rounded-[32px] p-6 mb-8 items-center justify-center shadow-sm">
                         <Text className="text-black font-space-bold text-center leading-6">Tạo hồ sơ cho người thân để quản lý{"\n"}lịch uống thuốc của họ.</Text>
                     </View>
+
+                    {/* Avatar Section - Đã bỏ Pressable và dấu cộng */}
                     <View className="items-center mb-8">
-                        <Pressable onPress={handlePickImage} className="relative active:opacity-80">
-                            <View className="w-32 h-32 rounded-full border-4 border-black bg-[#D9AEF6] items-center justify-center overflow-hidden shadow-sm">
-                                {Boolean(avatarUri) ? (
-                                    <Image source={{ uri: avatarUri as string }} className="w-full h-full" resizeMode="cover" />
-                                ) : (
-                                    <Feather name="camera" size={40} color="#000" />
-                                )}
-                            </View>
-                            <View className="absolute bottom-0 right-0 w-10 h-10 bg-[#FFD700] border-2 border-black rounded-full items-center justify-center shadow-sm">
-                                <Feather name="plus" size={20} color="#000" strokeWidth={3} />
-                            </View>
-                        </Pressable>
+                        <View className="w-32 h-32 rounded-full border-4 border-black bg-[#D9AEF6] items-center justify-center shadow-sm">
+                            <Feather name="user" size={50} color="#000" />
+                        </View>
                     </View>
+
                     <View className="space-y-5">
                         <View>
                             <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Họ và Tên (*)</Text>
@@ -121,6 +90,7 @@ export default function AddMemberScreen() {
                                 />
                             </View>
                         </View>
+
                         <View className="mt-4">
                             <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Giới tính</Text>
                             <View className="flex-row justify-between gap-3">
@@ -135,6 +105,7 @@ export default function AddMemberScreen() {
                                 ))}
                             </View>
                         </View>
+
                         <View className="mt-4">
                             <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Ngày sinh (YYYY-MM-DD)</Text>
                             <View className="px-5 py-4 rounded-[24px] border-2 border-black bg-white shadow-sm flex-row items-center">
@@ -150,6 +121,7 @@ export default function AddMemberScreen() {
                             </View>
                         </View>
                     </View>
+
                     <View className="mt-10">
                         <Pressable
                             onPress={handleSave}

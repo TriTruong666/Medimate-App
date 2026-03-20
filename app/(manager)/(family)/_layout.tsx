@@ -10,6 +10,7 @@ export default function FamilyLayout() {
             <Stack.Screen name="edit" />
             <Stack.Screen name="edit-member" />
             <Stack.Screen name="add-member" />
+            <Stack.Screen name="change-password" />
         </Stack>
     );
 }
