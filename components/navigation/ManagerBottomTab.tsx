@@ -3,9 +3,9 @@ import { CalendarDays, Heart, MessageCircle, QrCode, User } from "lucide-react-n
 import BottomTab, { CenterButtonConfig, TabConfig } from "./BottomTab";
 
 const MANAGER_TABS: TabConfig[] = [
-    { name: "index", icon: Heart, label: "Trang chủ" },
+    { name: "home", icon: Heart, label: "Trang chủ" },
     { name: "calendar", icon: CalendarDays, label: "Lịch" },
-    { name: "members", icon: MessageCircle, label: "Tin nhắn" },
+    { name: "doctor", icon: MessageCircle, label: "Tin nhắn" },
     { name: "settings", icon: User, label: "Cá nhân" },
 ];
 

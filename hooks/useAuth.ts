@@ -20,7 +20,7 @@ export function useLoginUser() {
                 queryClient.invalidateQueries({ queryKey: ["families"] });
 
                 // Chuyển sang Home và xóa lịch sử các màn hình trước đó
-                router.replace("/demo");
+                router.replace("/(manager)/home");
             } else {
                 Alert.alert("Đăng nhập thất bại", res.message || "Tài khoản hoặc mật khẩu không đúng.");
             }
@@ -84,7 +84,7 @@ export function useLoginDependent() {
             if (res.success && res.data?.token) {
                 await SecureStore.setItemAsync("accessToken", res.data.token);
                 // Tùy luồng dependent của bạn, có thể chuyển hướng về home
-                // router.replace("/home"); 
+                router.replace("/(manager)/home");
             } else {
                 Alert.alert("Lỗi xác thực", res.message || "Mã QR không hợp lệ hoặc đã hết hạn.");
             }
@@ -109,7 +109,7 @@ export function useLogoutUser() {
                 queryClient.clear();
 
                 // Đẩy người dùng về màn hình Chào mừng
-                // router.replace("/welcome");
+                router.replace("/welcome");
             } else {
                 Alert.alert("Lỗi", res.message || "Đăng xuất thất bại.");
             }

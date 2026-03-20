@@ -15,7 +15,7 @@ import ManagerHeader from "../../components/ManagerHeader";
 export default function HomeScreen() {
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
-            <ManagerHeader name="Tri Truong" />
+            <ManagerHeader />
 
             <ScrollView
                 className="flex-1 px-5"
