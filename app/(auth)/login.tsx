@@ -2,7 +2,6 @@
 import { useLoginUser } from "@/hooks/useAuth";
 import { usePushToken } from "@/hooks/usePushToken";
 import { AntDesign, Feather } from "@expo/vector-icons";
-import * as Notifications from "expo-notifications";
 import { Link, router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -17,18 +16,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Cấu hình thông báo hiển thị khi app đang mở (Foreground)
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true, // Thêm dòng này (Hiển thị banner thả xuống)
-    shouldShowList: true, // Thêm dòng này (Hiển thị trong trung tâm thông báo)
-  }),
-});
+import { validateLogin } from "@/common/validation";
+import { useToast } from "@/stores/toastStore";
 
 export default function LoginScreen() {
+  const toast = useToast();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false); // State lưu token
@@ -39,7 +31,12 @@ export default function LoginScreen() {
   const fcmToken = usePushToken();
 
   const handleLogin = () => {
-    if (!identifier.trim() || !password) return;
+    const { isValid, message } = validateLogin(identifier, password);
+
+    if (!isValid) {
+      toast.error("Lỗi nhập liệu", message);
+      return;
+    }
 
     login({
       identifier: identifier.trim(),
@@ -84,12 +81,12 @@ export default function LoginScreen() {
             {/* Box input Email */}
             <View>
               <Text className="text-xs font-space-bold mb-2 ml-1 uppercase">Email</Text>
-              <View className="px-4 py-1 rounded-2xl flex-row items-center border-2 border-black bg-white">
+              <View className="px-4 py-1 rounded-2xl flex-row items-center border-2 border-black bg-white gap-x-3">
                 <Feather name="mail" size={20} color="gray" />
                 <TextInput
                   placeholder="Email của bạn"
                   placeholderTextColor="#A0A0A0"
-                  className="flex-1 h-12 ml-3 font-space-bold text-black"
+                  className="flex-1 h-12 font-space-bold text-black"
                   autoCapitalize="none"
                   keyboardType="email-address"
                   value={identifier}
@@ -101,13 +98,13 @@ export default function LoginScreen() {
             {/* Box input Mật khẩu */}
             <View>
               <Text className="text-xs font-space-bold mb-2 ml-1 uppercase">Mật khẩu</Text>
-              <View className="px-4 py-1 rounded-2xl flex-row items-center border-2 border-black bg-white">
+              <View className="px-4 py-1 rounded-2xl flex-row items-center border-2 border-black bg-white gap-x-3">
                 <Feather name="lock" size={20} color="gray" />
                 <TextInput
                   placeholder="********"
                   placeholderTextColor="#A0A0A0"
                   secureTextEntry={!showPassword}
-                  className="flex-1 h-12 ml-3 font-space-bold text-black"
+                  className="flex-1 h-12 font-space-bold text-black"
                   value={password}
                   onChangeText={setPassword}
                 />
@@ -136,14 +133,14 @@ export default function LoginScreen() {
           <View className="mt-10">
             <Pressable
               onPress={handleLogin}
-              disabled={isPending || !identifier || !password}
-              className={`w-full py-4 rounded-[24px] flex-row items-center justify-center shadow-md bg-[#A3E6A1] border-2 border-black ${isPending || !identifier || !password ? "opacity-70" : "active:opacity-80"}`}
+              disabled={isPending}
+              className={`w-full py-4 rounded-[24px] flex-row items-center justify-center gap-x-2 shadow-md bg-[#A3E6A1] border-2 border-black ${isPending ? "opacity-70" : "active:opacity-80"}`}
             >
               {isPending ? (
                 <ActivityIndicator color="black" />
               ) : (
                 <>
-                  <Text className="text-black text-lg mx-2 font-space-bold uppercase">
+                  <Text className="text-black text-lg font-space-bold uppercase">
                     ĐĂNG NHẬP NGAY
                   </Text>
                   <AntDesign name="arrow-right" size={20} color="black" />

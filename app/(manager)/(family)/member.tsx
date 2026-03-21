@@ -1,12 +1,10 @@
+import { MemberDetailSkeleton } from "@/components/skeleton/MemberDetailSkeleton";
 import {
-    useAddHealthCondition,
-    useCreateHealthProfile,
     useDeleteHealthCondition,
     useGetHealthProfile,
-    useUpdateHealthCondition,
-    useUpdateHealthProfile
 } from "@/hooks/useHealth";
-import { useDeleteMember, useGenerateDependentLoginCode, useGetMemberById } from "@/hooks/useMember";
+import { useGenerateDependentLoginCode, useGetMemberById } from "@/hooks/useMember";
+import { usePopup } from "@/stores/popupStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
@@ -15,20 +13,19 @@ import {
     HeartPulse,
     Plus,
     RefreshCw,
-    Trash2,
-    X
+    Trash2
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MemberDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
+    const popup = usePopup();
 
     // --- 1. API THÀNH VIÊN & QR LOGIC ---
     const { data: member, isLoading: isFetchingMember } = useGetMemberById(id);
-    const { mutate: deleteMember } = useDeleteMember();
     const { mutate: generateQrCode, isPending: isGeneratingQr } = useGenerateDependentLoginCode();
 
     const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
@@ -66,73 +63,24 @@ export default function MemberDetailScreen() {
 
     // --- 2. API SỨC KHỎE (PROFILE & CONDITIONS) ---
     const { data: healthProfile, isLoading: isFetchingHealth } = useGetHealthProfile(id);
-    const { mutate: createHP, isPending: isCreatingHP } = useCreateHealthProfile();
-    const { mutate: updateHP, isPending: isUpdatingHP } = useUpdateHealthProfile();
-    const { mutate: addHC, isPending: isAddingHC } = useAddHealthCondition();
-    const { mutate: updateHC, isPending: isUpdatingHC } = useUpdateHealthCondition();
     const { mutate: deleteHC } = useDeleteHealthCondition();
 
-    // --- 3. STATES CHO MODALS ---
-    const [isHpModalVisible, setIsHpModalVisible] = useState(false);
-    const [hpForm, setHpForm] = useState({ bloodType: "O", height: "", weight: "", insurance: "" });
-
-    const [isHcModalVisible, setIsHcModalVisible] = useState(false);
-    const [hcForm, setHcForm] = useState({ name: "", note: "" });
-    const [editingHcId, setEditingHcId] = useState<string | null>(null);
-
-    // --- 4. XỬ LÝ HỒ SƠ SỨC KHỎE ---
+    // --- 3. XỬ LÝ MỞ POPUPS ---
     const handleOpenHpModal = () => {
-        if (healthProfile) {
-            setHpForm({
-                bloodType: healthProfile.bloodType,
-                height: healthProfile.height.toString(),
-                weight: healthProfile.weight.toString(),
-                insurance: healthProfile.insuranceNumber || ""
-            });
-        } else {
-            setHpForm({ bloodType: "O", height: "", weight: "", insurance: "" });
-        }
-        setIsHpModalVisible(true);
+        popup.open({
+            type: "health_profile",
+            data: { memberId: id, profile: healthProfile }
+        });
     };
 
-    const handleSaveHp = () => {
-        const data = {
-            bloodType: hpForm.bloodType,
-            height: Number(hpForm.height),
-            weight: Number(hpForm.weight),
-            insuranceNumber: hpForm.insurance
-        };
-        const action = healthProfile ? updateHP : createHP;
-        action({ memberId: id!, data }, { onSuccess: () => setIsHpModalVisible(false) });
-    };
-
-    // --- 5. XỬ LÝ BỆNH LÝ ---
     const handleOpenHcModal = (hc?: any) => {
-        if (hc) {
-            setEditingHcId(hc.conditionId);
-            setHcForm({ name: hc.conditionName, note: hc.description });
-        } else {
-            setEditingHcId(null);
-            setHcForm({ name: "", note: "" });
-        }
-        setIsHcModalVisible(true);
+        popup.open({
+            type: "health_condition",
+            data: { memberId: id, condition: hc }
+        });
     };
 
-    const handleSaveHc = () => {
-        const data = {
-            conditionName: hcForm.name,
-            description: hcForm.note,
-            diagnosedDate: new Date().toISOString(),
-            status: "Active"
-        };
-        if (editingHcId) {
-            updateHC({ conditionId: editingHcId, data }, { onSuccess: () => setIsHcModalVisible(false) });
-        } else {
-            addHC({ memberId: id!, data }, { onSuccess: () => setIsHcModalVisible(false) });
-        }
-    };
-
-    if (isFetchingMember || isFetchingHealth) return <SafeAreaView className="flex-1 bg-background justify-center items-center"><ActivityIndicator size="large" color="#000" /></SafeAreaView>;
+    if (isFetchingMember || isFetchingHealth) return <MemberDetailSkeleton />;
     if (!member) return null;
 
     const age = member.dateOfBirth ? new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear() : "N/A";
@@ -168,7 +116,7 @@ export default function MemberDetailScreen() {
                 {!member.userId && (
                     <View className="bg-white border-2 border-black rounded-[32px] p-6 mb-6 shadow-sm items-center relative overflow-hidden">
                         <View className="absolute top-0 right-0 w-20 h-20 bg-[#D9AEF6] rounded-bl-[40px] border-b-2 border-l-2 border-black" />
-                        <View className="bg-white/90 self-center px-4 py-1.5 rounded-full border-2 border-black mb-4 z-10 flex-row items-center gap-2">
+                        <View className="bg-white/90 self-center px-4 py-1.5 rounded-full border-2 border-black mb-4 z-10 flex-row items-center gap-x-2">
                             <Text className="text-xs font-space-bold uppercase tracking-wider text-black">Mã đăng nhập thiết bị</Text>
                             <Pressable onPress={handleGenerateQR} className="p-1 active:opacity-60"><RefreshCw size={14} color="#000" strokeWidth={2.5} /></Pressable>
                         </View>
@@ -182,7 +130,7 @@ export default function MemberDetailScreen() {
                 {/* HEALTH PROFILE (GẮN API) */}
                 <View className="bg-[#FFF3E0] border-2 border-black rounded-[24px] p-5 mb-6 shadow-sm">
                     <View className="flex-row items-center justify-between mb-4">
-                        <View className="flex-row items-center"><FileText size={20} color="#000" strokeWidth={2.5} /><Text className="text-lg text-black font-space-bold ml-2">Hồ sơ sức khỏe</Text></View>
+                        <View className="flex-row items-center gap-x-2"><FileText size={20} color="#000" strokeWidth={2.5} /><Text className="text-lg text-black font-space-bold">Hồ sơ sức khỏe</Text></View>
                         <Pressable onPress={handleOpenHpModal} className="bg-black w-9 h-9 rounded-full items-center justify-center active:opacity-80">{healthProfile ? <Edit3 size={14} color="#FFF" /> : <Plus size={16} color="#FFF" strokeWidth={3} />}</Pressable>
                     </View>
                     {healthProfile ? (
@@ -190,62 +138,28 @@ export default function MemberDetailScreen() {
                             <View className="flex-row justify-between mb-2"><Text className="text-gray-600 font-space-medium">Chiều cao / Cân nặng</Text><Text className="text-black font-space-bold">{healthProfile.height}cm / {healthProfile.weight}kg</Text></View>
                             <View className="flex-row justify-between"><Text className="text-gray-600 font-space-medium">BMI / Nhóm máu</Text><Text className="text-black font-space-bold">{healthProfile.bmi?.toFixed(1) ?? "--"} / <Text className="text-red-500">{healthProfile.bloodType}</Text></Text></View>
                         </View>
-                    ) : <Text className="text-sm text-gray-600 font-space-medium leading-5">Chưa có dữ liệu chiều cao, cân nặng. Bấm nút "+" để tạo mới.</Text>}
+                    ) : <Text className="text-sm text-gray-600 font-space-medium leading-5">Chưa có dữ liệu chiều cao, cân nặng. Vui lòng thêm dữ liệu</Text>}
                 </View>
 
                 {/* HEALTH CONDITIONS (GẮN API) */}
                 <View className="bg-[#FFE4E1] border-2 border-black rounded-[24px] p-5 mb-6 shadow-sm">
                     <View className="flex-row items-center justify-between mb-4">
-                        <View className="flex-row items-center"><HeartPulse size={20} color="#000" strokeWidth={2.5} /><Text className="text-lg text-black font-space-bold ml-2">Tình trạng bệnh lý</Text></View>
+                        <View className="flex-row items-center gap-x-2"><HeartPulse size={20} color="#000" strokeWidth={2.5} /><Text className="text-lg text-black font-space-bold">Tình trạng bệnh lý</Text></View>
                         {healthProfile && <Pressable onPress={() => handleOpenHcModal()} className="bg-black w-8 h-8 rounded-full items-center justify-center active:opacity-80"><Plus size={16} color="#FFF" strokeWidth={3} /></Pressable>}
                     </View>
-                    {!healthProfile ? <Text className="text-sm text-red-500 font-space-bold leading-5">⚠️ Vui lòng tạo "Hồ sơ sức khỏe" trước khi thêm thông tin bệnh lý.</Text> : healthProfile.conditions?.length > 0 ? (
+                    {!healthProfile ? <Text className="text-sm text-red-500 font-space-bold leading-5">Vui lòng tạo "Hồ sơ sức khỏe" trước khi thêm thông tin bệnh lý.</Text> : healthProfile.conditions?.length > 0 ? (
                         <View className="gap-3">{healthProfile.conditions.map((hc) => (
                             <View key={hc.conditionId} className="bg-white/60 rounded-2xl p-4 border border-black/10 flex-row justify-between items-center shadow-sm">
                                 <View className="flex-1 mr-2"><Text className="text-black font-space-bold">{hc.conditionName}</Text><Text className="text-gray-600 font-space-medium text-xs mt-1" numberOfLines={1}>{hc.description}</Text></View>
                                 <View className="flex-row gap-2">
                                     <Pressable onPress={() => handleOpenHcModal(hc)} className="bg-white w-8 h-8 rounded-full border-2 border-black items-center justify-center"><Edit3 size={12} color="#000" /></Pressable>
-                                    <Pressable onPress={() => { Alert.alert("Xác nhận", "Xóa bệnh lý này?", [{ text: "Hủy" }, { text: "Xóa", style: "destructive", onPress: () => deleteHC(hc.conditionId) }]) }} className="bg-[#FFA07A] w-8 h-8 rounded-full border-2 border-black items-center justify-center"><Trash2 size={12} color="#000" /></Pressable>
+                                    <Pressable onPress={() => { popup.confirm({ title: "Xác nhận", message: "Xóa bệnh lý này? Hành động này không thể hoàn tác.", type: "danger", confirmLabel: "Xóa" }, () => deleteHC(hc.conditionId)); }} className="bg-[#FFA07A] w-8 h-8 rounded-full border-2 border-black items-center justify-center"><Trash2 size={12} color="#000" /></Pressable>
                                 </View>
                             </View>
                         ))}</View>
                     ) : <Text className="text-sm text-gray-600 font-space-medium leading-5">Chưa ghi nhận bệnh lý nền nào.</Text>}
                 </View>
             </ScrollView>
-
-            {/* MODAL 1: HEALTH PROFILE */}
-            <Modal visible={isHpModalVisible} transparent animationType="fade">
-                <Pressable className="flex-1 bg-black/60 justify-center items-center px-5" onPress={() => setIsHpModalVisible(false)}>
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="w-full">
-                        <Pressable className="bg-[#FFF3E0] border-2 border-black rounded-[32px] p-6 w-full" onPress={(e) => e.stopPropagation()}>
-                            <View className="flex-row justify-between items-center mb-6"><Text className="text-xl font-space-bold">Chỉ số sức khỏe</Text><Pressable onPress={() => setIsHpModalVisible(false)}><X size={24} color="#000" /></Pressable></View>
-                            <View className="flex-row gap-4 mb-4">
-                                <View className="flex-1"><Text className="text-xs font-space-bold mb-1 ml-1 uppercase text-black">Chiều cao (cm)</Text><TextInput value={hpForm.height} onChangeText={(t) => setHpForm({ ...hpForm, height: t })} keyboardType="numeric" className="bg-white border-2 border-black rounded-2xl p-4 font-space-bold" /></View>
-                                <View className="flex-1"><Text className="text-xs font-space-bold mb-1 ml-1 uppercase text-black">Cân nặng (kg)</Text><TextInput value={hpForm.weight} onChangeText={(t) => setHpForm({ ...hpForm, weight: t })} keyboardType="numeric" className="bg-white border-2 border-black rounded-2xl p-4 font-space-bold" /></View>
-                            </View>
-                            <Text className="text-xs font-space-bold mb-1 ml-1 uppercase text-black">Nhóm máu</Text>
-                            <View className="flex-row justify-between mb-6">{["A", "B", "AB", "O"].map(t => (<Pressable key={t} onPress={() => setHpForm({ ...hpForm, bloodType: t })} className={`w-[22%] py-3 rounded-xl border-2 border-black items-center ${hpForm.bloodType === t ? 'bg-[#FFD700]' : 'bg-white'}`}><Text className="font-space-bold">{t}</Text></Pressable>))}</View>
-                            <Pressable onPress={handleSaveHp} disabled={isCreatingHP || isUpdatingHP} className="bg-black py-4 rounded-[20px] items-center">{(isCreatingHP || isUpdatingHP) ? <ActivityIndicator color="#FFF" /> : <Text className="text-white font-space-bold uppercase">Lưu hồ sơ</Text>}</Pressable>
-                        </Pressable>
-                    </KeyboardAvoidingView>
-                </Pressable>
-            </Modal>
-
-            {/* MODAL 2: HEALTH CONDITION */}
-            <Modal visible={isHcModalVisible} transparent animationType="fade">
-                <Pressable className="flex-1 bg-black/60 justify-center items-center px-5" onPress={() => setIsHcModalVisible(false)}>
-                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="w-full">
-                        <Pressable className="bg-[#FFE4E1] border-2 border-black rounded-[32px] p-6 w-full" onPress={(e) => e.stopPropagation()}>
-                            <View className="flex-row justify-between items-center mb-6"><Text className="text-xl font-space-bold">{editingHcId ? "Sửa bệnh lý" : "Thêm bệnh lý"}</Text><Pressable onPress={() => setIsHcModalVisible(false)}><X size={24} color="#000" /></Pressable></View>
-                            <Text className="text-xs font-space-bold mb-1 ml-1 uppercase text-black">Tên bệnh / Tình trạng</Text>
-                            <TextInput value={hcForm.name} onChangeText={(t) => setHcForm({ ...hcForm, name: t })} placeholder="VD: Cao huyết áp" className="bg-white border-2 border-black rounded-2xl p-4 font-space-bold mb-4" />
-                            <Text className="text-xs font-space-bold mb-1 ml-1 uppercase text-black">Ghi chú / Mô tả</Text>
-                            <TextInput value={hcForm.note} onChangeText={(t) => setHcForm({ ...hcForm, note: t })} multiline placeholder="VD: Cần theo dõi hàng ngày" className="bg-white border-2 border-black rounded-2xl p-4 font-space-bold mb-6 h-24" style={{ textAlignVertical: 'top' }} />
-                            <Pressable onPress={handleSaveHc} disabled={isAddingHC || isUpdatingHC || !hcForm.name} className="bg-black py-4 rounded-[20px] items-center">{(isAddingHC || isUpdatingHC) ? <ActivityIndicator color="#FFF" /> : <Text className="text-white font-space-bold uppercase">Xác nhận</Text>}</Pressable>
-                        </Pressable>
-                    </KeyboardAvoidingView>
-                </Pressable>
-            </Modal>
         </SafeAreaView>
     );
 }

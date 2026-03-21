@@ -1,11 +1,13 @@
+import { validateMemberProfile } from "@/common/validation";
 import { useDeleteMember, useGetMemberById, useUpdateMember } from "@/hooks/useMember";
-import { AntDesign, Feather } from "@expo/vector-icons";
+import { usePopup } from "@/stores/popupStore";
+import { useToast } from "@/stores/toastStore";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeft, Calendar, Check, Image as ImageIcon, Trash2, User } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
-    Alert,
     Image,
     KeyboardAvoidingView,
     Platform,
@@ -20,6 +22,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function EditMemberScreen() {
     const router = useRouter();
     const { memberId } = useLocalSearchParams<{ memberId: string }>();
+    const toast = useToast();
+    const popup = usePopup();
 
     const [fullName, setFullName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
@@ -72,7 +76,13 @@ export default function EditMemberScreen() {
     };
 
     const handleSave = () => {
-        if (!fullName.trim() || !memberId) return;
+        if (!memberId) return;
+
+        const { isValid, message } = validateMemberProfile(fullName, dateOfBirth);
+        if (!isValid) {
+            toast.error("Lỗi", message);
+            return;
+        }
 
         const formData = new FormData();
         formData.append("FullName", fullName.trim());
@@ -90,9 +100,12 @@ export default function EditMemberScreen() {
             { id: memberId, formData },
             {
                 onSuccess: () => {
-                    Alert.alert("Thành công", "Đã cập nhật thông tin thành viên.");
+                    toast.success("Thành công", "Đã cập nhật thông tin thành viên.");
                     router.back();
                 },
+                onError: () => {
+                    toast.error("Lỗi", "Không thể cập nhật hồ sơ");
+                }
             }
         );
     };
@@ -100,23 +113,25 @@ export default function EditMemberScreen() {
     const handleDelete = () => {
         if (!memberId) return;
 
-        Alert.alert(
-            "Xóa thành viên",
-            `Bạn có chắc chắn muốn xóa "${fullName}" khỏi gia đình không? Mọi dữ liệu liên quan sẽ bị mất.`,
-            [
-                { text: "Hủy", style: "cancel" },
-                {
-                    text: "Xóa",
-                    style: "destructive",
-                    onPress: () => {
-                        deleteMember(memberId, {
-                            onSuccess: () => {
-                                router.back();
-                            }
-                        });
+        popup.confirm(
+            {
+                title: "Xóa thành viên",
+                message: `Bạn có chắc chắn muốn xóa "${fullName}" khỏi gia đình không? Mọi dữ liệu liên quan sẽ bị mất.`,
+                type: "danger",
+                confirmLabel: "Xóa",
+                cancelLabel: "Hủy"
+            },
+            () => {
+                deleteMember(memberId, {
+                    onSuccess: () => {
+                        toast.success("Thành công", "Đã xóa thành viên");
+                        router.back();
                     },
-                },
-            ]
+                    onError: () => {
+                        toast.error("Lỗi", "Không thể xóa thành viên");
+                    }
+                });
+            }
         );
     };
 
@@ -136,25 +151,25 @@ export default function EditMemberScreen() {
                 <ScrollView className="flex-1 px-6 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                     {/* Header */}
                     <View className="flex-row items-center justify-between mb-8">
-                        <Pressable onPress={() => router.back()} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm active:opacity-80">
-                            <AntDesign name="arrow-left" size={24} color="black" />
+                        <Pressable onPress={() => router.back()} className="w-12 h-12 bg-white border-2 border-black rounded-[16px] items-center justify-center shadow-sm active:opacity-80">
+                            <ArrowLeft size={22} color="#000" strokeWidth={2.5} />
                         </Pressable>
-                        <Text className="text-2xl text-black font-space-bold">Hồ sơ thành viên</Text>
+                        <Text className="text-xl text-black font-space-bold">Hồ sơ thành viên</Text>
                         <View className="w-12 h-12" />
                     </View>
 
                     {/* Avatar Section */}
                     <View className="items-center mb-8">
                         <Pressable onPress={handlePickImage} className="relative active:opacity-80">
-                            <View className="w-32 h-32 rounded-full border-4 border-black bg-[#A3E6A1] items-center justify-center overflow-hidden shadow-sm">
+                            <View className="w-32 h-32 rounded-[40px] border-4 border-black bg-[#A3E6A1] items-center justify-center overflow-hidden shadow-sm">
                                 {Boolean(avatarUri) ? (
                                     <Image source={{ uri: avatarUri as string }} className="w-full h-full" resizeMode="cover" />
                                 ) : (
-                                    <Feather name="user" size={40} color="#000" />
+                                    <User size={50} color="#000" />
                                 )}
                             </View>
                             <View className="absolute bottom-0 right-0 w-10 h-10 bg-[#FFD700] border-2 border-black rounded-full items-center justify-center shadow-sm">
-                                <Feather name="image" size={18} color="#000" />
+                                <ImageIcon size={18} color="#000" />
                             </View>
                         </Pressable>
                     </View>
@@ -176,6 +191,7 @@ export default function EditMemberScreen() {
                                     value={fullName}
                                     onChangeText={setFullName}
                                     placeholder="Nhập tên thành viên..."
+                                    placeholderTextColor="#A0A0A0"
                                     className="text-lg text-black font-space-bold"
                                 />
                             </View>
@@ -202,12 +218,13 @@ export default function EditMemberScreen() {
                         {/* Ngày sinh */}
                         <View className="mt-4">
                             <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Ngày sinh (YYYY-MM-DD)</Text>
-                            <View className="px-5 py-4 rounded-[24px] border-2 border-black bg-white shadow-sm flex-row items-center">
-                                <Feather name="calendar" size={20} color="#888" />
+                            <View className="px-5 py-3 rounded-[24px] border-2 border-black bg-white shadow-sm flex-row items-center h-16">
+                                <Calendar size={20} color="#888" />
                                 <TextInput
                                     value={dateOfBirth}
                                     onChangeText={handleDateChange}
                                     placeholder="VD: 1980-05-20"
+                                    placeholderTextColor="#A0A0A0"
                                     keyboardType="numeric"
                                     maxLength={10}
                                     className="flex-1 text-lg text-black font-space-bold ml-3"
@@ -221,13 +238,16 @@ export default function EditMemberScreen() {
                         {/* Nút Lưu */}
                         <Pressable
                             onPress={handleSave}
-                            disabled={isProcessing || !fullName.trim()}
-                            className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isProcessing || !fullName.trim() ? "opacity-70" : "active:opacity-90"}`}
+                            disabled={isProcessing}
+                            className={`bg-[#A3E6A1] border-2 border-black rounded-[24px] flex-row items-center justify-center py-5 shadow-md ${isProcessing ? "opacity-70 bg-gray-300" : "active:opacity-80 active:translate-y-0.5"}`}
                         >
                             {isUpdating ? (
-                                <ActivityIndicator color="#FFF" />
+                                <ActivityIndicator color="#000" />
                             ) : (
-                                <Text className="text-lg text-white font-space-bold uppercase tracking-wider">Lưu thay đổi</Text>
+                                <>
+                                    <Check size={20} color="#000" strokeWidth={3} />
+                                    <Text className="text-lg text-black font-space-bold uppercase tracking-wider ml-2">Lưu thay đổi</Text>
+                                </>
                             )}
                         </Pressable>
 
@@ -236,13 +256,13 @@ export default function EditMemberScreen() {
                             <Pressable
                                 onPress={handleDelete}
                                 disabled={isProcessing}
-                                className={`bg-[#FFA07A] border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isProcessing ? "opacity-70" : "active:opacity-90"}`}
+                                className={`bg-[#FFA07A] border-2 border-black rounded-[24px] flex-row items-center justify-center py-5 shadow-md ${isProcessing ? "opacity-70 bg-gray-300" : "active:opacity-80 active:translate-y-0.5"}`}
                             >
                                 {isDeleting ? (
                                     <ActivityIndicator color="#000" />
                                 ) : (
                                     <>
-                                        <Feather name="trash-2" size={20} color="black" />
+                                        <Trash2 size={20} color="#000" strokeWidth={3} />
                                         <Text className="text-lg text-black font-space-bold uppercase tracking-wider ml-2">Xóa thành viên</Text>
                                     </>
                                 )}

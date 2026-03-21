@@ -16,10 +16,15 @@ export default function Index() {
         checkAuth();
     }, []);
 
+    // Chế độ phát triển: Nhảy thẳng vào UI Explorer để chọn màn hình làm việc
+    if (__DEV__) {
+        return <Redirect href="/ui-explorer" />;
+    }
+
     if (isLoading) {
         return (
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <ActivityIndicator size="large" color="#000" />
+            <View className="flex-1 bg-background justify-center items-center px-6">
+                <ActivityIndicator size="large" color="black" />
             </View>
         );
     }
