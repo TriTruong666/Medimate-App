@@ -105,6 +105,7 @@ export default function EditFamilyScreen() {
                                     value={familyName}
                                     onChangeText={setFamilyName}
                                     placeholder="VD: Gia đình của tôi..."
+                                    placeholderTextColor="#A0A0A0"
                                     className="text-lg text-black font-space-bold"
                                 />
                             </View>
@@ -134,7 +135,7 @@ export default function EditFamilyScreen() {
                     <Pressable
                         onPress={handleSave}
                         disabled={isUpdating || !familyName.trim()}
-                        className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg mt-10 mb-10 ${isUpdating || !familyName.trim() ? "opacity-70" : "active:opacity-90"
+                        className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center gap-x-2 py-5 shadow-lg mt-10 mb-10 ${isUpdating || !familyName.trim() ? "opacity-70" : "active:opacity-90"
                             }`}
                     >
                         {isUpdating ? (
@@ -142,7 +143,7 @@ export default function EditFamilyScreen() {
                         ) : (
                             <>
                                 <Feather name="check" size={20} color="white" />
-                                <Text className="text-lg text-white font-space-bold uppercase tracking-wider ml-2">
+                                <Text className="text-lg text-white font-space-bold uppercase tracking-wider">
                                     Lưu thay đổi
                                 </Text>
                             </>

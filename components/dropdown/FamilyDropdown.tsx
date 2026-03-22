@@ -18,7 +18,7 @@ export default function FamilyDropdown() {
         >
             <Pressable className="flex-1 bg-black/5" onPress={hide}>
                 <View
-                    className="absolute bg-white border-2 border-black rounded-2xl overflow-hidden shadow-lg w-56"
+                    className="absolute bg-white border-2 border-black rounded-2xl overflow-hidden shadow-lg min-w-[200px]"
                     style={anchorPosition}
                 >
                     {items.map((item, index) => {
@@ -30,12 +30,12 @@ export default function FamilyDropdown() {
                                     hide();
                                     item.onPress();
                                 }}
-                                className={`flex-row items-center px-4 py-4 active:bg-gray-100 ${index < items.length - 1 ? "border-b-2 border-black/5" : ""
+                                className={`flex-row items-center px-4 py-4 gap-x-3 active:bg-gray-100 ${index < items.length - 1 ? "border-b-2 border-black/5" : ""
                                     }`}
                             >
                                 {Icon && (
                                     <View
-                                        className="w-8 h-8 rounded-lg items-center justify-center mr-3 border border-black/10"
+                                        className="w-8 h-8 rounded-lg items-center justify-center border border-black/10"
                                         style={{ backgroundColor: item.color || "#F0F0F0" }}
                                     >
                                         <Icon size={18} color="#000" strokeWidth={2} />

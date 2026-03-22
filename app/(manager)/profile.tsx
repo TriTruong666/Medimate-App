@@ -166,6 +166,7 @@ export default function EditProfileScreen() {
                                     value={fullName}
                                     onChangeText={setFullName}
                                     placeholder="Nhập họ và tên..."
+                                    placeholderTextColor="#A0A0A0"
                                     className="text-lg text-black font-space-bold"
                                 />
                             </View>
@@ -198,6 +199,7 @@ export default function EditProfileScreen() {
                                     value={dateOfBirth}
                                     onChangeText={handleDateChange}
                                     placeholder="VD: 2000-12-31"
+                                    placeholderTextColor="#A0A0A0"
                                     keyboardType="numeric"
                                     maxLength={10}
                                     className="flex-1 text-lg text-black font-space-bold ml-3"

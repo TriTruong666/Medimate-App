@@ -80,6 +80,7 @@ export default function ChangePasswordScreen() {
                                 <TextInput
                                     className="flex-1 h-12 ml-3 font-space-bold text-black"
                                     placeholder="********"
+                                    placeholderTextColor="#A0A0A0"
                                     secureTextEntry={!showOld}
                                     value={form.oldPassword}
                                     onChangeText={(t) => setForm({ ...form, oldPassword: t })}
@@ -100,6 +101,7 @@ export default function ChangePasswordScreen() {
                                 <TextInput
                                     className="flex-1 h-12 ml-3 font-space-bold text-black"
                                     placeholder="********"
+                                    placeholderTextColor="#A0A0A0"
                                     secureTextEntry={!showNew}
                                     value={form.newPassword}
                                     onChangeText={(t) => setForm({ ...form, newPassword: t })}
@@ -120,6 +122,7 @@ export default function ChangePasswordScreen() {
                                 <TextInput
                                     className="flex-1 h-12 ml-3 font-space-bold text-black"
                                     placeholder="********"
+                                    placeholderTextColor="#A0A0A0"
                                     secureTextEntry={!showConfirm}
                                     value={form.confirmPassword}
                                     onChangeText={(t) => setForm({ ...form, confirmPassword: t })}

@@ -16,6 +16,10 @@ import "../global.css";
 // Giữ splash screen hiển thị cho đến khi font load xong
 SplashScreen.preventAutoHideAsync();
 
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PopupContainer } from "../components/popup/PopupContainer";
+import { ToastContainer } from "../components/toast/ToastContainer";
+
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
   const [loaded] = useFonts({
@@ -36,8 +40,12 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <Stack screenOptions={{ headerShown: false }} />
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <Stack screenOptions={{ headerShown: false }} />
+        <ToastContainer />
+        <PopupContainer />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

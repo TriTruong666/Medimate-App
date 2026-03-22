@@ -1,6 +1,8 @@
+import { validateMemberProfile } from "@/common/validation";
 import { useCreateDependentMember } from "@/hooks/useMember";
-import { AntDesign, Feather } from "@expo/vector-icons";
+import { useToast } from "@/stores/toastStore";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeft, Calendar, User, UserPlus } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
@@ -17,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function AddMemberScreen() {
     const router = useRouter();
     const { familyId } = useLocalSearchParams<{ familyId: string }>();
+    const toast = useToast();
 
     const [fullName, setFullName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
@@ -36,7 +39,13 @@ export default function AddMemberScreen() {
     };
 
     const handleSave = () => {
-        if (!fullName.trim() || !familyId) return;
+        if (!familyId) return;
+
+        const { isValid, message } = validateMemberProfile(fullName, dateOfBirth);
+        if (!isValid) {
+            toast.error("Lỗi", message);
+            return;
+        }
 
         const payload: any = {
             familyId: familyId,
@@ -49,8 +58,12 @@ export default function AddMemberScreen() {
         }
 
         createMember(payload, {
-            onError: (error: any) => {
-                console.log("Lỗi tạo member chi tiết:", error.response?.data || error);
+            onSuccess: () => {
+                toast.success("Thành công", "Đã thêm thành viên mới");
+                router.back();
+            },
+            onError: () => {
+                toast.error("Lỗi", "Không thể tạo hồ sơ người dùng");
             }
         });
     };
@@ -60,10 +73,10 @@ export default function AddMemberScreen() {
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
                 <ScrollView className="flex-1 px-6 pt-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
                     <View className="flex-row items-center justify-between mb-8">
-                        <Pressable onPress={() => router.back()} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm active:opacity-80">
-                            <AntDesign name="arrow-left" size={24} color="black" />
+                        <Pressable onPress={() => router.back()} className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm active:opacity-80">
+                            <ArrowLeft size={22} color="#000" strokeWidth={2.5} />
                         </Pressable>
-                        <Text className="text-2xl text-black font-space-bold">Thêm thành viên</Text>
+                        <Text className="text-xl text-black font-space-bold">Thêm thành viên</Text>
                         <View className="w-12 h-12" />
                     </View>
 
@@ -71,10 +84,10 @@ export default function AddMemberScreen() {
                         <Text className="text-black font-space-bold text-center leading-6">Tạo hồ sơ cho người thân để quản lý{"\n"}lịch uống thuốc của họ.</Text>
                     </View>
 
-                    {/* Avatar Section - Đã bỏ Pressable và dấu cộng */}
+                    {/* Avatar Section */}
                     <View className="items-center mb-8">
-                        <View className="w-32 h-32 rounded-full border-4 border-black bg-[#D9AEF6] items-center justify-center shadow-sm">
-                            <Feather name="user" size={50} color="#000" />
+                        <View className="w-32 h-32 rounded-[40px] border-4 border-black bg-[#D9AEF6] items-center justify-center shadow-sm">
+                            <User size={50} color="#000" />
                         </View>
                     </View>
 
@@ -86,6 +99,7 @@ export default function AddMemberScreen() {
                                     value={fullName}
                                     onChangeText={setFullName}
                                     placeholder="Nhập tên người thân..."
+                                    placeholderTextColor="#A0A0A0"
                                     className="text-lg text-black font-space-bold"
                                 />
                             </View>
@@ -108,12 +122,13 @@ export default function AddMemberScreen() {
 
                         <View className="mt-4">
                             <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Ngày sinh (YYYY-MM-DD)</Text>
-                            <View className="px-5 py-4 rounded-[24px] border-2 border-black bg-white shadow-sm flex-row items-center">
-                                <Feather name="calendar" size={20} color="#888" />
+                            <View className="px-5 py-3 rounded-[24px] border-2 border-black bg-white shadow-sm flex-row items-center h-16">
+                                <Calendar size={20} color="#888" />
                                 <TextInput
                                     value={dateOfBirth}
                                     onChangeText={handleDateChange}
                                     placeholder="VD: 1960-05-20"
+                                    placeholderTextColor="#A0A0A0"
                                     keyboardType="numeric"
                                     maxLength={10}
                                     className="flex-1 text-lg text-black font-space-bold ml-3"
@@ -125,15 +140,15 @@ export default function AddMemberScreen() {
                     <View className="mt-10">
                         <Pressable
                             onPress={handleSave}
-                            disabled={isCreating || !fullName.trim()}
-                            className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg ${isCreating || !fullName.trim() ? "opacity-70" : "active:opacity-90"}`}
+                            disabled={isCreating}
+                            className={`bg-[#A3E6A1] border-2 border-black rounded-[24px] flex-row items-center justify-center py-5 shadow-md ${isCreating ? "opacity-70 bg-gray-300" : "active:opacity-80 active:translate-y-0.5"}`}
                         >
                             {isCreating ? (
-                                <ActivityIndicator color="#FFF" />
+                                <ActivityIndicator color="#000" />
                             ) : (
                                 <>
-                                    <Feather name="user-plus" size={20} color="#FFF" />
-                                    <Text className="text-lg text-white font-space-bold uppercase tracking-wider ml-2">Thêm người này</Text>
+                                    <UserPlus size={20} color="#000" strokeWidth={3} />
+                                    <Text className="text-lg text-black font-space-bold uppercase tracking-wider ml-2">Thêm người này</Text>
                                 </>
                             )}
                         </Pressable>
