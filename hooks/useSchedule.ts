@@ -19,6 +19,21 @@ export function useGetMemberSchedules(memberId: string | undefined) {
     });
 }
 
+// Query lấy chi tiết lịch (kèm thông tin đơn thuốc)
+export function useGetScheduleDetail(scheduleId: string | undefined) {
+    return useQuery({
+        queryKey: ["schedule-detail", scheduleId],
+        queryFn: async () => {
+            if (!scheduleId) throw new Error("Missing Schedule ID");
+            const res = await ScheduleApi.getScheduleDetail(scheduleId);
+            if (!res.success) throw new Error(res.message);
+            return res.data;
+        },
+        enabled: !!scheduleId,
+    });
+}
+
+// Cập nhật hook lấy lịch gia đình để đảm bảo queryKey đồng bộ
 export function useGetFamilySchedules(familyId: string | undefined) {
     return useQuery({
         queryKey: ["family-schedules", familyId],
