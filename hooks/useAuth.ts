@@ -102,7 +102,7 @@ export function useLoginDependent() {
       if (res.success && res.data?.token) {
         await SecureStore.setItemAsync("accessToken", res.data.token);
         toast.success("Đăng nhập thành công", "Chào mừng thành viên gia đình!");
-        router.replace("/(manager)/home");
+        router.replace("/(member)/index" as any);
       } else {
         toast.error(
           "Lỗi xác thực",

@@ -1,5 +1,4 @@
 import { useGetMemberById, useUpdateMember } from "@/hooks/useMember";
-import { useGetMe, useUpdateMe } from "@/hooks/useUser";
 import { getDecodedToken } from "@/utils/token";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -18,8 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function EditProfileScreen() {
-    const [userId, setUserId] = useState<string | undefined>(undefined);
+export default function MemberEditProfileScreen() {
     const [memberId, setMemberId] = useState<string | undefined>(undefined);
 
     // Form States
@@ -29,44 +27,31 @@ export default function EditProfileScreen() {
     const [avatarUri, setAvatarUri] = useState<string | null>(null);
     const [avatarFile, setAvatarFile] = useState<any>(null);
 
-    // Lấy và giải mã Token
     useEffect(() => {
         const fetchToken = async () => {
             const decoded = await getDecodedToken();
             if (decoded) {
-                setUserId(decoded.Id);
                 setMemberId(decoded.MemberId);
             }
         };
         fetchToken();
     }, []);
 
-    // Fetch dữ liệu
-    const { data: userProfile, isLoading: isUserLoading } = useGetMe(!!userId);
-    const effectiveMemberId = !userId && memberId ? memberId : undefined;
-    const { data: memberProfile, isLoading: isMemberLoading } = useGetMemberById(effectiveMemberId);
-
-    const displayData = userId ? userProfile : memberProfile;
-    const isLoading = userId ? isUserLoading : isMemberLoading;
-
-    // Mutations
-    const { mutate: updateUser, isPending: isUpdatingUser } = useUpdateMe();
+    const { data: memberProfile, isLoading: isMemberLoading } = useGetMemberById(memberId);
     const { mutate: updateMember, isPending: isUpdatingMember } = useUpdateMember();
-    const isSaving = isUpdatingUser || isUpdatingMember;
 
-    // Cập nhật Form khi có dữ liệu
     useEffect(() => {
-        if (displayData) {
-            setFullName(displayData.fullName || "");
-            setDateOfBirth(displayData.dateOfBirth ? displayData.dateOfBirth.split("T")[0] : "");
-            setGender((displayData.gender as any) || "Other");
-            setAvatarUri(displayData.avatarUrl || null);
+        if (memberProfile) {
+            setFullName(memberProfile.fullName || "");
+            setDateOfBirth(memberProfile.dateOfBirth ? memberProfile.dateOfBirth.split("T")[0] : "");
+            setGender((memberProfile.gender as any) || "Other");
+            setAvatarUri(memberProfile.avatarUrl || null);
         }
-    }, [displayData]);
+    }, [memberProfile]);
 
     const handlePickImage = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.8,
@@ -94,7 +79,7 @@ export default function EditProfileScreen() {
     };
 
     const handleSave = () => {
-        if (!fullName.trim()) return;
+        if (!fullName.trim() || !memberId) return;
 
         const formData = new FormData();
         formData.append("FullName", fullName.trim());
@@ -108,14 +93,10 @@ export default function EditProfileScreen() {
             formData.append("AvatarFile", avatarFile as any);
         }
 
-        if (userId) {
-            updateUser(formData, { onSuccess: () => router.navigate("/(manager)/settings" as any) });
-        } else if (memberId) {
-            updateMember({ id: memberId, formData }, { onSuccess: () => router.navigate("/(manager)/settings" as any) });
-        }
+        updateMember({ id: memberId, formData }, { onSuccess: () => router.navigate("/(member)/settings" as any) });
     };
 
-    if (isLoading) {
+    if (isMemberLoading) {
         return (
             <SafeAreaView className="flex-1 bg-background justify-center items-center">
                 <ActivityIndicator size="large" color="#000" />
@@ -129,10 +110,10 @@ export default function EditProfileScreen() {
                 <ScrollView className="flex-1 px-6 pt-4" showsVerticalScrollIndicator={false}>
                     {/* Header */}
                     <View className="flex-row items-center justify-between mb-8">
-                        <Pressable onPress={() => router.navigate("/(manager)/settings" as any)} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
+                        <Pressable onPress={() => router.navigate("/(member)/settings" as any)} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
                             <AntDesign name="arrow-left" size={24} color="black" />
                         </Pressable>
-                        <Text className="text-2xl text-black font-space-bold">Hồ sơ của tôi</Text>
+                        <Text className="text-2xl text-black font-space-bold">Chỉnh sửa hồ sơ</Text>
                         <View className="w-12 h-12" />
                     </View>
 
@@ -211,10 +192,10 @@ export default function EditProfileScreen() {
                     {/* Nút Lưu */}
                     <Pressable
                         onPress={handleSave}
-                        disabled={isSaving || !fullName}
-                        className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg mb-10 ${isSaving || !fullName ? "opacity-70" : "active:opacity-90"}`}
+                        disabled={isUpdatingMember || !fullName}
+                        className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg mb-10 ${isUpdatingMember || !fullName ? "opacity-70" : "active:opacity-90"}`}
                     >
-                        {isSaving ? (
+                        {isUpdatingMember ? (
                             <ActivityIndicator color="#FFF" />
                         ) : (
                             <Text className="text-lg text-white font-space-bold uppercase tracking-wider">Lưu thay đổi</Text>

@@ -3,6 +3,7 @@ import { BaseResponse } from "@/types/APIResponse";
 import {
     CreateScheduleRequest,
     ReminderResponse,
+    ScheduleDetailResponse,
     ScheduleResponse,
     UpdateReminderActionRequest,
     UpdateScheduleRequest
@@ -28,6 +29,17 @@ export async function getMemberSchedules(memberId: string): Promise<BaseResponse
 export async function getFamilySchedules(familyId: string): Promise<BaseResponse<ScheduleResponse[]>> {
     try {
         const res = await axiosClient.get(`/api/v1/families/${familyId}/schedules`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+// 2. Lấy chi tiết 1 lịch (Bao gồm đơn thuốc - Endpoint theo ảnh image_669d2d)
+export async function getScheduleDetail(scheduleId: string): Promise<BaseResponse<ScheduleDetailResponse>> {
+    try {
+        const res = await axiosClient.get(`/api/v1/schedules-detail/${scheduleId}`);
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
