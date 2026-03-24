@@ -1,6 +1,6 @@
 // hooks/usePrescription.ts
 import * as PrescriptionApi from "@/apis/prescription.api";
-import { UpsertPrescriptionRequest } from "@/types/Prescription";
+import { AddMedicineRequest, UpdateMedicineRequest, UpsertPrescriptionRequest } from "@/types/Prescription";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 
@@ -91,6 +91,57 @@ export function useDeletePrescription() {
                 Alert.alert("Thành công", "Đã xóa đơn thuốc!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể xóa đơn thuốc.");
+            }
+        },
+        onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
+    });
+}
+
+export function useAddPrescriptionMedicine() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ prescriptionId, data }: { prescriptionId: string; data: AddMedicineRequest }) =>
+            PrescriptionApi.addMedicineToPrescription(prescriptionId, data),
+        onSuccess: (res) => {
+            if (res.success) {
+                // Tự động làm mới dữ liệu chi tiết đơn thuốc trên màn hình
+                queryClient.invalidateQueries({ queryKey: ["prescription-detail"] });
+            } else {
+                Alert.alert("Lỗi", res.message || "Không thể thêm thuốc.");
+            }
+        },
+        onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
+    });
+}
+
+export function useUpdatePrescriptionMedicine() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ medicineId, data }: { medicineId: string; data: UpdateMedicineRequest }) =>
+            PrescriptionApi.updatePrescriptionMedicine(medicineId, data),
+        onSuccess: (res) => {
+            if (res.success) {
+                queryClient.invalidateQueries({ queryKey: ["prescription-detail"] });
+            } else {
+                Alert.alert("Lỗi", res.message || "Không thể cập nhật thuốc.");
+            }
+        },
+        onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
+    });
+}
+
+export function useDeletePrescriptionMedicine() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: (medicineId: string) => PrescriptionApi.deletePrescriptionMedicine(medicineId),
+        onSuccess: (res) => {
+            if (res.success) {
+                queryClient.invalidateQueries({ queryKey: ["prescription-detail"] });
+            } else {
+                Alert.alert("Lỗi", res.message || "Không thể xóa thuốc.");
             }
         },
         onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
