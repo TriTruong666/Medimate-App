@@ -1,76 +1,77 @@
-// types/Schedule.ts
+// ========================
+// CHI TIẾT THUỐC TRONG LỊCH
+// ========================
+export type ScheduleDetailItemResponse = {
+    detailId: string;
+    prescriptionMedicineId?: string | null;
+    medicineName: string;
+    dosage: string;
+    instructions: string;
+    startDate: string;
+    endDate?: string | null;
+};
 
 // ========================
 // LỊCH UỐNG THUỐC (SCHEDULE)
 // ========================
-//thêm thông tin prescription và medicineId 
-export type PrescriptionInfo = {
-    prescriptionId: string;
-    prescriptionCode?: string | null;
-    hospitalName?: string | null;
-    doctorName?: string | null;
-    prescriptionDate?: string | null;
-};
-
 export type ScheduleResponse = {
     scheduleId: string;
     memberId: string;
     memberName: string;
-    prescriptionMedicineId?: string | null; // Bổ sung medicineId
+    scheduleName: string; // VD: "Buổi sáng", "Buổi trưa"
+    timeOfDay: string; // VD: "08:00:00"
+    isActive: boolean;
+    createdAt: string;
+    scheduleDetails: ScheduleDetailItemResponse[]; // 1 Lịch chứa N loại thuốc
+};
+
+// --- REQUEST DTOs ---
+
+export type ScheduleItemRequest = {
     medicineName: string;
     dosage: string;
-    frequency?: string | null;
-    specificTimes: string;
+    frequency?: string;
+    specificTimes: string; // VD: "08:00, 20:00"
     startDate: string;
     endDate?: string | null;
-    isActive: boolean;
-    instructions?: string | null;
-    createAt?: string;
+    instructions?: string;
 };
 
-// Response chi tiết bao gồm thông tin đơn thuốc
-export type ScheduleDetailResponse = ScheduleResponse & {
-    prescription?: PrescriptionInfo | null;
-};
-
-export type CreateScheduleRequest = {
-    prescriptionMedicineId?: string | null;
-    medicineName: string;
-    dosage: string;
-    frequency: string;
-    specificTimes: string; // VD: "08:00,13:00,20:00"
-    startDate: string; // ISO String
-    endDate: string; // ISO String
-    instructions?: string | null;
+export type CreateBulkScheduleRequest = {
+    prescriptionId?: string | null;
+    schedules: ScheduleItemRequest[];
 };
 
 export type UpdateScheduleRequest = {
-    medicineName: string;
+    scheduleName: string;
+    timeOfDay: string;
+    endDate?: string | null;
+};
+
+export type UpdateScheduleDetailRequest = {
     dosage: string;
-    specificTimes: string;
-    endDate: string; // Thường chỉ cho phép sửa ngày kết thúc
-    instructions?: string | null;
+    startDate: string;
+    endDate?: string | null;
 };
 
 
 // ========================
 // NHẮC NHỞ (REMINDER)
 // ========================
-
 export type ReminderResponse = {
     reminderId: string;
     scheduleId: string;
     memberId: string;
     memberName: string;
-    medicineName: string;
-    dosage: string;
-    reminderTime: string; // Thời gian cần uống
-    endTime?: string | null; // Hạn chót để uống
-    status: string; // VD: "Pending", "Taken", "Missed", "Skipped"
+    scheduleName: string;
+    reminderTime: string;
+    endTime?: string | null;
+    status: string; // "Pending", "Taken", "Skipped"...
+    medicines: ScheduleDetailItemResponse[]; // Nhắc nhở giờ chứa MẢNG các thuốc cần uống
 };
 
 export type UpdateReminderActionRequest = {
-    status: string; // Bắt buộc: "Taken", "Skipped"...
+    status: string;
     notes?: string | null;
-    actualTime?: string | null; // Thời gian thực tế uống (ISO String)
+    actualTime?: string | null;
 };

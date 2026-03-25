@@ -9,6 +9,7 @@ import { EditFamilyPopup } from './EditFamilyPopup';
 import { HealthConditionPopup } from './HealthConditionPopup';
 import { HealthProfilePopup } from './HealthProfilePopup';
 import { MedicinePopup } from './MedicinePopup';
+import { SelectFamilyMemberPopup } from './SelectFamilyMemberPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -88,6 +89,13 @@ export const PopupContainer: React.FC = () => {
                 <HealthConditionPopup
                     memberId={activePopup.data.memberId}
                     condition={activePopup.data.condition}
+                    onClose={handleClose}
+                />
+            )}
+
+            {activePopup.type === 'select_family_member' && (
+                <SelectFamilyMemberPopup
+                    onSave={handleSave}
                     onClose={handleClose}
                 />
             )}
