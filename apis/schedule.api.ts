@@ -1,11 +1,10 @@
-// apis/schedule.api.ts
 import { BaseResponse } from "@/types/APIResponse";
 import {
-    CreateScheduleRequest,
+    CreateBulkScheduleRequest,
     ReminderResponse,
-    ScheduleDetailResponse,
     ScheduleResponse,
     UpdateReminderActionRequest,
+    UpdateScheduleDetailRequest,
     UpdateScheduleRequest
 } from "@/types/Schedule";
 import { axiosClient } from "./client";
@@ -14,7 +13,6 @@ import { axiosClient } from "./client";
 // QUẢN LÝ LỊCH (SCHEDULES)
 // ----------------------------------------------------
 
-// Lấy danh sách lịch của 1 thành viên
 export async function getMemberSchedules(memberId: string): Promise<BaseResponse<ScheduleResponse[]>> {
     try {
         const res = await axiosClient.get(`/api/v1/members/${memberId}/schedules`);
@@ -25,7 +23,6 @@ export async function getMemberSchedules(memberId: string): Promise<BaseResponse
     }
 }
 
-// Lấy danh sách lịch của cả gia đình
 export async function getFamilySchedules(familyId: string): Promise<BaseResponse<ScheduleResponse[]>> {
     try {
         const res = await axiosClient.get(`/api/v1/families/${familyId}/schedules`);
@@ -36,8 +33,7 @@ export async function getFamilySchedules(familyId: string): Promise<BaseResponse
     }
 }
 
-// 2. Lấy chi tiết 1 lịch (Bao gồm đơn thuốc - Endpoint theo ảnh image_669d2d)
-export async function getScheduleDetail(scheduleId: string): Promise<BaseResponse<ScheduleDetailResponse>> {
+export async function getScheduleDetail(scheduleId: string): Promise<BaseResponse<ScheduleResponse>> {
     try {
         const res = await axiosClient.get(`/api/v1/schedules-detail/${scheduleId}`);
         return res.data;
@@ -47,10 +43,10 @@ export async function getScheduleDetail(scheduleId: string): Promise<BaseRespons
     }
 }
 
-// Tạo lịch mới cho thành viên
-export async function createSchedule(memberId: string, data: CreateScheduleRequest): Promise<BaseResponse<any>> {
+// GỌI BULK CREATE API
+export async function createBulkSchedules(memberId: string, data: CreateBulkScheduleRequest): Promise<BaseResponse<ScheduleResponse[]>> {
     try {
-        const res = await axiosClient.post(`/api/v1/members/${memberId}/schedules`, data);
+        const res = await axiosClient.post(`/api/v1/members/${memberId}/schedules/bulk`, data);
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
@@ -58,7 +54,7 @@ export async function createSchedule(memberId: string, data: CreateScheduleReque
     }
 }
 
-// Cập nhật lịch
+// Cập nhật tên lịch và giờ báo thức
 export async function updateSchedule(scheduleId: string, data: UpdateScheduleRequest): Promise<BaseResponse<any>> {
     try {
         const res = await axiosClient.put(`/api/v1/schedules/${scheduleId}`, data);
@@ -69,7 +65,17 @@ export async function updateSchedule(scheduleId: string, data: UpdateScheduleReq
     }
 }
 
-// Xóa lịch
+// Cập nhật 1 loại thuốc bên trong lịch
+export async function updateScheduleDetail(detailId: string, data: UpdateScheduleDetailRequest): Promise<BaseResponse<any>> {
+    try {
+        const res = await axiosClient.put(`/api/v1/schedule-details/${detailId}`, data);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
 export async function deleteSchedule(scheduleId: string): Promise<BaseResponse<any>> {
     try {
         const res = await axiosClient.delete(`/api/v1/schedules/${scheduleId}`);
@@ -84,13 +90,9 @@ export async function deleteSchedule(scheduleId: string): Promise<BaseResponse<a
 // QUẢN LÝ NHẮC NHỞ (REMINDERS)
 // ----------------------------------------------------
 
-// Lấy nhắc nhở trong ngày của 1 thành viên
 export async function getMemberDailyReminders(memberId: string, date: string): Promise<BaseResponse<ReminderResponse[]>> {
     try {
-        // date truyền vào format: YYYY-MM-DD
-        const res = await axiosClient.get(`/api/v1/members/${memberId}/reminders/daily`, {
-            params: { date }
-        });
+        const res = await axiosClient.get(`/api/v1/members/${memberId}/reminders/daily`, { params: { date } });
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
@@ -98,12 +100,9 @@ export async function getMemberDailyReminders(memberId: string, date: string): P
     }
 }
 
-// Lấy nhắc nhở trong ngày của cả gia đình
 export async function getFamilyDailyReminders(familyId: string, date: string): Promise<BaseResponse<ReminderResponse[]>> {
     try {
-        const res = await axiosClient.get(`/api/v1/families/${familyId}/reminders/daily`, {
-            params: { date }
-        });
+        const res = await axiosClient.get(`/api/v1/families/${familyId}/reminders/daily`, { params: { date } });
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
@@ -111,7 +110,6 @@ export async function getFamilyDailyReminders(familyId: string, date: string): P
     }
 }
 
-// Cập nhật trạng thái uống thuốc (Taken, Skipped...)
 export async function updateReminderAction(reminderId: string, data: UpdateReminderActionRequest): Promise<BaseResponse<any>> {
     try {
         const res = await axiosClient.put(`/api/v1/reminders/${reminderId}/action`, data);

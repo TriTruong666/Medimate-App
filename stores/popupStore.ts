@@ -1,6 +1,6 @@
 import { atom, useSetAtom } from "jotai";
 
-export type PopupType = 'medicine_detail' | 'confirm' | 'assign_member' | 'create_family' | 'edit_family' | 'health_profile' | 'health_condition';
+export type PopupType = 'medicine_detail' | 'confirm' | 'assign_member' | 'create_family' | 'edit_family' | 'health_profile' | 'health_condition' | 'select_family_member';
 
 export type PopupConfirmData = {
     title: string;
