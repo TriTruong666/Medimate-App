@@ -3,17 +3,34 @@
 // ========================
 // LỊCH UỐNG THUỐC (SCHEDULE)
 // ========================
+//thêm thông tin prescription và medicineId 
+export type PrescriptionInfo = {
+    prescriptionId: string;
+    prescriptionCode?: string | null;
+    hospitalName?: string | null;
+    doctorName?: string | null;
+    prescriptionDate?: string | null;
+};
 
 export type ScheduleResponse = {
     scheduleId: string;
     memberId: string;
     memberName: string;
+    prescriptionMedicineId?: string | null; // Bổ sung medicineId
     medicineName: string;
     dosage: string;
+    frequency?: string | null;
     specificTimes: string;
     startDate: string;
-    endDate: string;
+    endDate?: string | null;
     isActive: boolean;
+    instructions?: string | null;
+    createAt?: string;
+};
+
+// Response chi tiết bao gồm thông tin đơn thuốc
+export type ScheduleDetailResponse = ScheduleResponse & {
+    prescription?: PrescriptionInfo | null;
 };
 
 export type CreateScheduleRequest = {

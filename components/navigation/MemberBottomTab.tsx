@@ -6,7 +6,7 @@ const MEMBER_TABS: TabConfig[] = [
     { name: "index", icon: Activity, label: "Hôm nay" },
     { name: "history", icon: ClipboardList, label: "Lịch sử" },
     { name: "chat", icon: MessageCircle, label: "Bác sĩ" },
-    { name: "profile", icon: User, label: "Cá nhân" },
+    { name: "settings", icon: User, label: "Cá nhân" },
 ];
 
 export default function MemberBottomTab(props: BottomTabBarProps) {
