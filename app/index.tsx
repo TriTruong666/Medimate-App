@@ -29,9 +29,9 @@ export default function Index() {
     }, []);
 
     // Chế độ phát triển: Nhảy thẳng vào UI Explorer để chọn màn hình làm việc
-    // if (__DEV__) {
-    //     return <Redirect href="/ui-explorer" />;
-    // }
+    if (__DEV__) {
+        return <Redirect href="/ui-explorer" />;
+    }
 
     if (isLoading || !route) {
         return (
