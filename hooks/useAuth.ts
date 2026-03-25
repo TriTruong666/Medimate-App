@@ -22,7 +22,7 @@ export function useLoginUser() {
         await SecureStore.setItemAsync("accessToken", res.data.token);
         queryClient.invalidateQueries({ queryKey: ["families"] });
         toast.success("Đăng nhập thành công", "Chào mừng bạn quay trở lại!");
-        router.replace("/(manager)/home");
+        router.replace("/(manager)/(home)" as any);
       } else {
         toast.error(
           "Đăng nhập thất bại",

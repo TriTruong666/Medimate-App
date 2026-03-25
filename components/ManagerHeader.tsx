@@ -1,10 +1,10 @@
-// components/ManagerHeader.tsx
+import { SkeletonPulsar } from "@/components/skeleton/SkeletonPulsar";
 import { useGetMemberById } from "@/hooks/useMember";
 import { useGetMe } from "@/hooks/useUser";
 import { getDecodedToken } from "@/utils/token";
 import { Bell, MoreHorizontal } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 
 
 
@@ -42,12 +42,12 @@ export default function ManagerHeader({
     const isLoading = userId ? isUserLoading : isMemberLoading;
 
     return (
-        <View className="flex-row items-center justify-between px-6 pt-3 pb-4">
+        <View className="flex-row items-center justify-between px-6 pt-4 pb-4">
             {/* Left: Avatar + Name */}
-            <View className="flex-row items-center">
-                <View className="w-14 h-14 rounded-2xl bg-gray-200 items-center justify-center overflow-hidden border border-gray-300">
+            <View className="flex-row items-center gap-x-4">
+                <View className="w-14 h-14 rounded-2xl bg-white items-center justify-center overflow-hidden border-2 border-black shadow-sm">
                     {isLoading ? (
-                        <ActivityIndicator color="#888" />
+                        <SkeletonPulsar className="w-full h-full bg-gray-100" />
                     ) : (
                         <Image
                             source={{ uri: displayData?.avatarUrl || "https://i.pravatar.cc/100" }}
@@ -57,27 +57,24 @@ export default function ManagerHeader({
                     )}
                 </View>
 
-                <View className="ml-4">
+                <View>
                     {isLoading ? (
-                        <View className="w-24 h-5 bg-gray-200 rounded-md mb-1" />
+                        <SkeletonPulsar className="w-24 h-6 bg-gray-100 rounded-md mb-1" />
                     ) : (
-                        <Text className="text-lg text-black font-space-bold">
+                        <Text className="text-xl text-black font-space-bold">
                             {displayData?.fullName || "Người dùng"}
                         </Text>
                     )}
-                    {/* <Text className="text-sm text-gray-500 font-space-regular mt-0.5">
-                        {subtitle}
-                    </Text> */}
                 </View>
             </View>
 
             {/* Right: Action Buttons */}
-            <View className="flex-row items-center gap-3">
-                <Pressable className="w-12 h-12 rounded-2xl bg-gray-100 items-center justify-center active:opacity-70">
-                    <Bell size={22} color="#000" strokeWidth={1.5} />
+            <View className="flex-row items-center gap-x-3">
+                <Pressable className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5">
+                    <Bell size={22} color="#000" strokeWidth={2} />
                 </Pressable>
-                <Pressable className="w-12 h-12 rounded-2xl bg-gray-100 items-center justify-center active:opacity-70">
-                    <MoreHorizontal size={22} color="#000" strokeWidth={1.5} />
+                <Pressable className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5">
+                    <MoreHorizontal size={22} color="#000" strokeWidth={2} />
                 </Pressable>
             </View>
         </View>

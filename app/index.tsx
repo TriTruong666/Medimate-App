@@ -14,7 +14,7 @@ export default function Index() {
             if (token) {
                 const decoded = await getDecodedToken();
                 if (decoded?.Id) {
-                    setRoute("/(manager)/home");
+                    setRoute("/(manager)/(home)");
                 } else if (decoded?.MemberId) {
                     setRoute("/(member)/home");
                 } else {

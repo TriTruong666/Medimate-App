@@ -4,10 +4,10 @@ import { Calendar, Heart, MessageCircle, Plus, User } from "lucide-react-native"
 import BottomTab, { CenterButtonConfig, TabConfig } from "./BottomTab";
 
 const MANAGER_TABS: TabConfig[] = [
-    { name: "home", icon: Heart, label: "Trang chủ" },
-    { name: "calendar", icon: Calendar, label: "Lịch" },
-    { name: "doctor", icon: MessageCircle, label: "Tin nhắn" },
-    { name: "settings", icon: User, label: "Cá nhân" },
+    { name: "(home)", icon: Heart, label: "Trang chủ" },
+    { name: "(calendar)", icon: Calendar, label: "Lịch" },
+    { name: "(doctor)", icon: MessageCircle, label: "Tin nhắn" },
+    { name: "(settings)", icon: User, label: "Cá nhân" },
 ];
 
 const CENTER_BUTTON: CenterButtonConfig = {

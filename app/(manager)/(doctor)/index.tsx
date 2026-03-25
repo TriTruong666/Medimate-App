@@ -13,10 +13,6 @@ import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Cài đặt thư viện: npm install react-native-qrcode-svg
-// Bỏ comment dòng dưới nếu bạn đã cài thư viện QR Code
-// import QRCode from 'react-native-qrcode-svg';
-
 export default function MemberDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
@@ -44,7 +40,6 @@ export default function MemberDetailScreen() {
         generateQrCode(id, {
             onSuccess: (res) => {
                 if (res.success && res.data) {
-                    // Tùy thuộc vào backend trả về object hay string. Giả sử API trả mã token trong res.data
                     const code = typeof res.data === 'string' ? res.data : (res.data as any).loginCode || (res.data as any).token;
                     setLoginCode(code);
                 }
@@ -157,10 +152,6 @@ export default function MemberDetailScreen() {
                                 <ActivityIndicator color="#000" size="large" />
                             ) : loginCode ? (
                                 <View className="items-center justify-center">
-                                    {/* KHI TÍCH HỢP ĐỦ THƯ VIỆN, HÃY BỎ COMMENT DÒNG DƯỚI */}
-                                    {/* <QRCode value={loginCode} size={150} /> */}
-
-                                    {/* Hiển thị Text tạm thời nếu chưa cài thư viện QR */}
                                     <Text className="text-center font-space-bold text-black text-xl mb-2 px-2" numberOfLines={3} adjustsFontSizeToFit>
                                         {loginCode}
                                     </Text>
@@ -185,7 +176,6 @@ export default function MemberDetailScreen() {
                     </View>
                 )}
 
-                {/* Các phần thống kê và danh sách thuốc (Giữ nguyên) */}
                 <View className="flex-row gap-3 mb-6 mt-2">
                     <View className="flex-1 border-2 border-black rounded-[24px] p-4 shadow-sm bg-[#A3E6A1]">
                         <View className="w-10 h-10 bg-white rounded-2xl border-2 border-black items-center justify-center mb-2">
