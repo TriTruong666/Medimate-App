@@ -10,7 +10,7 @@ import {
 } from "lucide-react-native";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ManagerHeader from "../../components/ManagerHeader";
+import ManagerHeader from "../../../components/ManagerHeader";
 
 export default function HomeScreen() {
     return (

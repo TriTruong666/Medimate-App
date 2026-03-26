@@ -109,9 +109,9 @@ export default function EditProfileScreen() {
         }
 
         if (userId) {
-            updateUser(formData, { onSuccess: () => router.navigate("/(manager)/settings" as any) });
+            updateUser(formData, { onSuccess: () => router.navigate("/(manager)/(settings)" as any) });
         } else if (memberId) {
-            updateMember({ id: memberId, formData }, { onSuccess: () => router.navigate("/(manager)/settings" as any) });
+            updateMember({ id: memberId, formData }, { onSuccess: () => router.navigate("/(manager)/(settings)" as any) });
         }
     };
 
@@ -129,7 +129,7 @@ export default function EditProfileScreen() {
                 <ScrollView className="flex-1 px-6 pt-4" showsVerticalScrollIndicator={false}>
                     {/* Header */}
                     <View className="flex-row items-center justify-between mb-8">
-                        <Pressable onPress={() => router.navigate("/(manager)/settings" as any)} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
+                        <Pressable onPress={() => router.navigate("/(manager)/(settings)" as any)} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
                             <AntDesign name="arrow-left" size={24} color="black" />
                         </Pressable>
                         <Text className="text-2xl text-black font-space-bold">Hồ sơ của tôi</Text>
