@@ -3,7 +3,7 @@ import { useGetFamilyMembers } from '@/hooks/useFamily';
 import { AntDesign } from '@expo/vector-icons';
 import { Check, ChevronRight, User as UserIcon, Users, X } from 'lucide-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View, Image } from 'react-native';
 
 interface SelectFamilyMemberPopupProps {
     onSave: (member: any) => void;
@@ -80,8 +80,12 @@ export const SelectFamilyMemberPopup: React.FC<SelectFamilyMemberPopupProps> = (
                                         onPress={() => setSelectedFamilyId(family.familyId)}
                                         className="flex-row items-center p-4 rounded-2xl bg-white border-2 border-black shadow-sm active:translate-y-0.5"
                                     >
-                                        <View className="w-12 h-12 rounded-full border-2 border-black items-center justify-center bg-[#D9AEF6]">
-                                            <Users size={24} color="black" />
+                                        <View className="w-12 h-12 rounded-full border-2 border-black items-center justify-center bg-[#D9AEF6] overflow-hidden">
+                                            {family.familyAvatarUrl ? (
+                                                <Image source={{ uri: family.familyAvatarUrl }} className="w-full h-full" resizeMode="cover" />
+                                            ) : (
+                                                <Users size={24} color="black" />
+                                            )}
                                         </View>
                                         <View className="flex-1 ml-4">
                                             <Text className="text-[17px] font-space-bold text-black">

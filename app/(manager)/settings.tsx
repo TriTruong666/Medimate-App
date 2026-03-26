@@ -4,13 +4,12 @@ import { useGetMe } from "@/hooks/useUser";
 import { getDecodedToken } from "@/utils/token";
 import { useRouter } from "expo-router";
 import {
-  Bell,
   ChevronRight,
   HelpCircle,
   Info,
   LogOut,
   Shield,
-  Users,
+  Users
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
@@ -26,12 +25,12 @@ const MENU_ITEMS = [
     color: "#A3E6A1",
     route: "/(manager)/(family)" as const,
   },
-  {
-    icon: Bell,
-    label: "Thông báo",
-    subtitle: "Tuỳ chỉnh nhắc nhở",
-    color: "#FFD700",
-  },
+  // {
+  //   icon: Bell,
+  //   label: "Thông báo",
+  //   subtitle: "Tuỳ chỉnh nhắc nhở",
+  //   color: "#FFD700",
+  // },
   {
     icon: Shield,
     label: "Bảo mật tài khoản",
