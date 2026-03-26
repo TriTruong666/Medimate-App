@@ -1,9 +1,12 @@
 // apis/payment.api.ts
-import { BaseResponse } from "@/types/APIResponse";
+import { BasePaginatedResponse, BaseResponse } from "@/types/APIResponse";
 import {
     CreatePaymentRequest,
     CreatePaymentResponse,
-    PaymentInfoResponse
+    PaymentFilterRequest,
+    PaymentInfoResponse,
+    PaymentItemResponse,
+    TransactionDetailResponse
 } from "@/types/Payment";
 import { axiosClient } from "./client";
 
@@ -35,6 +38,23 @@ export async function getPaymentInfo(orderCode: number): Promise<BaseResponse<Pa
     }
 }
 
-export function getMembershipPackages() {
-    throw new Error("Function not implemented.");
+export async function getMyPayments(filter: PaymentFilterRequest): Promise<BasePaginatedResponse<PaymentItemResponse[]>> {
+    try {
+        const res = await axiosClient.get(`/api/v1/payment/me`, { params: filter });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+// Lấy chi tiết giao dịch (Sử dụng BaseResponse bình thường)
+export async function getTransactionByPaymentId(paymentId: string): Promise<BaseResponse<TransactionDetailResponse>> {
+    try {
+        const res = await axiosClient.get(`/api/v1/transactions/payment/${paymentId}`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
 }

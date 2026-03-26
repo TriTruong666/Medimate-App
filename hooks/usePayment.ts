@@ -1,5 +1,5 @@
 import * as PaymentApi from "@/apis/payment.api";
-import { CreatePaymentRequest } from "@/types/Payment";
+import { CreatePaymentRequest, PaymentFilterRequest } from "@/types/Payment";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Linking } from "react-native";
 
@@ -33,5 +33,33 @@ export function useGetPaymentStatus(orderCode: number | undefined) {
             // Tự động fetch lại sau mỗi 3 giây nếu trạng thái vẫn là PENDING
             return query.state.data?.status === "PENDING" ? 3000 : false;
         }
+    });
+}
+
+export function useGetMyPayments(filter: PaymentFilterRequest) {
+    return useQuery({
+        // Buộc queryKey phải chứa filter để tự fetch lại khi filter đổi
+        queryKey: ["my-payments", filter],
+        queryFn: async () => {
+            const res = await PaymentApi.getMyPayments(filter);
+            if (!res.success) throw new Error(res.message);
+
+            // Trả về res.data (chính là object chứa items và totalCount)
+            return res.data;
+        },
+        staleTime: 5 * 60 * 1000,
+    });
+}
+
+export function useGetTransactionByPaymentId(paymentId: string | undefined) {
+    return useQuery({
+        queryKey: ["transaction-detail", paymentId],
+        queryFn: async () => {
+            if (!paymentId) throw new Error("Missing Payment ID");
+            const res = await PaymentApi.getTransactionByPaymentId(paymentId);
+            if (!res.success) throw new Error(res.message);
+            return res.data;
+        },
+        enabled: !!paymentId,
     });
 }

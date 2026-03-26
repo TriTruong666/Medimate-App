@@ -1,4 +1,4 @@
-import { BaseResponse } from "@/types/APIResponse";
+import { BaseResponse, BasePaginatedResponse } from "@/types/APIResponse";
 import { ActivityLogResponse } from "@/types/ActivityLog";
 import { axiosClient } from "./client";
 
@@ -7,7 +7,7 @@ export async function getFamilyActivityLogs(
     familyId: string,
     page: number = 1,
     pageSize: number = 20
-): Promise<BaseResponse<ActivityLogResponse[]>> {
+): Promise<BasePaginatedResponse<ActivityLogResponse[]>> {
     try {
         const res = await axiosClient.get(`/api/v1/families/${familyId}/activity-logs`, {
             params: { page, pageSize }

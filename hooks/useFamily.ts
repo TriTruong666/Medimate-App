@@ -92,7 +92,19 @@ export function useUpdateFamily() {
     const toast = useToast();
 
     return useMutation({
-        mutationFn: ({ id, data }: { id: string; data: UpdateFamilyRequest }) => FamilyApi.updateFamily(id, data),
+        mutationFn: ({ id, data }: { id: string; data: UpdateFamilyRequest }) => {
+            // [QUAN TRỌNG] Chuyển đổi dữ liệu sang FormData vì API nhận multipart/form-data
+            const formData = new FormData();
+            if (data.familyName) formData.append('FamilyName', data.familyName);
+            if (data.isOpenJoin !== undefined) formData.append('IsOpenJoin', data.isOpenJoin.toString());
+
+            // Nếu có avatar (file ảnh từ điện thoại), append nó vào
+            if (data.familyAvatar) {
+                formData.append('FamilyAvatar', data.familyAvatar as any); // Type ép kiểu theo cấu trúc File/Blob của React Native
+            }
+
+            return FamilyApi.updateFamily(id, formData); // Gọi hàm với FormData thay vì JSON
+        },
         onSuccess: (res) => {
             if (res.success) {
                 queryClient.invalidateQueries({ queryKey: ["families"] });

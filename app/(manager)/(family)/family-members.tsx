@@ -12,6 +12,9 @@ import {
   Shield,
   Trash2,
   UserPlus,
+  BellRing,
+  BellOff,
+  History,
 } from "lucide-react-native";
 import { AnimatePresence, MotiView } from "moti";
 import React, { useEffect, useState } from "react";
@@ -227,12 +230,21 @@ export default function FamilyMembersScreen() {
           </Text>
         </View>
 
-        <Pressable
-          onPress={() => family && popup.open({ type: "edit_family", data: family })}
-          className="w-12 h-12 bg-[#FFD700] border-2 border-black rounded-2xl items-center justify-center active:opacity-80 shadow-sm"
-        >
-          <Edit3 size={20} color="#000" strokeWidth={2.5} />
-        </Pressable>
+        <View className="flex-row items-center gap-x-2">
+          <Pressable
+            onPress={() => router.push({ pathname: '/(manager)/(family)/notification-settings', params: { familyId } } as any)}
+            className="w-12 h-12 border-2 border-black rounded-2xl items-center justify-center shadow-sm active:opacity-80 bg-white"
+          >
+            <BellRing size={20} color="#000" strokeWidth={2.5} />
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.push({ pathname: '/(manager)/(family)/activity-logs', params: { familyId } } as any)}
+            className="w-12 h-12 bg-[#FFD700] border-2 border-black rounded-2xl items-center justify-center active:opacity-80 shadow-sm"
+          >
+            <History size={20} color="#000" strokeWidth={2.5} />
+          </Pressable>
+        </View>
       </View>
 
       <ScrollView
