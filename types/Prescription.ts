@@ -55,3 +55,22 @@ export type ScanPrescriptionResponse = {
         medicines: PrescriptionMedicine[];
     };
 };
+
+// types/Prescription.ts
+
+export type AddMedicineRequest = {
+    medicineName: string;
+    dosage?: string;
+    unit?: string;
+    quantity: number;
+    instructions?: string;
+};
+
+// Update cho phép null/undefined các trường không thay đổi (Partial Update)
+export type UpdateMedicineRequest = {
+    medicineName?: string;
+    dosage?: string;
+    unit?: string;
+    quantity?: number;
+    instructions?: string;
+};

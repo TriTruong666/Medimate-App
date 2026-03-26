@@ -1,6 +1,10 @@
-// hooks/useSchedule.ts
 import * as ScheduleApi from "@/apis/schedule.api";
-import { CreateScheduleRequest, UpdateReminderActionRequest, UpdateScheduleRequest } from "@/types/Schedule";
+import {
+    CreateBulkScheduleRequest,
+    UpdateReminderActionRequest,
+    UpdateScheduleDetailRequest,
+    UpdateScheduleRequest
+} from "@/types/Schedule";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert } from "react-native";
 
@@ -19,21 +23,6 @@ export function useGetMemberSchedules(memberId: string | undefined) {
     });
 }
 
-// Query lấy chi tiết lịch (kèm thông tin đơn thuốc)
-export function useGetScheduleDetail(scheduleId: string | undefined) {
-    return useQuery({
-        queryKey: ["schedule-detail", scheduleId],
-        queryFn: async () => {
-            if (!scheduleId) throw new Error("Missing Schedule ID");
-            const res = await ScheduleApi.getScheduleDetail(scheduleId);
-            if (!res.success) throw new Error(res.message);
-            return res.data;
-        },
-        enabled: !!scheduleId,
-    });
-}
-
-// Cập nhật hook lấy lịch gia đình để đảm bảo queryKey đồng bộ
 export function useGetFamilySchedules(familyId: string | undefined) {
     return useQuery({
         queryKey: ["family-schedules", familyId],
@@ -47,9 +36,21 @@ export function useGetFamilySchedules(familyId: string | undefined) {
     });
 }
 
+export function useGetScheduleDetail(scheduleId: string | undefined) {
+    return useQuery({
+        queryKey: ["schedule-detail", scheduleId],
+        queryFn: async () => {
+            if (!scheduleId) throw new Error("Missing Schedule ID");
+            const res = await ScheduleApi.getScheduleDetail(scheduleId);
+            if (!res.success) throw new Error(res.message);
+            return res.data;
+        },
+        enabled: !!scheduleId,
+    });
+}
+
 export function useGetMemberDailyReminders(memberId: string | undefined, date: string | undefined) {
     return useQuery({
-        // Thêm `date` vào queryKey để khi đổi ngày, hook sẽ tự động fetch lại data
         queryKey: ["member-reminders", memberId, date],
         queryFn: async () => {
             if (!memberId || !date) throw new Error("Missing Parameters");
@@ -74,22 +75,20 @@ export function useGetFamilyDailyReminders(familyId: string | undefined, date: s
     });
 }
 
-// ======================= MUTATIONS (POST/PUT/DELETE) =======================
+// ======================= MUTATIONS =======================
 
-export function useCreateSchedule() {
+export function useCreateBulkSchedules() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ memberId, data }: { memberId: string; data: CreateScheduleRequest }) =>
-            ScheduleApi.createSchedule(memberId, data),
+        mutationFn: ({ memberId, data }: { memberId: string; data: CreateBulkScheduleRequest }) =>
+            ScheduleApi.createBulkSchedules(memberId, data),
         onSuccess: (res) => {
             if (res.success) {
-                // Tự động làm mới danh sách lịch và nhắc nhở
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
-                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
-                Alert.alert("Thành công", "Đã tạo lịch uống thuốc mới!");
+                Alert.alert("Thành công", "Đã tạo lịch uống thuốc thành công!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể tạo lịch.");
             }
@@ -109,9 +108,28 @@ export function useUpdateSchedule() {
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
-                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể cập nhật lịch.");
+            }
+        },
+        onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
+    });
+}
+
+export function useUpdateScheduleDetail() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ detailId, data }: { detailId: string; data: UpdateScheduleDetailRequest }) =>
+            ScheduleApi.updateScheduleDetail(detailId, data),
+        onSuccess: (res) => {
+            if (res.success) {
+                queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
+                queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
+                queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["schedule-detail"] });
+            } else {
+                Alert.alert("Lỗi", res.message || "Không thể cập nhật thuốc.");
             }
         },
         onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
@@ -128,7 +146,6 @@ export function useDeleteSchedule() {
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
-                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
                 Alert.alert("Thành công", "Đã xóa lịch uống thuốc!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể xóa lịch.");
@@ -146,7 +163,6 @@ export function useUpdateReminderAction() {
             ScheduleApi.updateReminderAction(id, data),
         onSuccess: (res) => {
             if (res.success) {
-                // Chỉ cần làm mới danh sách nhắc nhở khi đánh dấu (uống/bỏ qua)
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
                 queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
             } else {

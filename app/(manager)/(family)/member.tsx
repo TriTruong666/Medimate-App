@@ -12,11 +12,10 @@ import {
     FileText,
     HeartPulse,
     Plus,
-    RefreshCw,
     Trash2
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MemberDetailScreen() {
@@ -112,7 +111,7 @@ export default function MemberDetailScreen() {
                     <View className="flex-row justify-between"><Text className="text-sm text-gray-500 font-space-medium">Giới tính</Text><Text className="text-sm text-black font-space-bold">{member.gender === 'Male' ? 'Nam' : member.gender === 'Female' ? 'Nữ' : 'Khác'}</Text></View>
                 </View>
 
-                {/* QR CODE CARD */}
+                {/* QR CODE CARD
                 {!member.userId && (
                     <View className="bg-white border-2 border-black rounded-[32px] p-6 mb-6 shadow-sm items-center relative overflow-hidden">
                         <View className="absolute top-0 right-0 w-20 h-20 bg-[#D9AEF6] rounded-bl-[40px] border-b-2 border-l-2 border-black" />
@@ -125,7 +124,7 @@ export default function MemberDetailScreen() {
                         </View>
                         {timeLeft > 0 && <Text className="text-[10px] text-gray-400 font-space-bold mt-2">Hết hạn sau: <Text className="text-red-500">{formatTime(timeLeft)}</Text></Text>}
                     </View>
-                )}
+                )} */}
 
                 {/* HEALTH PROFILE (GẮN API) */}
                 <View className="bg-[#FFF3E0] border-2 border-black rounded-[24px] p-5 mb-6 shadow-sm">

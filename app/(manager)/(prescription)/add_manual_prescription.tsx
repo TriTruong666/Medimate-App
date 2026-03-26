@@ -2,7 +2,7 @@ import { PopupContainer } from "@/components/popup/PopupContainer";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
 import { AntDesign } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
     Building2,
     Calendar,
@@ -13,6 +13,8 @@ import {
     User as UserIcon,
 } from "lucide-react-native";
 import React, { useState } from "react";
+import { useCreatePrescription } from "@/hooks/usePrescription";
+import { UpsertPrescriptionRequest } from "@/types/Prescription";
 import {
     KeyboardAvoidingView,
     Platform,
@@ -21,6 +23,7 @@ import {
     Text,
     TextInput,
     View,
+    ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -46,18 +49,50 @@ export default function AddManualPrescriptionScreen() {
         medicines: [] as MedicineData[],
     });
 
+    const { mutate: createPrescription, isPending } = useCreatePrescription();
+
+    const { memberId } = useLocalSearchParams<{ memberId: string }>();
+
+    React.useEffect(() => {
+        if (!memberId) {
+            toast.error("Lỗi", "Không tìm thấy thông tin thành viên.");
+            router.back();
+        }
+    }, [memberId]);
+
     const handleSavePrescription = () => {
         if (prescriptionData.medicines.length === 0) {
             toast.warning("Chưa có thuốc", "Vui lòng thêm ít nhất 1 loại thuốc.");
             return;
         }
-        popup.open({
-            type: "assign_member",
-            onSave: (member) => {
-                toast.success("Thành công", `Đã thêm đơn thuốc cho ${member.name}!`);
-                router.back();
-            },
-        });
+        if (!memberId) return;
+
+        const requestData: UpsertPrescriptionRequest = {
+            prescriptionCode: prescriptionData.prescriptionCode,
+            hospitalName: prescriptionData.hospitalName,
+            doctorName: prescriptionData.doctorName,
+            prescriptionDate: prescriptionData.prescriptionDate,
+            notes: prescriptionData.notes,
+            images: [],
+            medicines: prescriptionData.medicines.map(m => ({
+                medicineName: m.medicineName,
+                dosage: m.dosage,
+                unit: m.unit,
+                quantity: m.quantity,
+                instructions: m.instructions
+            })),
+        };
+
+        createPrescription(
+            { memberId, data: requestData },
+            {
+                onSuccess: (res) => {
+                    if (res.success) {
+                        router.back();
+                    }
+                }
+            }
+        );
     };
 
     const openAddMedicine = () => {
@@ -310,13 +345,18 @@ export default function AddManualPrescriptionScreen() {
 
             <View className="absolute bottom-0 left-0 right-0 bg-[#F9F6FC] px-6 pb-10 pt-4 border-t-2 border-black/5">
                 <Pressable
+                    disabled={isPending || prescriptionData.medicines.length === 0}
                     onPress={handleSavePrescription}
                     className={`w-full py-5 rounded-[24px] border-2 border-black flex-row items-center justify-center gap-x-2 shadow-md active:translate-y-0.5 ${prescriptionData.medicines.length > 0 ? "bg-[#A3E6A1]" : "bg-gray-200 border-gray-400"
-                        }`}
+                        } ${isPending ? "opacity-70" : ""}`}
                 >
-                    <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
+                    {isPending ? (
+                        <ActivityIndicator color="black" />
+                    ) : (
+                        <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
+                    )}
                     <Text className={`text-lg font-space-bold uppercase ${prescriptionData.medicines.length > 0 ? "text-black" : "text-gray-500"}`}>
-                        Lưu Đơn Thuốc
+                        {isPending ? "Đang lưu..." : "Lưu Đơn Thuốc"}
                     </Text>
                 </Pressable>
             </View>

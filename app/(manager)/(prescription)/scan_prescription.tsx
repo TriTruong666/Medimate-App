@@ -8,7 +8,7 @@ import {
   useCameraPermissions,
 } from "expo-camera";
 import { Image } from "expo-image";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   Building2,
   Calendar,
@@ -22,6 +22,8 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
+import { useCreatePrescription, useScanPrescription } from "@/hooks/usePrescription";
+import { UpsertPrescriptionRequest, PrescriptionMedicine } from "@/types/Prescription";
 import {
   ActivityIndicator,
   Animated,
@@ -42,32 +44,26 @@ export default function ScanPrescriptionScreen() {
   const [photo, setPhoto] = useState<CameraCapturedPicture | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<ScanStep>("camera");
+  const { memberId } = useLocalSearchParams<{ memberId: string }>();
+
+  React.useEffect(() => {
+    if (!memberId) {
+      toast.error("Lỗi", "Không tìm thấy thông tin thành viên.");
+      router.back();
+    }
+  }, [memberId]);
+
+  const { mutateAsync: scanAsync } = useScanPrescription();
+  const { mutate: createPrescription, isPending } = useCreatePrescription();
 
   // Local state for extracted data to allow editing
   const [prescriptionData, setPrescriptionData] = useState({
-    prescriptionCode: "MED-AI-9981",
-    doctorName: "BS. Nguyễn Trí Thịnh",
-    hospitalName: "Bệnh viện Chợ Rẫy",
-    prescriptionDate: "22/03/2026",
-    notes: "Uống thuốc đúng giờ, kiêng đồ cay nóng.",
-    medicines: [
-      {
-        prescriptionMedicineId: "1",
-        medicineName: "Paracetamol 500mg",
-        dosage: "1 viên",
-        unit: "Viên",
-        quantity: 10,
-        instructions: "Sáng 1 viên, Chiều 1 viên sau khi ăn.",
-      },
-      {
-        prescriptionMedicineId: "2",
-        medicineName: "Amoxicillin 250mg",
-        dosage: "2 viên",
-        unit: "Viên",
-        quantity: 14,
-        instructions: "Sáng 2 viên, Tối 2 viên. Uống ngay sau bữa ăn chính.",
-      },
-    ],
+    prescriptionCode: "MED-" + Math.random().toString(36).substring(7).toUpperCase(),
+    doctorName: "",
+    hospitalName: "",
+    prescriptionDate: new Date().toLocaleDateString("vi-VN"),
+    notes: "",
+    medicines: [] as PrescriptionMedicine[],
   });
 
   // Animation logic
@@ -133,22 +129,64 @@ export default function ScanPrescriptionScreen() {
     }
   };
 
-  const handleConfirmPhoto = () => {
+  const handleConfirmPhoto = async () => {
+    if (!memberId) return;
     setStep("analyzing");
-    setTimeout(() => {
-      setStep("result");
-      toast.success("Thành công", "AI đã đọc xong đơn thuốc!");
-    }, 3000);
+    
+    try {
+      const res = await scanAsync({ memberId, file: photo });
+      if (res.success && res.data?.extractedData) {
+        const extracted = res.data.extractedData;
+        setPrescriptionData(prev => ({
+          ...prev,
+          prescriptionCode: extracted.prescriptionCode || prev.prescriptionCode,
+          doctorName: extracted.doctorName || "",
+          hospitalName: extracted.hospitalName || "",
+          prescriptionDate: extracted.prescriptionDate || prev.prescriptionDate,
+          notes: extracted.notes || "",
+          medicines: extracted.medicines || []
+        }));
+        setStep("result");
+        toast.success("Thành công", "AI đã đọc xong đơn thuốc!");
+      } else {
+        toast.error("Lỗi", res.message || "Không thể phân tích.");
+        setStep("photo_preview");
+      }
+    } catch (error) {
+      toast.error("Lỗi", "Có lỗi xảy ra khi gọi AI.");
+      setStep("photo_preview");
+    }
   };
 
   const handleSavePrescription = () => {
-    popup.open({
-      type: "assign_member",
-      onSave: (member) => {
-        toast.success("Đã lưu", `Đơn thuốc đã được gán cho ${member.name}.`);
-        router.back();
-      },
-    });
+    if (!memberId) return;
+    
+    const requestData: UpsertPrescriptionRequest = {
+        prescriptionCode: prescriptionData.prescriptionCode,
+        hospitalName: prescriptionData.hospitalName,
+        doctorName: prescriptionData.doctorName,
+        prescriptionDate: prescriptionData.prescriptionDate,
+        notes: prescriptionData.notes,
+        images: [],
+        medicines: prescriptionData.medicines.map(m => ({
+            medicineName: m.medicineName,
+            dosage: m.dosage,
+            unit: m.unit,
+            quantity: m.quantity,
+            instructions: m.instructions
+        }))
+    };
+
+    createPrescription(
+        { memberId, data: requestData },
+        {
+            onSuccess: (res) => {
+                if (res.success) {
+                    router.back();
+                }
+            }
+        }
+    );
   };
 
   // Popup Handlers
@@ -387,12 +425,17 @@ export default function ScanPrescriptionScreen() {
 
           <View className="absolute bottom-0 left-0 right-0 bg-[#F9F6FC] px-6 pb-10 pt-4 border-t-2 border-black/5">
             <Pressable
+              disabled={isPending || prescriptionData.medicines.length === 0}
               onPress={handleSavePrescription}
-              className="w-full bg-[#A3E6A1] py-5 rounded-[24px] border-2 border-black flex-row items-center justify-center gap-x-2 shadow-md active:translate-y-0.5"
+              className={`w-full py-5 rounded-[24px] border-2 border-black flex-row items-center justify-center gap-x-2 shadow-md active:translate-y-0.5 ${prescriptionData.medicines.length > 0 ? "bg-[#A3E6A1]" : "bg-gray-200 border-gray-400"} ${isPending ? "opacity-70" : ""}`}
             >
-              <Check size={24} color="black" strokeWidth={3} />
-              <Text className="text-black text-lg font-space-bold uppercase">
-                Lưu Đơn Thuốc Này
+              {isPending ? (
+                  <ActivityIndicator color="black" />
+              ) : (
+                  <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
+              )}
+              <Text className={`text-lg font-space-bold uppercase ${prescriptionData.medicines.length > 0 ? "text-black" : "text-gray-500"}`}>
+                {isPending ? "Đang lưu..." : "Lưu Đơn Thuốc Này"}
               </Text>
             </Pressable>
           </View>

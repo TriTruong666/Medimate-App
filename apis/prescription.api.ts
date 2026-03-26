@@ -1,8 +1,10 @@
 // apis/prescription.api.ts
 import { BaseResponse } from "@/types/APIResponse";
 import {
+    AddMedicineRequest,
     Prescription,
     ScanPrescriptionResponse,
+    UpdateMedicineRequest,
     UpsertPrescriptionRequest
 } from "@/types/Prescription";
 import { axiosClient } from "./client";
@@ -77,6 +79,38 @@ export async function updatePrescription(prescriptionId: string, data: UpsertPre
 export async function deletePrescription(prescriptionId: string): Promise<BaseResponse<any>> {
     try {
         const res = await axiosClient.delete(`/api/v1/prescriptions/${prescriptionId}`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+export async function addMedicineToPrescription(prescriptionId: string, data: AddMedicineRequest): Promise<BaseResponse<any>> {
+    try {
+        const res = await axiosClient.post(`/api/v1/prescriptions/${prescriptionId}/medicines`, data);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+// Cập nhật thông tin 1 loại thuốc
+export async function updatePrescriptionMedicine(medicineId: string, data: UpdateMedicineRequest): Promise<BaseResponse<any>> {
+    try {
+        const res = await axiosClient.put(`/api/v1/prescriptions/medicines/${medicineId}`, data);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+// Xóa 1 loại thuốc khỏi đơn
+export async function deletePrescriptionMedicine(medicineId: string): Promise<BaseResponse<boolean>> {
+    try {
+        const res = await axiosClient.delete(`/api/v1/prescriptions/medicines/${medicineId}`);
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
