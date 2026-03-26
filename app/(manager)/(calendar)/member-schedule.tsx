@@ -14,6 +14,7 @@ import { MotiView } from "moti";
 import React from "react";
 import {
     ActivityIndicator,
+    Image,
     Pressable,
     ScrollView,
     Text,
@@ -23,10 +24,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function MemberScheduleScreen() {
     const router = useRouter();
-    const { memberId, memberName, familyName } = useLocalSearchParams<{
+    const { memberId, memberName, familyName, avatarUrl } = useLocalSearchParams<{
         memberId: string;
         memberName: string;
         familyName: string;
+        avatarUrl?: string;
     }>();
 
     // 1. Lấy danh sách lịch trình của thành viên
@@ -42,6 +44,21 @@ export default function MemberScheduleScreen() {
                 >
                     <ArrowLeft size={24} color="#000" strokeWidth={3} />
                 </Pressable>
+
+                <View className="w-12 h-12 rounded-xl border-2 border-black overflow-hidden items-center justify-center bg-[#D9AEF6]">
+                    {avatarUrl && avatarUrl !== "null" ? (
+                        <Image
+                            source={{ uri: avatarUrl }}
+                            className="w-full h-full"
+                            resizeMode="cover"
+                        />
+                    ) : (
+                        <Text className="text-xl font-space-bold uppercase text-black">
+                            {memberName?.charAt(0) || "U"}
+                        </Text>
+                    )}
+                </View>
+
                 <View className="flex-1">
                     <Text className="text-xl font-space-bold text-black" numberOfLines={1}>
                         {memberName || "Thành viên"}
@@ -113,8 +130,6 @@ export default function MemberScheduleScreen() {
 }
 
 function ScheduleCard({ schedule, index }: { schedule: ScheduleResponse; index: number }) {
-    const times = (schedule.specificTimes || "").split(",").map((t) => t.trim());
-
     return (
         <MotiView
             from={{ opacity: 0, translateY: 15 }}
@@ -122,20 +137,21 @@ function ScheduleCard({ schedule, index }: { schedule: ScheduleResponse; index: 
             transition={{ type: "timing", duration: 400, delay: index * 100 }}
             className="bg-white border-2 border-black rounded-[32px] p-6 shadow-md"
         >
+            {/* Header: Schedule Time Block */}
             <View className="flex-row items-center justify-between mb-5">
                 <View className="flex-row items-center flex-1 gap-x-4">
                     <View
                         className="w-16 h-16 rounded-[24px] border-2 border-black items-center justify-center shadow-sm"
                         style={{ backgroundColor: index % 2 === 0 ? "#D9AEF6" : "#A3E6A1" }}
                     >
-                        <Activity size={32} color="#000" strokeWidth={2.5} />
+                        <Clock size={32} color="#000" strokeWidth={2.5} />
                     </View>
                     <View className="flex-1 pr-2">
                         <Text className="text-xl text-black font-space-bold" numberOfLines={1}>
-                            {schedule.medicineName}
+                            {schedule.scheduleName || "Lịch uống thuốc"}
                         </Text>
                         <Text className="text-sm text-gray-500 font-space-medium">
-                            {schedule.dosage}
+                            {schedule.timeOfDay.slice(0, 5)} {/* slice(0, 5) to format HH:mm:ss to HH:mm */}
                         </Text>
                     </View>
                     {!schedule.isActive && (
@@ -146,27 +162,43 @@ function ScheduleCard({ schedule, index }: { schedule: ScheduleResponse; index: 
                 </View>
             </View>
 
-            <View className="flex-row items-center gap-x-3 mb-5">
-                <Clock size={18} color="#000" strokeWidth={2.5} />
-                <View className="flex-1 flex-row flex-wrap gap-2">
-                    {times.map((time, idx) => (
-                        <View key={idx} className="bg-white border-2 border-black rounded-xl px-3 py-1 shadow-sm">
-                            <Text className="text-xs font-space-bold">{time}</Text>
+            {/* Content: List of Medicines */}
+            <View className="gap-y-3 mb-5">
+                {schedule.scheduleDetails?.map((detail, idx) => (
+                    <View key={detail.detailId || idx} className="bg-gray-50 rounded-[20px] p-4 border-2 border-black/10">
+                        <View className="flex-row items-start justify-between">
+                            <View className="flex-row items-start flex-1 gap-x-3 pr-2">
+                                <Activity size={20} color="#000" strokeWidth={2.5} className="mt-0.5" />
+                                <View className="flex-1">
+                                    <Text className="text-[15px] font-space-bold text-black leading-snug">
+                                        {detail.medicineName}
+                                    </Text>
+                                    <Text className="text-xs font-space-medium text-gray-500 mt-1">
+                                        Liều lượng: {detail.dosage}
+                                    </Text>
+                                    {detail.instructions && (
+                                        <Text className="text-xs font-space-medium text-gray-400 mt-1 italic">
+                                            {detail.instructions}
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
                         </View>
-                    ))}
-                </View>
+                    </View>
+                ))}
             </View>
 
+            {/* Footer: Date Range */}
             <View className="flex-row items-center justify-between pt-5 border-t-2 border-black/5">
                 <View className="flex-row items-center gap-x-2">
                     <CalendarIcon size={14} color="#6B7280" />
-                    <Text className="text-xs font-space-bold text-gray-500">
-                        {dayjs(schedule.startDate).format("DD/MM")} - {schedule.endDate ? dayjs(schedule.endDate).format("DD/MM") : "N/A"}
+                    <Text className="text-[11px] font-space-bold text-gray-500 uppercase tracking-wider">
+                        Tạo lúc: {dayjs(schedule.createdAt).format("DD/MM/YYYY")}
                     </Text>
                 </View>
 
                 <Pressable className="bg-black px-5 py-3 rounded-xl flex-row items-center gap-x-2 active:opacity-80">
-                    <Text className="text-white font-space-bold text-xs uppercase tracking-wider">Chi tiết</Text>
+                    <Text className="text-white font-space-bold text-[11px] uppercase tracking-wider">Chi tiết</Text>
                     <ChevronRight size={16} color="#FFF" strokeWidth={3} />
                 </Pressable>
             </View>
