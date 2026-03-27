@@ -28,8 +28,14 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PopupContainer } from "../components/popup/PopupContainer";
 import { ToastContainer } from "../components/toast/ToastContainer";
 
+import { authSessionAtom, initAuthAtom } from '../stores/authStore';
+import { useAtom, useSetAtom } from 'jotai';
+
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
+  const initAuth = useSetAtom(initAuthAtom);
+  const [session] = useAtom(authSessionAtom);
+
   const [loaded] = useFonts({
     SpaceGrotesk_300Light,
     SpaceGrotesk_400Regular,
@@ -47,6 +53,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
+      initAuth(); // Initialize auth state immediately after fonts load
       SplashScreen.hideAsync();
     }
   }, [loaded]);

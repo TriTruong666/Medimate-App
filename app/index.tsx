@@ -1,45 +1,39 @@
-import { getDecodedToken } from "@/utils/token";
 import { Redirect } from "expo-router";
-import * as SecureStore from "expo-secure-store";
-import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
+import { useAtom } from 'jotai';
+import { authSessionAtom } from '../stores/authStore';
 
+/**
+ * Root Router Index - Bouncer 1.0
+ * The first logic executed to decide where the user lands.
+ */
 export default function Index() {
-    const [isLoading, setIsLoading] = useState(true);
-    const [route, setRoute] = useState<string | null>(null);
+    const [session] = useAtom(authSessionAtom);
 
-    useEffect(() => {
-        async function checkAuth() {
-            const token = await SecureStore.getItemAsync("accessToken");
-            if (token) {
-                const decoded = await getDecodedToken();
-                if (decoded?.MemberId) {
-                    setRoute("/(member)/(member-home)");
-                } else if (decoded?.Id) {
-                    setRoute("/(manager)/(home)");
-                } else {
-                    setRoute("/welcome");
-                }
-            } else {
-                setRoute("/welcome");
-            }
-            setIsLoading(false);
-        }
-        checkAuth();
-    }, []);
-
-    // Chế độ phát triển: Nhảy thẳng vào UI Explorer để chọn màn hình làm việc
-    // if (__DEV__) {
-    //     return <Redirect href="/ui-explorer" />;
-    // }
-
-    if (isLoading || !route) {
+    // 1. App Startup: Waiting for RootLayout to sync SecureStore -> Jotai
+    if (session === null) {
         return (
-            <View className="flex-1 bg-background justify-center items-center px-6">
-                <ActivityIndicator size="large" color="black" />
+            <View style={{ flex: 1, backgroundColor: '#F9F6FC', justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#000" />
             </View>
         );
     }
 
-    return <Redirect href={route as any} />;
+    // 2. Not Logged In -> Kick out to /welcome
+    if (!session) {
+        console.log('Index: No session found, kicking to /welcome');
+        return <Redirect href="/welcome" />;
+    }
+
+    // 3. Logged In -> Forward to correct dashboard
+    if (session.role === 'member') {
+        return <Redirect href="/(member)/(member-home)" />;
+    }
+
+    if (session.role === 'manager') {
+        return <Redirect href="/(manager)/(home)" />;
+    }
+
+    // Fallback
+    return <Redirect href="/welcome" />;
 }
