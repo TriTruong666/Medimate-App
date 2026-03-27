@@ -1,4 +1,4 @@
-import { CreditCard, Crown, Landmark, QrCode, Star, X } from 'lucide-react-native';
+import { Check, CreditCard, Crown, Landmark, QrCode, Star, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { BottomSheetBase } from './BottomSheetBase';
@@ -156,11 +156,68 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({
                                 </View>
                             </View>
                         ) : (
-                            <View style={{ width: '100%', borderWidth: 2, borderColor: '#000', borderRadius: 24, padding: 16, backgroundColor: '#FFF', alignItems: 'center' }}>
-                                <View className="w-[140px] h-[140px] bg-[#F9F6FC] rounded-2xl border-2 border-black items-center justify-center relative">
-                                    <QrCode size={90} color="#000" strokeWidth={1} />
+                            <View style={{ backgroundColor: '#F9F6FC', borderStyle: 'dashed', borderWidth: 2, borderColor: '#000', borderRadius: 28, padding: 20 }}>
+                                {/* Receipt Header */}
+                                <View className="flex-row justify-between items-center mb-6">
+                                    <View>
+                                        <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-widest">Tổng thanh toán</Text>
+                                        <Text className="text-2xl font-space-bold text-black">{plan.price}</Text>
+                                    </View>
+                                    <View className="bg-black px-3 py-1.5 rounded-xl">
+                                        <Text className="text-[9px] font-space-bold text-white uppercase tracking-tighter">Hóa đơn chờ</Text>
+                                    </View>
                                 </View>
-                                <Text className="text-[10px] font-space-bold text-black/40 text-center mt-3 uppercase tracking-widest">Quét mã QR để thanh toán</Text>
+
+                                {/* QR Scanner Frame */}
+                                <View className="items-center mb-6">
+                                    <View className="p-4 bg-white border-2 border-black rounded-[32px] shadow-sm relative">
+                                        {/* Scanner Corners */}
+                                        <View className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-black rounded-tl-lg opacity-20" />
+                                        <View className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-black rounded-tr-lg opacity-20" />
+                                        <View className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-black rounded-bl-lg opacity-20" />
+                                        <View className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-black rounded-br-lg opacity-20" />
+
+                                        <View className="bg-[#A3E6A1]/10 rounded-2xl p-2 items-center justify-center">
+                                            <QrCode size={130} color="#000" strokeWidth={1.5} />
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Banking Master Info */}
+                                <View className="gap-y-3">
+                                    <View className="bg-white border-2 border-black rounded-2xl p-4 shadow-sm">
+                                        <View className="flex-row items-center mb-1">
+                                            <Landmark size={14} color="#000" strokeWidth={2.5} />
+                                            <Text className="text-[10px] font-space-bold text-black/40 uppercase ml-2">Tài khoản thụ hưởng</Text>
+                                        </View>
+                                        <View className="flex-row justify-between items-end">
+                                            <View>
+                                                <Text className="text-sm font-space-bold text-black italic">Vietcombank (VCB)</Text>
+                                                <Text className="text-lg font-space-bold text-black tracking-wider">1234 5678 9000</Text>
+                                            </View>
+                                            <Pressable className="bg-black px-3 py-1.5 rounded-xl border border-black shadow-sm active:translate-y-0.5">
+                                                <Text className="text-[10px] font-space-bold text-white">SAO CHÉP</Text>
+                                            </Pressable>
+                                        </View>
+                                    </View>
+
+                                    <View className="bg-white border-2 border-black rounded-2xl p-4 shadow-sm">
+                                        <View className="flex-row items-center mb-1">
+                                            <Check size={14} color="#2D5A27" strokeWidth={3} />
+                                            <Text className="text-[10px] font-space-bold text-black/40 uppercase ml-2">Nội dung chuyển khoản</Text>
+                                        </View>
+                                        <View className="flex-row justify-between items-end">
+                                            <Text className="text-sm font-space-bold text-black uppercase">MDM {plan.id.toUpperCase()} 2026</Text>
+                                            <Pressable className="bg-gray-100 px-3 py-1.5 rounded-xl border border-black/10 active:bg-gray-200">
+                                                <Text className="text-[10px] font-space-bold text-black/40">COPY</Text>
+                                            </Pressable>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                <Text className="text-[9px] font-space-bold text-black/20 text-center mt-6 italic">
+                                    Thanh toán sẽ được tự động xác nhận sau 1-2 phút
+                                </Text>
                             </View>
                         )}
                     </View>
