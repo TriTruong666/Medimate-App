@@ -1,12 +1,12 @@
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Activity, ClipboardList, MessageCircle, User } from "lucide-react-native";
+import { Calendar, Heart, User } from "lucide-react-native";
 import BottomTab, { TabConfig } from "./BottomTab";
 
 const MEMBER_TABS: TabConfig[] = [
-    { name: "index", icon: Activity, label: "Hôm nay" },
-    { name: "history", icon: ClipboardList, label: "Lịch sử" },
-    { name: "chat", icon: MessageCircle, label: "Bác sĩ" },
-    { name: "settings", icon: User, label: "Cá nhân" },
+    { name: "(member-home)", icon: Heart, label: "Trang chủ" },
+    { name: "(member-calendar)", icon: Calendar, label: "Lịch nhắc nhở" },
+    // { name: "chat", icon: MessageCircle, label: "Bác sĩ" },
+    { name: "(member-settings)", icon: User, label: "Setting" },
 ];
 
 export default function MemberBottomTab(props: BottomTabBarProps) {

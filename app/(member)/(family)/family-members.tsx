@@ -1,5 +1,5 @@
-import { useGetFamilyById, useGetFamilyMembers } from "@/hooks/useFamily";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
+import { useRouter } from "expo-router";
 import { useSetAtom } from "jotai";
 import {
   ArrowLeft,
@@ -7,7 +7,7 @@ import {
   MoreHorizontal,
   Shield,
 } from "lucide-react-native";
-import React, { useState } from "react";
+import React from "react";
 import {
   ActivityIndicator,
   Image,
@@ -56,14 +56,16 @@ const MemberListItem = ({ member, handleOpenMenu }: any) => {
 
 export default function MemberFamilyMembersScreen() {
   const router = useRouter();
-  const { familyId } = useLocalSearchParams<{ familyId: string }>();
   const showDropdown = useSetAtom(showDropdownAtom);
 
-  // Fetch dữ liệu
-  const { data: family, isLoading: isLoadingFamily } =
-    useGetFamilyById(familyId);
+  const { data: families, isLoading: isLoadingFamilies } = useGetFamilies();
+  const family = families?.[0]; // Member thuộc 1 gia đình
+  const familyId = family?.familyId;
+
   const { data: members, isLoading: isLoadingMembers } =
     useGetFamilyMembers(familyId);
+
+  const hasNoFamily = families && families.length === 0;
 
   const handleOpenMenu = (event: any, memberId: string, hasUserId: boolean) => {
     event.currentTarget.measure(
@@ -94,10 +96,21 @@ export default function MemberFamilyMembersScreen() {
     );
   };
 
-  if (isLoadingFamily || isLoadingMembers) {
+  if (isLoadingFamilies || (familyId && isLoadingMembers)) {
     return (
       <SafeAreaView className="flex-1 bg-background justify-center items-center">
         <ActivityIndicator size="large" color="#000" />
+      </SafeAreaView>
+    );
+  }
+
+  if (hasNoFamily) {
+    return (
+      <SafeAreaView className="flex-1 bg-[#F9F6FC] justify-center items-center">
+        <Text className="text-gray-500 font-space-medium text-lg">Bạn chưa tham gia gia đình nào.</Text>
+        <Pressable onPress={() => router.back()} className="mt-4 px-4 py-2 bg-black rounded-lg">
+          <Text className="text-white font-space-bold">Quay lại</Text>
+        </Pressable>
       </SafeAreaView>
     );
   }
@@ -123,7 +136,7 @@ export default function MemberFamilyMembersScreen() {
             {members?.length || 0} thành viên
           </Text>
         </View>
-        
+
         {/* Placeholder for header spacing so title is centered */}
         <View className="w-12 h-12" />
       </View>

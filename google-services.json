@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "791148863715",
+    "project_id": "notification-reminder-48de1",
+    "storage_bucket": "notification-reminder-48de1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:791148863715:android:e70129026436920c2365d6",
+        "android_client_info": {
+          "package_name": "com.medimate.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBlKPCUAOxWaliRK0uyZJorJx4EjOFtOFY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

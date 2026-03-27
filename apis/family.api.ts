@@ -1,5 +1,6 @@
 import { BaseResponse } from "@/types/APIResponse";
-import { FamilyData, FamilyMember, SubscriptionData, UpdateFamilyRequest } from "@/types/Family";
+import { FamilyData, SubscriptionData, UpdateFamilyRequest } from "@/types/Family";
+import { FamilyMember } from "@/types/Member";
 import { axiosClient } from "./client";
 
 export async function createPersonalFamily(): Promise<BaseResponse<any>> {

@@ -10,11 +10,9 @@ export default function MemberLayout() {
                 animation: 'fade',
             }}
         >
-            <Tabs.Screen name="home" />
-            <Tabs.Screen name="history" />
-            <Tabs.Screen name="chat" />
-            <Tabs.Screen name="profile" />
-            <Tabs.Screen name="settings" />
+            <Tabs.Screen name="(member-home)" />
+            <Tabs.Screen name="(member-calendar)" />
+            <Tabs.Screen name="(member-settings)" />
         </Tabs>
     );
 }

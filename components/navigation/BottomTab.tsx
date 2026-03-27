@@ -1,9 +1,9 @@
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useSegments } from "expo-router";
 import { LucideIcon } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
-import { useSegments } from "expo-router";
 
 export interface TabConfig {
   name: string;
@@ -41,24 +41,28 @@ const BottomTabComponent = ({
   if (!isStandardTab) {
     if (
       segments.includes("settings") ||
+      segments.includes("(settings)") ||
+      segments.includes("(member-settings)") ||
       segments.includes("profile") ||
       segments.includes("(family)") ||
       segments.includes("(user)") ||
       segments.includes("(password)") ||
       segments.includes("member")
     ) {
-      activeTabName = "settings";
-    } else if (segments.includes("doctor") || segments.includes("chat")) {
-      activeTabName = tabs.some((t) => t.name === "doctor") ? "doctor" : "chat";
+      activeTabName = tabs.find((t) => t.name.includes("settings"))?.name || currentRouteName;
+    } else if (segments.includes("doctor") || segments.includes("(doctor)") || segments.includes("chat")) {
+      activeTabName = tabs.find((t) => t.name.includes("doctor") || t.name.includes("chat"))?.name || currentRouteName;
     } else if (
       segments.includes("calendar") ||
+      segments.includes("(calendar)") ||
+      segments.includes("(member-calendar)") ||
       segments.includes("history")
     ) {
-      activeTabName = tabs.some((t) => t.name === "calendar") ? "calendar" : "history";
+      activeTabName = tabs.find((t) => t.name.includes("calendar"))?.name || currentRouteName;
     } else if (segments.includes("(prescription)")) {
       activeTabName = ""; // No tab active
     } else {
-      activeTabName = tabs.some((t) => t.name === "home") ? "home" : "index";
+      activeTabName = tabs.find((t) => t.name.includes("home"))?.name || currentRouteName;
     }
   }
 
