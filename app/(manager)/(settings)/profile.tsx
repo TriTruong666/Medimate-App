@@ -1,9 +1,9 @@
 import { useGetMemberById, useUpdateMember } from "@/hooks/useMember";
 import { useGetMe, useUpdateMe } from "@/hooks/useUser";
 import { getDecodedToken } from "@/utils/token";
-import { AntDesign, Feather } from "@expo/vector-icons";
+import { ArrowLeft, Camera, User, Calendar, Check } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
     ActivityIndicator,
@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function EditProfileScreen() {
+    const router = useRouter();
     const [userId, setUserId] = useState<string | undefined>(undefined);
     const [memberId, setMemberId] = useState<string | undefined>(undefined);
 
@@ -117,29 +118,32 @@ export default function EditProfileScreen() {
 
     if (isLoading) {
         return (
-            <SafeAreaView className="flex-1 bg-background justify-center items-center">
+            <SafeAreaView className="flex-1 bg-[#F9F6FC] justify-center items-center">
                 <ActivityIndicator size="large" color="#000" />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView className="flex-1 bg-background" edges={["top"]}>
+        <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
             <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="flex-1">
-                <ScrollView className="flex-1 px-6 pt-4" showsVerticalScrollIndicator={false}>
-                    {/* Header */}
-                    <View className="flex-row items-center justify-between mb-8">
-                        <Pressable onPress={() => router.navigate("/(manager)/(settings)" as any)} className="w-12 h-12 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
-                            <AntDesign name="arrow-left" size={24} color="black" />
-                        </Pressable>
-                        <Text className="text-2xl text-black font-space-bold">Hồ sơ của tôi</Text>
-                        <View className="w-12 h-12" />
-                    </View>
+                {/* Custom Header */}
+                <View className="flex-row items-center justify-between px-6 pt-4 pb-2">
+                    <Pressable
+                        onPress={() => router.back()}
+                        className="w-12 h-12 rounded-2xl border-2 border-black bg-white items-center justify-center shadow-sm active:translate-y-0.5"
+                    >
+                        <ArrowLeft size={24} color="black" strokeWidth={2.5} />
+                    </Pressable>
+                    <Text className="text-xl text-black font-space-bold">Hồ sơ cá nhân</Text>
+                    <View className="w-12 h-12" />
+                </View>
 
+                <ScrollView className="flex-1 px-6" showsVerticalScrollIndicator={false}>
                     {/* Avatar Section */}
-                    <View className="items-center mb-10">
+                    <View className="items-center my-8">
                         <Pressable onPress={handlePickImage} className="relative active:opacity-80">
-                            <View className="w-32 h-32 rounded-full border-4 border-black bg-[#D9AEF6] items-center justify-center overflow-hidden shadow-sm">
+                            <View className="w-36 h-36 rounded-3xl border-2 border-black bg-[#D9AEF6] items-center justify-center overflow-hidden shadow-md">
                                 {Boolean(avatarUri) ? (
                                     <Image
                                         source={{ uri: avatarUri as string }}
@@ -147,43 +151,52 @@ export default function EditProfileScreen() {
                                         resizeMode="cover"
                                     />
                                 ) : (
-                                    <Feather name="user" size={40} color="#000" />
+                                    <User size={60} color="#000" strokeWidth={1.5} />
                                 )}
                             </View>
-                            <View className="absolute bottom-0 right-0 w-10 h-10 bg-[#FFD700] border-2 border-black rounded-full items-center justify-center shadow-sm">
-                                <Feather name="image" size={18} color="#000" />
+                            <View className="absolute -bottom-2 -right-2 w-12 h-12 bg-[#FFD700] border-2 border-black rounded-2xl items-center justify-center shadow-md">
+                                <Camera size={20} color="#000" strokeWidth={2.5} />
                             </View>
                         </Pressable>
                     </View>
 
                     {/* Form Fields */}
-                    <View className="space-y-5 mb-10">
+                    <View className="mb-10">
                         {/* Họ và Tên */}
-                        <View>
-                            <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Họ và Tên</Text>
-                            <View className="px-5 py-4 rounded-[24px] border-2 border-black bg-white shadow-sm">
+                        <View className="mb-6">
+                            <Text className="text-[12px] font-space-bold text-gray-500 mb-2 ml-1 uppercase tracking-[2px]">
+                                Họ và Tên
+                            </Text>
+                            <View className="px-5 py-4 rounded-[20px] border-2 border-black bg-white shadow-sm flex-row items-center">
+                                <User size={20} color="#888" strokeWidth={2} />
                                 <TextInput
                                     value={fullName}
                                     onChangeText={setFullName}
-                                    placeholder="Nhập họ và tên..."
+                                    placeholder="Ví dụ: Nguyễn Văn A"
                                     placeholderTextColor="#A0A0A0"
-                                    className="text-lg text-black font-space-bold"
+                                    className="flex-1 text-lg text-black font-space-bold ml-3"
                                 />
                             </View>
                         </View>
 
                         {/* Giới tính */}
-                        <View className="mt-4">
-                            <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Giới tính</Text>
-                            <View className="flex-row justify-between gap-3">
-                                {["Male", "Female", "Other"].map((g) => (
+                        <View className="mb-6">
+                            <Text className="text-[12px] font-space-bold text-gray-500 mb-2 ml-1 uppercase tracking-[2px]">
+                                Giới tính
+                            </Text>
+                            <View className="flex-row justify-between gap-x-3">
+                                {[
+                                    { id: "Male", label: "Nam", color: "#87CEFA" },
+                                    { id: "Female", label: "Nữ", color: "#FFA07A" },
+                                    { id: "Other", label: "Khác", color: "#D9AEF6" }
+                                ].map((g) => (
                                     <Pressable
-                                        key={g}
-                                        onPress={() => setGender(g as any)}
-                                        className={`flex-1 py-4 rounded-[24px] border-2 border-black items-center justify-center shadow-sm ${gender === g ? "bg-[#A3E6A1]" : "bg-white"}`}
+                                        key={g.id}
+                                        onPress={() => setGender(g.id as any)}
+                                        className={`flex-1 py-4 rounded-[20px] border-2 border-black items-center justify-center shadow-sm ${gender === g.id ? "bg-[#A3E6A1]" : "bg-white"}`}
                                     >
-                                        <Text className="text-base font-space-bold text-black">
-                                            {g === "Male" ? "Nam" : g === "Female" ? "Nữ" : "Khác"}
+                                        <Text className="text-[15px] font-space-bold text-black">
+                                            {g.label}
                                         </Text>
                                     </Pressable>
                                 ))}
@@ -191,14 +204,16 @@ export default function EditProfileScreen() {
                         </View>
 
                         {/* Ngày sinh */}
-                        <View className="mt-4">
-                            <Text className="text-sm font-space-bold text-black mb-2 ml-2 uppercase tracking-wider">Ngày sinh (YYYY-MM-DD)</Text>
-                            <View className="px-5 py-4 rounded-[24px] border-2 border-black bg-white shadow-sm flex-row items-center">
-                                <Feather name="calendar" size={20} color="#888" />
+                        <View className="mb-10">
+                            <Text className="text-[12px] font-space-bold text-gray-500 mb-2 ml-1 uppercase tracking-[2px]">
+                                Ngày sinh (YYYY-MM-DD)
+                            </Text>
+                            <View className="px-5 py-4 rounded-[20px] border-2 border-black bg-white shadow-sm flex-row items-center">
+                                <Calendar size={20} color="#888" strokeWidth={2} />
                                 <TextInput
                                     value={dateOfBirth}
                                     onChangeText={handleDateChange}
-                                    placeholder="VD: 2000-12-31"
+                                    placeholder="1990-01-01"
                                     placeholderTextColor="#A0A0A0"
                                     keyboardType="numeric"
                                     maxLength={10}
@@ -212,12 +227,15 @@ export default function EditProfileScreen() {
                     <Pressable
                         onPress={handleSave}
                         disabled={isSaving || !fullName}
-                        className={`bg-black border-2 border-black rounded-[32px] flex-row items-center justify-center py-5 shadow-lg mb-10 ${isSaving || !fullName ? "opacity-70" : "active:opacity-90"}`}
+                        className={`bg-black border-2 border-black rounded-[24px] flex-row items-center justify-center py-5 shadow-lg mb-12 ${isSaving || !fullName ? "opacity-70" : "active:translate-y-1"}`}
                     >
                         {isSaving ? (
                             <ActivityIndicator color="#FFF" />
                         ) : (
-                            <Text className="text-lg text-white font-space-bold uppercase tracking-wider">Lưu thay đổi</Text>
+                            <View className="flex-row items-center gap-x-2">
+                                <Check size={22} color="white" strokeWidth={3} />
+                                <Text className="text-lg text-white font-space-bold uppercase tracking-wider">Lưu thay đổi</Text>
+                            </View>
                         )}
                     </Pressable>
                 </ScrollView>

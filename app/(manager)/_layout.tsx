@@ -16,6 +16,7 @@ export default function ManagerLayout() {
             <Tabs.Screen name="(settings)" />
             <Tabs.Screen name="(family)" options={{ href: null }} />
             <Tabs.Screen name="(prescription)" options={{ href: null }} />
+            <Tabs.Screen name="(subscription)" options={{ href: null }} />
         </Tabs>
     );
 }
