@@ -183,7 +183,7 @@ export default function SettingsScreen() {
 
             <View className="bg-black py-2.5 px-4 rounded-xl border border-black">
               <Text className="text-white font-space-bold text-xs uppercase tracking-wider">
-                Xem ngay
+                Khám phá
               </Text>
             </View>
           </View>
