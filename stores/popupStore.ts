@@ -1,6 +1,21 @@
 import { atom, useSetAtom } from "jotai";
 
-export type PopupType = 'medicine_detail' | 'confirm' | 'assign_member' | 'create_family' | 'edit_family' | 'health_profile' | 'health_condition' | 'select_family_member' | 'checkout' | 'success_payment';
+export type PopupType =
+    | 'medicine_detail' 
+    | 'confirm' 
+    | 'assign_member' 
+    | 'create_family' 
+    | 'edit_family' 
+    | 'health_profile' 
+    | 'health_condition' 
+    | 'select_family_member' 
+    | 'checkout' 
+    | 'success_payment'
+    | 'booking_confirm'
+    | 'chat_detail'
+    | 'message'
+    | 'loading'
+    | null;
 
 export type PopupConfirmData = {
     title: string;
@@ -20,6 +35,7 @@ export type PopupConfig = {
 
 // Atom for managing the active popup
 export const activePopupAtom = atom<PopupConfig | null>(null);
+export const popupAtom = activePopupAtom; // Alias for backward compatibility
 
 // Convenience hook for popup management
 export const usePopup = () => {

@@ -10,6 +10,8 @@ import { HealthConditionPopup } from './HealthConditionPopup';
 import { HealthProfilePopup } from './HealthProfilePopup';
 import { MedicinePopup } from './MedicinePopup';
 import { SelectFamilyMemberPopup } from './SelectFamilyMemberPopup';
+import BookingConfirmPopup from "./BookingConfirmPopup";
+import { ChatDetailPopup } from './ChatDetailPopup';
 import { CheckoutPopup } from './CheckoutPopup';
 import { SuccessPaymentPopup } from './SuccessPaymentPopup';
 
@@ -114,6 +116,19 @@ export const PopupContainer: React.FC = () => {
                 <SuccessPaymentPopup
                     plan={activePopup.data.plan}
                     method={activePopup.data.method}
+                    onClose={handleClose}
+                />
+            )}
+
+            {activePopup.type === 'booking_confirm' && (
+                <BookingConfirmPopup />
+            )}
+
+            {activePopup.type === 'chat_detail' && (
+                <ChatDetailPopup
+                    name={activePopup.data?.name}
+                    avatar={activePopup.data?.avatar}
+                    specialty={activePopup.data?.specialty}
                     onClose={handleClose}
                 />
             )}

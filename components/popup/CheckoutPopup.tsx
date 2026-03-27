@@ -1,8 +1,7 @@
-import { Check, CreditCard, Crown, Shield, Star, X, Landmark, QrCode, Sparkles, Hash, Calendar, Clock } from 'lucide-react-native';
+import { CreditCard, Crown, Landmark, QrCode, Star, X } from 'lucide-react-native';
 import React, { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { BottomSheetBase } from './BottomSheetBase';
-import dayjs from 'dayjs';
 
 interface CheckoutPopupProps {
     plan: {
@@ -185,7 +184,7 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({
                    SUCCESS VIEW — Blackbird Pay Style (Centered White)
                    ═══════════════════════════════════════════════ */
                 <View style={{ backgroundColor: '#FFF', borderRadius: 28, padding: 28, width: '100%', shadowColor: '#000', shadowOffset: { width: 4, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 12 }}>
-                    
+
                     {/* Brand Tag */}
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', letterSpacing: 1.5, textTransform: 'uppercase' }}>MEDIMATE</Text>
