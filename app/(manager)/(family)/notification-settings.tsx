@@ -1,9 +1,9 @@
+import { useGetFamilyNotificationSetting, useUpdateFamilyNotificationSetting } from "@/hooks/useNotification";
+import { AntDesign } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { AntDesign } from "@expo/vector-icons";
-import { useGetFamilyNotificationSetting, useUpdateFamilyNotificationSetting } from "@/hooks/useNotification";
 
 export default function NotificationSettingsScreen() {
     const router = useRouter();
@@ -48,7 +48,7 @@ export default function NotificationSettingsScreen() {
                 <Text className="text-[16px] font-space-bold text-black mb-1">{title}</Text>
                 <Text className="text-[13px] font-space-medium text-gray-500 leading-snug">{description}</Text>
             </View>
-            <Pressable 
+            <Pressable
                 onPress={() => onToggle(!value)}
                 className={`w-14 h-8 rounded-full border-2 border-black justify-center transition-colors ${value ? 'bg-[#A3E6A1]' : 'bg-gray-200'}`}
                 style={{ paddingHorizontal: 2 }}
@@ -59,7 +59,7 @@ export default function NotificationSettingsScreen() {
     );
 
     const TimeOption = ({ minutes, label }: any) => (
-        <Pressable 
+        <Pressable
             onPress={() => setAdvanceMinutes(minutes)}
             className={`flex-1 items-center justify-center py-4 rounded-xl border-2 border-black ${advanceMinutes === minutes ? 'bg-[#FFD700]' : 'bg-white'}`}
         >
@@ -97,23 +97,23 @@ export default function NotificationSettingsScreen() {
                         Điều chỉnh các tuỳ chọn để không bao giờ bỏ lỡ các cập nhật quan trọng của gia đình bạn.
                     </Text>
 
-                    <ToggleRow 
-                        title="Thông báo Toàn hệ thống" 
+                    <ToggleRow
+                        title="Thông báo Toàn hệ thống"
                         description="Nhận lời nhắc và cảnh báo đẩy trực tiếp trên thiết bị của bạn."
                         value={pushEnabled}
                         onToggle={setPushEnabled}
                     />
 
-                    <ToggleRow 
-                        title="Nhắc nhở qua Email" 
+                    <ToggleRow
+                        title="Nhắc nhở qua Email"
                         description="Nhận báo cáo và nhắc nhở vào hòm thư Email cá nhân của bạn."
                         value={emailEnabled}
                         onToggle={setEmailEnabled}
                     />
 
-                    <ToggleRow 
-                        title="Cảnh báo Hoạt động Nhóm" 
-                        description="Thông báo cho bạn mỗi khi người thân quên uống thuốc hoặc thay đổi đơn."
+                    <ToggleRow
+                        title="Cảnh báo Hoạt động Nhóm"
+                        description="Thông báo cho chủ gia đình mỗi khi người thân quên uống thuốc."
                         value={familyAlertEnabled}
                         onToggle={setFamilyAlertEnabled}
                     />

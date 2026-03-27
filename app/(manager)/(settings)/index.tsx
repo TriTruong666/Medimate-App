@@ -4,14 +4,13 @@ import { useGetMe } from "@/hooks/useUser";
 import { getDecodedToken } from "@/utils/token";
 import { useRouter } from "expo-router";
 import {
-  Bell,
   ChevronRight,
   Crown,
   HelpCircle,
   Info,
   LogOut,
   Shield,
-  Users,
+  Users
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -33,12 +32,12 @@ const MENU_ITEMS = [
     color: "#A3E6A1",
     route: "/(manager)/(family)" as const,
   },
-  {
-    icon: Bell,
-    label: "Thông báo",
-    subtitle: "Tuỳ chỉnh nhắc nhở",
-    color: "#FFD700",
-  },
+  // {
+  //   icon: Bell,
+  //   label: "Thông báo",
+  //   subtitle: "Tuỳ chỉnh nhắc nhở",
+  //   color: "#FFD700",
+  // },
   {
     icon: Shield,
     label: "Bảo mật tài khoản",
@@ -208,8 +207,8 @@ export default function SettingsScreen() {
                   }
                 }}
                 className={`flex-row items-center px-5 py-4 active:bg-gray-50 ${index < MENU_ITEMS.length - 1
-                    ? "border-b-2 border-black/10"
-                    : ""
+                  ? "border-b-2 border-black/10"
+                  : ""
                   }`}
               >
                 <View
