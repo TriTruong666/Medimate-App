@@ -5,7 +5,8 @@ export default function CalendarLayout() {
         <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="calendar_members" />
-            <Stack.Screen name="member-schedule" />
+            <Stack.Screen name="member_schedule" />
+            <Stack.Screen name="calendar_test" />
         </Stack>
     );
 }

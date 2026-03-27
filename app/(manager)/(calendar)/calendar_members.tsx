@@ -74,7 +74,7 @@ export default function CalendarMembersScreen() {
                                     // Chuyển hướng đến trang lịch chi tiết của thành viên (Sẽ tạo sau hoặc cập nhật index)
                                     // Hiện tại ta có thể quay lại index với param memberId nếu muốn
                                     router.push({
-                                        pathname: "/(manager)/(calendar)/member-schedule",
+                                        pathname: "/(manager)/(calendar)/member_schedule",
                                         params: {
                                             memberId: member.memberId,
                                             memberName: member.fullName,

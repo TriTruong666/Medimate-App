@@ -31,7 +31,7 @@ export default function MedicationCalendarScreen() {
         isError: errorFamilies,
         refetch: refetchFamilies,
     } = useGetFamilies();
-
+    const filteredFamilies = families?.filter((f) => f.type !== "Personal") || [];
     return (
         <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
             <ManagerHeader />
@@ -55,10 +55,10 @@ export default function MedicationCalendarScreen() {
                     <Text className="text-xl font-space-bold text-black uppercase tracking-widest pl-1">
                         Nhóm gia đình
                     </Text>
-                    {families && (
+                    {filteredFamilies && (
                         <View className="bg-black px-3 py-1 rounded-lg border border-black">
                             <Text className="text-white font-space-bold text-xs">
-                                {families.length}
+                                {filteredFamilies.length}
                             </Text>
                         </View>
                     )}
@@ -83,7 +83,7 @@ export default function MedicationCalendarScreen() {
                     </View>
                 ) : (
                     <View className="gap-y-5">
-                        {families?.map((family) => (
+                        {filteredFamilies?.map((family) => (
                             <Pressable
                                 key={family.familyId}
                                 onPress={() =>

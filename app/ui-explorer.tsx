@@ -25,6 +25,7 @@ const routes = [
     { name: "Prescription - Scan", path: "/(manager)/(prescription)/scan_prescription" },
     { name: "Prescription - Add Manual", path: "/(manager)/(prescription)/add_manual_prescription" },
     { name: "Prescription - Upload", path: "/(manager)/(prescription)/upload_prescription" },
+    { name: "🧪 Calendar Test (Debug)", path: "/(manager)/(calendar)/calendar_test" },
 ];
 
 export default function UIExplorerScreen() {
