@@ -4,9 +4,10 @@
 export type FamilyData = {
     familyId: string;
     familyName: string;
-    type: "Shared" | "Personal"; // Dựa trên Swagger
-    joinCode: string;
+    type: "Shared" | "Personal";
+    joinCode: string | null; // Cột này đã không còn dùng tới, để null an toàn
     isOpenJoin: boolean;
+    familyAvatarUrl: string | null; // [NEW] Đã thêm Avatar
     memberCount: number;
     createdAt: string;
 };
@@ -25,6 +26,8 @@ export type SubscriptionData = {
 };
 
 export type UpdateFamilyRequest = {
-    familyName: string;
-    isOpenJoin: boolean;
+    familyName?: string;
+    isOpenJoin?: boolean;
+    // Avatar có thể là File (Web) hoặc đối tượng chứa URI (React Native)
+    familyAvatar?: any;
 };

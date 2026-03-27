@@ -35,3 +35,42 @@ export type PaymentInfoResponse = {
     paidAt?: string | null;
     transactionId?: string | null;
 };
+
+
+export type PaymentFilterRequest = {
+    searchTerm?: string;
+    status?: string; // "Pending", "Success", "Failed"
+    sortBy?: string;
+    isDescending?: boolean;
+    pageNumber?: number;
+    pageSize?: number;
+};
+
+export type PaymentItemResponse = {
+    paymentId: string;
+    userId: string;
+    userName: string;
+    amount: number;
+    paymentContent: string;
+    status: string;
+    createdAt: string;
+};
+
+// ========================
+// CHI TIẾT GIAO DỊCH (TRANSACTION)
+// ========================
+export type TransactionDetailResponse = {
+    transactionId: string;
+    senderName: string;
+    receiverName: string;
+    transactionType: string;
+    content: string;
+    amount: number;
+    transactionFee: number;
+    totalAmount: number;
+    transactionCode: string;
+    paymentCode: string;
+    appointmentDate: string | null;
+    paymentMethod: string;
+    paymentStatus: string;
+};

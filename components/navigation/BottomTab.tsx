@@ -3,6 +3,7 @@ import { LucideIcon } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { memo } from "react";
 import { Pressable, Text, View } from "react-native";
+import { useSegments } from "expo-router";
 
 export interface TabConfig {
   name: string;
@@ -27,6 +28,39 @@ const BottomTabComponent = ({
   centerButton,
 }: BottomTabProps) => {
   const midIndex = centerButton ? Math.floor(tabs.length / 2) : -1;
+  const segments = useSegments() as string[];
+
+  // Hide the center button (Plus) if we are in the prescription flow
+  const hideCenterButton = segments.includes("(prescription)");
+
+  // Determine the active tab based on the current route or pathname for nested screens
+  const currentRouteName = state.routes[state.index]?.name;
+  let activeTabName = currentRouteName;
+
+  const isStandardTab = tabs.some((t) => t.name === currentRouteName);
+  if (!isStandardTab) {
+    if (
+      segments.includes("settings") ||
+      segments.includes("profile") ||
+      segments.includes("(family)") ||
+      segments.includes("(user)") ||
+      segments.includes("(password)") ||
+      segments.includes("member")
+    ) {
+      activeTabName = "settings";
+    } else if (segments.includes("doctor") || segments.includes("chat")) {
+      activeTabName = tabs.some((t) => t.name === "doctor") ? "doctor" : "chat";
+    } else if (
+      segments.includes("calendar") ||
+      segments.includes("history")
+    ) {
+      activeTabName = tabs.some((t) => t.name === "calendar") ? "calendar" : "history";
+    } else if (segments.includes("(prescription)")) {
+      activeTabName = ""; // No tab active
+    } else {
+      activeTabName = tabs.some((t) => t.name === "home") ? "home" : "index";
+    }
+  }
 
   return (
     <View className="bg-black flex-row px-6 pt-4 pb-8 justify-between items-center rounded-t-[32px] border-t border-black/10">
@@ -37,21 +71,26 @@ const BottomTabComponent = ({
         if (centerButton && index === midIndex) {
           const CenterIcon = centerButton.icon;
           elements.push(
-            <Pressable
-              key="center-btn"
-              onPress={centerButton.onPress}
-              className="items-center justify-center h-16 w-16 bg-[#A3E6A1] rounded-full border-4 border-black shadow-md mt-[-40px] mb-2 active:scale-90"
-            >
-              {CenterIcon && (
-                <CenterIcon size={32} color="#000000" strokeWidth={2.5} />
-              )}
-            </Pressable>
+            hideCenterButton ? (
+              <View key="center-btn-hidden" className="h-16 w-16 mx-2" />
+            ) : (
+              <Pressable
+                key="center-btn"
+                onPress={centerButton.onPress}
+                className="items-center justify-center h-16 w-16 bg-[#A3E6A1] rounded-full border-4 border-black shadow-md mt-[-40px] mb-2 active:scale-90"
+              >
+                {CenterIcon && (
+                  <CenterIcon size={32} color="#000000" strokeWidth={2.5} />
+                )}
+              </Pressable>
+            )
           );
         }
 
         // Standard Tab Handling
         const routeIndex = state.routes.findIndex((r) => r.name === tab.name);
-        const isFocused = state.index === routeIndex;
+        // Use intelligent matching for sub-screens
+        const isFocused = tab.name === activeTabName;
         const IconComponent = tab.icon;
 
         const onPress = () => {

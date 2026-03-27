@@ -161,11 +161,26 @@ export default function ScanPrescriptionScreen() {
   const handleSavePrescription = () => {
     if (!memberId) return;
     
+    const formatToISODate = (dateStr: string | undefined | null) => {
+        if (!dateStr) return new Date().toISOString();
+        const match = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+        if (match) {
+            return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}T00:00:00.000Z`;
+        }
+        const isoMatch = dateStr.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+        if (isoMatch) {
+             return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}T00:00:00.000Z`;
+        }
+        const parsed = new Date(dateStr);
+        if (!isNaN(parsed.getTime())) return parsed.toISOString();
+        return new Date().toISOString();
+    };
+
     const requestData: UpsertPrescriptionRequest = {
         prescriptionCode: prescriptionData.prescriptionCode,
         hospitalName: prescriptionData.hospitalName,
         doctorName: prescriptionData.doctorName,
-        prescriptionDate: prescriptionData.prescriptionDate,
+        prescriptionDate: formatToISODate(prescriptionData.prescriptionDate),
         notes: prescriptionData.notes,
         images: [],
         medicines: prescriptionData.medicines.map(m => ({

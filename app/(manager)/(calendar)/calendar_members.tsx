@@ -2,7 +2,7 @@ import { useGetFamilyMembers } from "@/hooks/useFamily";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, ChevronRight, User } from "lucide-react-native";
 import React from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function CalendarMembersScreen() {
@@ -78,15 +78,24 @@ export default function CalendarMembersScreen() {
                                         params: {
                                             memberId: member.memberId,
                                             memberName: member.fullName,
-                                            familyName: familyName
+                                            familyName: familyName,
+                                            avatarUrl: member.avatarUrl || undefined
                                         }
                                     } as any);
                                 }}
                                 className="bg-white border-2 border-black rounded-[32px] p-6 shadow-md active:bg-gray-50 active:translate-y-0.5 active:shadow-sm"
                             >
                                 <View className="flex-row items-center gap-x-4">
-                                    <View className="w-16 h-16 rounded-[24px] border-2 border-black items-center justify-center shadow-sm bg-[#A3E6A1]">
-                                        <User size={32} color="#000" strokeWidth={2.5} />
+                                    <View className="w-16 h-16 rounded-[24px] border-2 border-black items-center justify-center shadow-sm bg-[#A3E6A1] overflow-hidden">
+                                        {member.avatarUrl ? (
+                                            <Image
+                                                source={{ uri: member.avatarUrl }}
+                                                className="w-full h-full"
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <User size={32} color="#000" strokeWidth={2.5} />
+                                        )}
                                     </View>
                                     <View className="flex-1">
                                         <Text className="text-xl text-black font-space-bold" numberOfLines={1}>

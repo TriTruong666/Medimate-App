@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "@/components/ManagerHeader";
 import { useGetFamilies } from "@/hooks/useFamily";
 import { useRouter } from "expo-router";
+import { Image } from "react-native";
 
 dayjs.locale("vi");
 
@@ -99,13 +100,19 @@ export default function MedicationCalendarScreen() {
                             >
                                 <View className="flex-row items-center gap-x-4">
                                     <View
-                                        className="w-16 h-16 rounded-[24px] border-2 border-black items-center justify-center shadow-sm"
+                                        className="w-16 h-16 rounded-[24px] border-2 border-black items-center justify-center shadow-sm overflow-hidden"
                                         style={{
                                             backgroundColor:
                                                 family.type === "Personal" ? "#87CEFA" : "#D9AEF6",
                                         }}
                                     >
-                                        {family.type === "Personal" ? (
+                                        {family.familyAvatarUrl ? (
+                                            <Image
+                                                source={{ uri: family.familyAvatarUrl }}
+                                                className="w-full h-full"
+                                                resizeMode="cover" // Đổi contentFit thành resizeMode
+                                            />
+                                        ) : family.type === "Personal" ? (
                                             <User size={32} color="#000" strokeWidth={2.5} />
                                         ) : (
                                             <Users size={32} color="#000" strokeWidth={2.5} />

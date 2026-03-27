@@ -1,6 +1,8 @@
 import { useUpdateFamily } from "@/hooks/useFamily";
 import { FamilyData } from "@/types/Family";
 import { Check, Edit3, X } from "lucide-react-native";
+import { Feather } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
@@ -10,6 +12,7 @@ import {
     Text,
     TextInput,
     View,
+    Image,
 } from "react-native";
 
 interface EditFamilyPopupProps {
@@ -19,16 +22,39 @@ interface EditFamilyPopupProps {
 
 export const EditFamilyPopup = ({ family, onClose }: EditFamilyPopupProps) => {
     const [familyName, setFamilyName] = useState(family.familyName);
+    const [avatarUri, setAvatarUri] = useState<string | null>(family.familyAvatarUrl || null);
+    const [avatarFile, setAvatarFile] = useState<any>(null);
+
     const { mutate: updateFamily, isPending } = useUpdateFamily();
 
+    const handlePickImage = async () => {
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+        });
+
+        if (!result.canceled) {
+            setAvatarUri(result.assets[0].uri);
+            setAvatarFile({
+                uri: result.assets[0].uri,
+                name: "avatar.jpg",
+                type: "image/jpeg",
+            });
+        }
+    };
+
     const handleUpdate = () => {
-        if (!familyName.trim() || familyName === family.familyName) {
+        if (!familyName.trim()) return;
+
+        if (familyName === family.familyName && !avatarFile) {
             onClose();
             return;
         }
 
         updateFamily(
-            { id: family.familyId, data: { familyName: familyName.trim(), isOpenJoin: family.isOpenJoin } },
+            { id: family.familyId, data: { familyName: familyName.trim(), isOpenJoin: family.isOpenJoin, familyAvatar: avatarFile } },
             {
                 onSuccess: () => {
                     onClose();
@@ -66,6 +92,26 @@ export const EditFamilyPopup = ({ family, onClose }: EditFamilyPopupProps) => {
                             className="w-10 h-10 bg-white border-2 border-black rounded-full items-center justify-center active:bg-gray-100"
                         >
                             <X size={20} color="#000" />
+                        </Pressable>
+                    </View>
+
+                    {/* Avatar Picking Section */}
+                    <View className="items-center mb-6">
+                        <Pressable onPress={handlePickImage} className="relative active:opacity-80">
+                            <View className="w-24 h-24 rounded-full border-4 border-black bg-[#D9AEF6] items-center justify-center overflow-hidden shadow-sm">
+                                {Boolean(avatarUri) ? (
+                                    <Image
+                                        source={{ uri: avatarUri as string }}
+                                        className="w-full h-full"
+                                        resizeMode="cover"
+                                    />
+                                ) : (
+                                    <Feather name="users" size={32} color="#000" />
+                                )}
+                            </View>
+                            <View className="absolute bottom-0 right-0 w-8 h-8 bg-[#FFD700] border-2 border-black rounded-full items-center justify-center shadow-sm">
+                                <Feather name="image" size={14} color="#000" />
+                            </View>
                         </Pressable>
                     </View>
 
