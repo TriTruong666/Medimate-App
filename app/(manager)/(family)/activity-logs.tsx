@@ -37,6 +37,11 @@ export default function ActivityLogsScreen() {
     const router = useRouter();
     const { familyId } = useLocalSearchParams<{ familyId: string }>();
     const [page, setPage] = useState(1);
+    const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
+
+    const toggleExpand = (logId: string) => {
+        setExpandedLogs(prev => ({ ...prev, [logId]: !prev[logId] }));
+    };
 
     const { data: logPage, isLoading, isFetching } = useGetFamilyActivityLogs(familyId, page, 20);
 
@@ -59,12 +64,53 @@ export default function ActivityLogsScreen() {
                             <User size={14} color="#000" className="mr-1" /> {item.memberName || "Hệ thống"}
                         </Text>
                         <Text className="text-[10px] font-space-bold text-gray-400 uppercase tracking-wider">
-                            {formatDate(item.createdAt)}
+                            {item.createAt || item.createdAt ? formatDate(item.createAt || item.createdAt) : "N/A"}
                         </Text>
                     </View>
                     <Text className="text-[13px] font-space-medium text-black/70 leading-relaxed">
                         {item.description}
                     </Text>
+
+                    {item.actionType?.toUpperCase() === "UPDATE" && item.oldDataJson && item.newDataJson && (
+                        <Pressable 
+                            onPress={() => toggleExpand(item.logId)}
+                            className="mt-2 bg-gray-100 self-start px-3 py-1.5 rounded-lg border border-gray-300"
+                        >
+                            <Text className="text-[11px] font-space-bold text-black">
+                                {expandedLogs[item.logId] ? "Ẩn chi tiết" : "Xem chi tiết"}
+                            </Text>
+                        </Pressable>
+                    )}
+
+                    {expandedLogs[item.logId] && item.actionType?.toUpperCase() === "UPDATE" && (
+                        <View className="mt-3 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-3">
+                            <Text className="text-[11px] font-space-bold text-gray-500 mb-2 uppercase tracking-wider">Thay đổi:</Text>
+                            {(() => {
+                                try {
+                                    const oldData = JSON.parse(item.oldDataJson);
+                                    const newData = JSON.parse(item.newDataJson);
+                                    const keys = Object.keys(newData);
+                                    return keys.map(key => {
+                                        const oldVal = oldData[key];
+                                        const newVal = newData[key];
+                                        if (oldVal === newVal) return null;
+                                        return (
+                                            <View key={key} className="mb-1.5">
+                                                <Text className="text-xs font-space-medium text-black mb-0.5">{key}:</Text>
+                                                <View className="flex-row items-center flex-wrap gap-1">
+                                                    <Text className="text-[13px] font-space-medium text-red-500 line-through bg-red-100 px-1 rounded">{String(oldVal || "Trống")}</Text>
+                                                    <AntDesign name="arrow-right" size={12} color="#000" />
+                                                    <Text className="text-[13px] font-space-bold text-green-600 bg-green-100 px-1 rounded">{String(newVal || "Trống")}</Text>
+                                                </View>
+                                            </View>
+                                        );
+                                    });
+                                } catch (e) {
+                                    return <Text className="text-xs text-red-500 font-space-medium">Lỗi hiển thị dữ liệu</Text>;
+                                }
+                            })()}
+                        </View>
+                    )}
                 </View>
             </View>
         );

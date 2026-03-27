@@ -21,7 +21,7 @@ const MENU_ITEMS = [
   {
     icon: Users,
     label: "Quản lý gia đình",
-    subtitle: "Sửa, xóa gia đình",
+    subtitle: "Quản lý gia đình của tôi",
     color: "#A3E6A1",
     route: "/(manager)/(family)" as const,
   },
@@ -151,7 +151,7 @@ export default function SettingsScreen() {
                   </Text>
                   <Text className="text-[15px] text-gray-600 font-space-medium mt-0.5" numberOfLines={1}>
                     {/* Hiển thị Email nếu là User, hiển thị SĐT nếu là Member */}
-                    {userId ? (displayData as any)?.email : (displayData as any)?.phoneNumber || ""}
+                    {userId ? (displayData as any)?.email : "Người quản lý gia đình"}
                   </Text>
                 </>
               )}

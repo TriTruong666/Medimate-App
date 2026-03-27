@@ -138,7 +138,13 @@ export default function MemberScheduleScreen() {
           </Pressable>
         </View>
 
-        <View style={{ zIndex: 200 }}>
+        <View style={{ zIndex: 200, flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={() => router.push({ pathname: "/(manager)/(prescription)/member_prescriptions", params: { memberId, memberName } } as any)}
+            style={{ width: 44, height: 44, backgroundColor: "#FFF", borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, alignItems: "center", justifyContent: "center" }}
+          >
+             <FileText size={22} color="#000" strokeWidth={2.5} />
+          </Pressable>
           <Pressable
             onPress={() => setShowAddMenu(!showAddMenu)}
             style={{ width: 44, height: 44, backgroundColor: showAddMenu ? "#FCA5A5" : MINT_GREEN, borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, alignItems: "center", justifyContent: "center" }}

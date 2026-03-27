@@ -11,7 +11,7 @@ const MENU_ITEMS = [
   {
     icon: Users,
     label: "Gia đình của tôi",
-    subtitle: "Xem thông tin các nhóm",
+    subtitle: "Xem thông tin gia đình",
     color: "#A3E6A1",
     route: "/(member)/(family)/family-members" as const,
   },
@@ -92,7 +92,7 @@ export default function MemberProfileScreen() {
                     {memberProfile?.fullName || "Người dùng"}
                   </Text>
                   <Text className="text-[15px] text-gray-600 font-space-medium mt-0.5" numberOfLines={1}>
-                    {memberProfile?.phoneNumber || ""}
+                    Thành viên gia đình
                   </Text>
                 </>
               )}

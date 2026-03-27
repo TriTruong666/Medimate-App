@@ -1,7 +1,7 @@
 import { useGetMemberById } from "@/hooks/useMember";
 import { useGetMemberDailyReminders, useGetMemberSchedules, useUpdateReminderAction } from "@/hooks/useSchedule";
-import { getDecodedToken } from "@/utils/token";
 import { ReminderResponse } from "@/types/Schedule";
+import { getDecodedToken } from "@/utils/token";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import { useRouter } from "expo-router";
@@ -373,8 +373,7 @@ function TimelineItem({
         </View>
 
         {/* ACTIONS AREA */}
-        <View style={{ marginTop: 14, gap: 8 }}>
-          {/* NÚT XÁC NHẬN (Luôn hiện nếu chưa uống) */}
+        {/* <View style={{ marginTop: 14, gap: 8 }}>
           {!isTaken && (
             <Pressable
               onPress={() => {
@@ -395,7 +394,7 @@ function TimelineItem({
               )}
             </Pressable>
           )}
-        </View>
+        </View> */}
       </View>
     </View>
   );

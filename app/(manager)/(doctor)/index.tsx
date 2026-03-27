@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
     Edit3,
-    Pill,
     RefreshCw,
     Share2,
     Trash2,
@@ -187,20 +186,12 @@ export default function MemberDetailScreen() {
 
                     <View className="flex-1 bg-white border-2 border-black rounded-[24px] p-4 shadow-sm">
                         <View className="w-10 h-10 bg-[#D9AEF6] rounded-2xl border-2 border-black items-center justify-center mb-2">
-                            <Pill size={20} color="#000" strokeWidth={2.5} />
+                            <TrendingUp size={20} color="#000" strokeWidth={2.5} />
                         </View>
-                        <Text className="text-sm text-gray-400 font-space-bold">Đang dùng</Text>
+                        <Text className="text-sm text-gray-400 font-space-bold">Chỉ số</Text>
                         <Text className="text-3xl text-black font-space-bold">--</Text>
-                        <Text className="text-xs text-gray-400 font-space-medium">loại thuốc</Text>
+                        <Text className="text-xs text-gray-400 font-space-medium">trạng thái</Text>
                     </View>
-                </View>
-
-                <Text className="text-xl text-black font-space-bold mb-3">Danh sách thuốc</Text>
-
-                <View className="bg-gray-100 border-2 border-black/10 rounded-[20px] p-6 mb-6 items-center justify-center border-dashed">
-                    <Text className="text-gray-400 font-space-medium text-center">
-                        Chưa có dữ liệu thuốc.{"\n"}Vui lòng cập nhật API Đơn thuốc.
-                    </Text>
                 </View>
 
                 {/* Delete Member */}
