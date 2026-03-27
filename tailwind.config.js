@@ -35,6 +35,12 @@ module.exports = {
         'space-semibold': ["SpaceGrotesk_600SemiBold"],
         'space-bold': ["SpaceGrotesk_700Bold"],
         'zen': ["ZenTokyoZoo_400Regular"],
+        'outfit-regular': ["Outfit-Regular"],
+        'outfit-medium': ["Outfit-Medium"],
+        'outfit-semibold': ["Outfit-SemiBold"],
+        'outfit-bold': ["Outfit-Bold"],
+        'outfit-extrabold': ["Outfit-ExtraBold"],
+        'outfit-black': ["Outfit-Black"],
       },
       borderRadius: {
         card: "32px",

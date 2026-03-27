@@ -10,6 +10,8 @@ import { HealthConditionPopup } from './HealthConditionPopup';
 import { HealthProfilePopup } from './HealthProfilePopup';
 import { MedicinePopup } from './MedicinePopup';
 import { SelectFamilyMemberPopup } from './SelectFamilyMemberPopup';
+import { CheckoutPopup } from './CheckoutPopup';
+import { SuccessPaymentPopup } from './SuccessPaymentPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -35,7 +37,7 @@ export const PopupContainer: React.FC = () => {
         <Modal
             transparent
             visible={!!activePopup}
-            animationType="fade"
+            animationType="none"
             onRequestClose={handleClose}
         >
             {activePopup.type === 'medicine_detail' && (
@@ -96,6 +98,22 @@ export const PopupContainer: React.FC = () => {
             {activePopup.type === 'select_family_member' && (
                 <SelectFamilyMemberPopup
                     onSave={handleSave}
+                    onClose={handleClose}
+                />
+            )}
+
+            {activePopup.type === 'checkout' && (
+                <CheckoutPopup
+                    plan={activePopup.data}
+                    onClose={handleClose}
+                    onConfirm={handleConfirm}
+                />
+            )}
+
+            {activePopup.type === 'success_payment' && (
+                <SuccessPaymentPopup
+                    plan={activePopup.data.plan}
+                    method={activePopup.data.method}
                     onClose={handleClose}
                 />
             )}
