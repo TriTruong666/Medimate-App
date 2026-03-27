@@ -17,12 +17,21 @@ import { axiosClient } from "./client";
 // --- PAYMENT APIs ---
 
 // Tạo yêu cầu thanh toán mới
+// Server trả về raw object { paymentUrl, orderCode, qrCode, message }
+// KHÔNG bọc trong BaseResponse → tự wrap tại đây
 export async function createPayment(data: CreatePaymentRequest): Promise<BaseResponse<CreatePaymentResponse>> {
     try {
         const res = await axiosClient.post("/api/v1/payment/create", data);
-        return res.data;
+        const raw = res.data as CreatePaymentResponse & { message?: string };
+        // Nếu có paymentUrl → thành công
+        if (raw?.paymentUrl) {
+            return { success: true, code: 200, data: raw, message: raw.message ?? "Payment link created successfully" };
+        }
+        // Trường hợp server đã bọc BaseResponse bình thường
+        if (raw && "success" in raw) return raw as any;
+        return { success: false, code: 400, message: (raw as any)?.message ?? "Tạo thanh toán thất bại" };
     } catch (error: any) {
-        if (error.response?.data) return error.response.data;
+        if (error.response?.data) return { success: false, code: error.response.status ?? 500, message: error.response.data?.message ?? "Lỗi kết nối" };
         throw error;
     }
 }
