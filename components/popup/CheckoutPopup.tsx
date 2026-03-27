@@ -75,12 +75,12 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({ plan, onClose, onC
             router.push({
                 pathname: '/(manager)/(subscription)/payment-webview',
                 params: {
-                    url:        res.data.paymentUrl,
-                    qrCode:     res.data.qrCode ?? '',
-                    planName:   plan.name,
+                    url: res.data.paymentUrl,
+                    qrCode: res.data.qrCode ?? '',
+                    planName: plan.name,
                     familyName: selectedFamily.familyName,
-                    price:      plan.price,
-                    orderCode:  String(res.data.orderCode ?? ''),
+                    price: plan.price,
+                    orderCode: String(res.data.orderCode ?? ''),
                 },
             });
         } else {
@@ -174,70 +174,81 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({ plan, onClose, onC
                         </Pressable>
                     </View>
                 </View>
+            ) : (
+            /* ═══════════════════════════════════════════════
+               SUCCESS VIEW — Blackbird Pay Style (Centered White)
+               ═══════════════════════════════════════════════ */
+            <View style={{ backgroundColor: '#FFF', borderRadius: 28, padding: 28, width: '100%', shadowColor: '#000', shadowOffset: { width: 4, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 12 }}>
+
+                {/* Brand Tag */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', letterSpacing: 1.5, textTransform: 'uppercase' }}>MEDIMATE</Text>
+                    <View style={{ backgroundColor: '#000', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 8, color: '#FFF', textTransform: 'uppercase' }}>PAY</Text>
             )}
 
-            {/* ════════════════════════════════════
+                        {/* ════════════════════════════════════
                 STEP 2 — XÁC NHẬN & THANH TOÁN
             ════════════════════════════════════ */}
-            {step === 'payment' && (
-                <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
-                    <View className="flex-row items-center justify-between mb-6">
-                        <View className="flex-row items-center gap-x-3">
-                            <View className="w-12 h-12 rounded-2xl border-2 border-black items-center justify-center" style={{ backgroundColor: headerColor }}>
-                                {isPremium ? <Crown size={24} color="black" /> : <Star size={24} color="black" />}
+                        {step === 'payment' && (
+                            <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+                                <View className="flex-row items-center justify-between mb-6">
+                                    <View className="flex-row items-center gap-x-3">
+                                        <View className="w-12 h-12 rounded-2xl border-2 border-black items-center justify-center" style={{ backgroundColor: headerColor }}>
+                                            {isPremium ? <Crown size={24} color="black" /> : <Star size={24} color="black" />}
+                                        </View>
+                                        <View>
+                                            <Text className="text-xl font-space-bold text-black">Xác nhận</Text>
+                                            <Text className="text-xs font-space-medium text-gray-500">Gói {plan.name}</Text>
+                                        </View>
+                                    </View>
+                                    <Pressable onPress={onClose} className="w-10 h-10 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
+                                        <X size={20} color="black" strokeWidth={2.5} />
+                                    </Pressable>
+                                </View>
+
+                                {/* Summary */}
+                                <View style={{ borderWidth: 2, borderColor: '#000', borderRadius: 20, padding: 20, backgroundColor: headerColor, marginBottom: 20, gap: 10 }}>
+                                    <View className="flex-row justify-between items-center">
+                                        <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Gói dịch vụ</Text>
+                                        <Text className="text-base font-space-bold text-black">{plan.name}</Text>
+                                    </View>
+                                    <View className="flex-row justify-between items-center">
+                                        <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Gia đình</Text>
+                                        <Text className="text-base font-space-bold text-black">{selectedFamily?.familyName}</Text>
+                                    </View>
+                                    <View className="h-[1px] bg-black/10 my-1" />
+                                    <View className="flex-row justify-between items-center">
+                                        <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Tổng cộng</Text>
+                                        <Text className="text-xl font-space-bold text-black">{plan.price}</Text>
+                                    </View>
+                                </View>
+
+                                <View className="flex-row items-center gap-x-3 mb-5 px-4 py-3 bg-white border-2 border-black/10 rounded-2xl">
+                                    <Landmark size={22} color="#555" strokeWidth={2} />
+                                    <Text className="flex-1 text-sm font-space-medium text-black/60 leading-5">
+                                        Trang thanh toán <Text className="font-space-bold text-black">PayOS</Text> sẽ mở ngay sau khi bấm thanh toán.
+                                    </Text>
+                                </View>
+
+                                {errorMsg ? <Text className="text-sm font-space-bold text-red-500 text-center mb-4">{errorMsg}</Text> : null}
+
+                                <View className="flex-row gap-x-4">
+                                    <Pressable onPress={() => setStep('select_family')} className="flex-1 h-14 bg-white border-2 border-black rounded-2xl items-center justify-center">
+                                        <Text className="font-space-bold uppercase text-black">Quay lại</Text>
+                                    </Pressable>
+                                    <Pressable
+                                        onPress={handlePayment}
+                                        disabled={paying}
+                                        style={{ flex: 1, height: 56, borderWidth: 2, borderColor: '#000', borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: paying ? '#DDD' : headerColor }}
+                                    >
+                                        {paying
+                                            ? <ActivityIndicator size="small" color="#000" />
+                                            : <Text className="font-space-bold uppercase text-black">Thanh toán</Text>}
+                                    </Pressable>
+                                </View>
                             </View>
-                            <View>
-                                <Text className="text-xl font-space-bold text-black">Xác nhận</Text>
-                                <Text className="text-xs font-space-medium text-gray-500">Gói {plan.name}</Text>
-                            </View>
-                        </View>
-                        <Pressable onPress={onClose} className="w-10 h-10 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm">
-                            <X size={20} color="black" strokeWidth={2.5} />
-                        </Pressable>
-                    </View>
-
-                    {/* Summary */}
-                    <View style={{ borderWidth: 2, borderColor: '#000', borderRadius: 20, padding: 20, backgroundColor: headerColor, marginBottom: 20, gap: 10 }}>
-                        <View className="flex-row justify-between items-center">
-                            <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Gói dịch vụ</Text>
-                            <Text className="text-base font-space-bold text-black">{plan.name}</Text>
-                        </View>
-                        <View className="flex-row justify-between items-center">
-                            <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Gia đình</Text>
-                            <Text className="text-base font-space-bold text-black">{selectedFamily?.familyName}</Text>
-                        </View>
-                        <View className="h-[1px] bg-black/10 my-1" />
-                        <View className="flex-row justify-between items-center">
-                            <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Tổng cộng</Text>
-                            <Text className="text-xl font-space-bold text-black">{plan.price}</Text>
-                        </View>
-                    </View>
-
-                    <View className="flex-row items-center gap-x-3 mb-5 px-4 py-3 bg-white border-2 border-black/10 rounded-2xl">
-                        <Landmark size={22} color="#555" strokeWidth={2} />
-                        <Text className="flex-1 text-sm font-space-medium text-black/60 leading-5">
-                            Trang thanh toán <Text className="font-space-bold text-black">PayOS</Text> sẽ mở ngay sau khi bấm thanh toán.
-                        </Text>
-                    </View>
-
-                    {errorMsg ? <Text className="text-sm font-space-bold text-red-500 text-center mb-4">{errorMsg}</Text> : null}
-
-                    <View className="flex-row gap-x-4">
-                        <Pressable onPress={() => setStep('select_family')} className="flex-1 h-14 bg-white border-2 border-black rounded-2xl items-center justify-center">
-                            <Text className="font-space-bold uppercase text-black">Quay lại</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={handlePayment}
-                            disabled={paying}
-                            style={{ flex: 1, height: 56, borderWidth: 2, borderColor: '#000', borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: paying ? '#DDD' : headerColor }}
-                        >
-                            {paying
-                                ? <ActivityIndicator size="small" color="#000" />
-                                : <Text className="font-space-bold uppercase text-black">Thanh toán</Text>}
-                        </Pressable>
-                    </View>
-                </View>
-            )}
-        </BottomSheetBase>
-    );
+                        )}
+                    </BottomSheetBase>
+                    );
 };
