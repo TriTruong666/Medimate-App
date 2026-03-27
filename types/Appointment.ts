@@ -9,8 +9,15 @@ export type CreateAppointmentRequest = {
     doctorId: string;
     memberId: string;
     availabilityId: string;
-    appointmentDate: string; // ISO String
-    appointmentTime: string; // Chuỗi giờ (VD: "08:00")
+    appointmentDate: string;  // "YYYY-MM-DD"
+    appointmentTime: string;  // "HH:mm"
+    notes?: string;
+};
+
+export type RescheduleAppointmentRequest = {
+    availabilityId: string;
+    appointmentDate: string;
+    appointmentTime: string;
 };
 
 export type CancelAppointmentRequest = {
@@ -20,10 +27,24 @@ export type CancelAppointmentRequest = {
 export type AppointmentResponse = {
     appointmentId: string;
     doctorId: string;
+    doctorName?: string;
+    doctorSpecialty?: string;
+    doctorAvatarUrl?: string;
     memberId: string;
+    memberName?: string;
     availabilityId: string;
     appointmentDate: string;
-    status: string; // VD: "Pending", "Confirmed", "Cancelled"
+    appointmentTime?: string;
+    status: string;           // "Pending" | "Confirmed" | "Cancelled" | "Completed"
+    notes?: string;
     cancelReason?: string | null;
     createdAt: string;
+};
+
+export type AppointmentFilterRequest = {
+    status?: string;
+    fromDate?: string;
+    toDate?: string;
+    pageNumber?: number;
+    pageSize?: number;
 };
