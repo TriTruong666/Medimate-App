@@ -6,7 +6,7 @@ import BottomTab, { CenterButtonConfig, TabConfig } from "./BottomTab";
 const MANAGER_TABS: TabConfig[] = [
     { name: "(home)", icon: Heart, label: "Trang chủ" },
     { name: "(calendar)", icon: Calendar, label: "Lịch" },
-    { name: "(doctor)", icon: MessageCircle, label: "Tin nhắn" },
+    { name: "(doctor)", icon: MessageCircle, label: "Bác sĩ" },
     { name: "(settings)", icon: User, label: "Cá nhân" },
 ];
 

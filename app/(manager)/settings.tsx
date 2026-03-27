@@ -21,7 +21,7 @@ const MENU_ITEMS = [
   {
     icon: Users,
     label: "Quản lý gia đình",
-    subtitle: "Sửa, xóa gia đình",
+    subtitle: "Quản lý gia đình của tôi",
     color: "#A3E6A1",
     route: "/(manager)/(family)" as const,
   },
@@ -125,7 +125,7 @@ export default function SettingsScreen() {
           className="bg-white border-2 border-black rounded-[32px] p-6 mb-5 shadow-sm active:opacity-80"
           onPress={() => {
             // Thay đổi đường dẫn cho phù hợp với nơi bạn đặt file profile.tsx
-            router.push("/(manager)/profile");
+            router.push("/(manager)/(settings)/profile");
           }}
         >
           <View className="flex-row items-center">
@@ -151,7 +151,7 @@ export default function SettingsScreen() {
                   </Text>
                   <Text className="text-[15px] text-gray-600 font-space-medium mt-0.5" numberOfLines={1}>
                     {/* Hiển thị Email nếu là User, hiển thị SĐT nếu là Member */}
-                    {userId ? (displayData as any)?.email : (displayData as any)?.phoneNumber || "Chưa cập nhật thông tin"}
+                    {userId ? (displayData as any)?.email : "Người quản lý gia đình"}
                   </Text>
                 </>
               )}

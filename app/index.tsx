@@ -13,10 +13,10 @@ export default function Index() {
             const token = await SecureStore.getItemAsync("accessToken");
             if (token) {
                 const decoded = await getDecodedToken();
-                if (decoded?.Id) {
+                if (decoded?.MemberId) {
+                    setRoute("/(member)/(member-home)");
+                } else if (decoded?.Id) {
                     setRoute("/(manager)/(home)");
-                } else if (decoded?.MemberId) {
-                    setRoute("/(member)/home");
                 } else {
                     setRoute("/welcome");
                 }
@@ -29,9 +29,9 @@ export default function Index() {
     }, []);
 
     // Chế độ phát triển: Nhảy thẳng vào UI Explorer để chọn màn hình làm việc
-    if (__DEV__) {
-        return <Redirect href="/ui-explorer" />;
-    }
+    // if (__DEV__) {
+    //     return <Redirect href="/ui-explorer" />;
+    // }
 
     if (isLoading || !route) {
         return (

@@ -10,9 +10,31 @@ import {
 } from "lucide-react-native";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ManagerHeader from "../../components/ManagerHeader";
+import ManagerHeader from "../../../components/ManagerHeader";
+import { getDecodedToken } from "@/utils/token";
+import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
+import dayjs from "dayjs";
+import { useEffect, useState } from "react";
 
 export default function MemberHomeScreen() {
+    const [memberId, setMemberId] = useState<string | undefined>(undefined);
+
+    useEffect(() => {
+        const fetchToken = async () => {
+            const decoded = await getDecodedToken();
+            if (decoded) {
+                setMemberId(decoded.MemberId);
+            }
+        };
+        fetchToken();
+    }, []);
+
+    const todayStr = dayjs().format("YYYY-MM-DD");
+    const { data: reminders } = useGetMemberDailyReminders(memberId, todayStr);
+    
+    // Lấy cử uống gần nhất hoặc tiếp theo (Demo logic)
+    const nextReminder = reminders?.[0];
+
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
             <ManagerHeader />
@@ -29,10 +51,10 @@ export default function MemberHomeScreen() {
                     </View>
                     <View className="flex-1">
                         <Text className="text-[17px] text-black font-space-bold">
-                            Đến giờ uống thuốc rồi!
+                            {nextReminder ? "Đến giờ uống thuốc rồi!" : "Không có lịch uống thuốc"}
                         </Text>
                         <Text className="text-sm text-black/60 font-space-medium">
-                            Panadol 500mg • 2 viên
+                            {nextReminder ? `${nextReminder.scheduleName} • Lúc ${nextReminder.reminderTime}` : "Bạn đã hoàn thành hôm nay!"}
                         </Text>
                     </View>
                     <Pressable className="bg-black rounded-full p-1.5 shadow-sm">

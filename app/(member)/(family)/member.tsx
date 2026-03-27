@@ -1,9 +1,6 @@
 import { MemberDetailSkeleton } from "@/components/skeleton/MemberDetailSkeleton";
-import {
-    useGetHealthProfile,
-} from "@/hooks/useHealth";
-import { useGetMemberById } from "@/hooks/useMember";
-import { usePopup } from "@/stores/popupStore";
+import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
+import { useGetHealthProfile } from "@/hooks/useHealth";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
@@ -18,10 +15,16 @@ export default function MemberFamilyMemberDetailScreen() {
     const router = useRouter();
     const { id } = useLocalSearchParams<{ id: string }>();
 
-    const { data: member, isLoading: isFetchingMember } = useGetMemberById(id);
+    const { data: families, isLoading: isLoadingFamilies } = useGetFamilies();
+    const familyId = families?.[0]?.familyId;
+
+    // Fetch danh sách members trong gia đình thay vì getMemberById
+    const { data: familyMembers, isLoading: isFetchingMembers } = useGetFamilyMembers(familyId);
+    const member = familyMembers?.find((m: any) => m.memberId === id);
+
     const { data: healthProfile, isLoading: isFetchingHealth } = useGetHealthProfile(id);
 
-    if (isFetchingMember || isFetchingHealth) return <MemberDetailSkeleton />;
+    if (isLoadingFamilies || isFetchingMembers || isFetchingHealth) return <MemberDetailSkeleton />;
     if (!member) return null;
 
     const age = member.dateOfBirth ? new Date().getFullYear() - new Date(member.dateOfBirth).getFullYear() : "N/A";
