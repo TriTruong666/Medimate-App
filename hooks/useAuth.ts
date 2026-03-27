@@ -1,5 +1,6 @@
 // hooks/useAuth.ts
 import * as AuthApi from "@/apis/auth.api";
+import { authSessionAtom } from "@/stores/authStore";
 import { useToast } from "@/stores/toastStore";
 import {
   LoginDependentRequest,
@@ -7,19 +8,35 @@ import {
   RegisterRequest,
   VerifyOtpRequest,
 } from "@/types/Auth";
+import { jwtDecode } from "jwt-decode";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { useSetAtom } from "jotai";
 
 export function useLoginUser() {
   const queryClient = useQueryClient();
   const toast = useToast();
+  const setSession = useSetAtom(authSessionAtom);
 
   return useMutation({
     mutationFn: (data: LoginRequest) => AuthApi.loginUser(data),
     onSuccess: async (res) => {
       if (res.success && res.data?.token) {
         await SecureStore.setItemAsync("accessToken", res.data.token);
+
+        // Decode token và set session NGAY LẬP TỨC để AuthGuard không block
+        try {
+          const decoded = jwtDecode<{ Id?: string; MemberId?: string }>(res.data.token);
+          if (decoded?.MemberId) {
+            setSession({ memberId: decoded.MemberId, role: 'member' });
+          } else if (decoded?.Id) {
+            setSession({ id: decoded.Id, role: 'manager' });
+          }
+        } catch {
+          setSession({ role: 'manager' });
+        }
+
         queryClient.invalidateQueries({ queryKey: ["families"] });
         toast.success("Đăng nhập thành công", "Chào mừng bạn quay trở lại!");
         router.replace("/(manager)/(home)" as any);
@@ -95,12 +112,26 @@ export function useVerifyOtp() {
 
 export function useLoginDependent() {
   const toast = useToast();
+  const setSession = useSetAtom(authSessionAtom);
   return useMutation({
     mutationFn: async (data: LoginDependentRequest) =>
       AuthApi.loginDependent(data),
     onSuccess: async (res) => {
       if (res.success && res.data?.token) {
         await SecureStore.setItemAsync("accessToken", res.data.token);
+
+        // Set session ngay lập tức
+        try {
+          const decoded = jwtDecode<{ Id?: string; MemberId?: string }>(res.data.token);
+          if (decoded?.MemberId) {
+            setSession({ memberId: decoded.MemberId, role: 'member' });
+          } else {
+            setSession({ role: 'member' });
+          }
+        } catch {
+          setSession({ role: 'member' });
+        }
+
         toast.success("Đăng nhập thành công", "Chào mừng thành viên gia đình!");
         router.replace("/(member)/(member-home)" as any);
       } else {

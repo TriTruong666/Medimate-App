@@ -40,7 +40,8 @@ export default function MemberPrescriptionsScreen() {
                 <Text className="text-xl text-black font-space-bold">
                     Đơn thuốc
                 </Text>
-                <View className="w-12 h-12" /> {/* Spacer */}
+                {/* Spacer */}
+                <View className="w-12 h-12" />
             </View>
 
             <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 120, paddingTop: 10 }} showsVerticalScrollIndicator={false}>
@@ -106,9 +107,9 @@ export default function MemberPrescriptionsScreen() {
                                             • {med.medicineName} ({med.quantity} {med.unit})
                                         </Text>
                                     ))}
-                                    {pres.medicines?.length > 3 && (
+                                    {(pres.medicines?.length ?? 0) > 3 && (
                                         <Text className="text-xs font-space-bold text-gray-400 mt-1 italic">
-                                            + {pres.medicines.length - 3} loại khác...
+                                            + {pres.medicines!.length - 3} loại khác...
                                         </Text>
                                     )}
                                 </View>

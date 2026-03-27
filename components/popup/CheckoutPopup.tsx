@@ -1,11 +1,16 @@
-import { Check, CreditCard, Crown, Landmark, QrCode, Star, X } from 'lucide-react-native';
-import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { getFamilies } from '@/apis/family.api';
+import { createPayment } from '@/apis/payment.api';
+import { FamilyData } from '@/types/Family';
+import { CreatePaymentRequest } from '@/types/Payment';
+import { useRouter } from 'expo-router';
+import { Check, Crown, Landmark, Shield, Star, Users, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { BottomSheetBase } from './BottomSheetBase';
 
 interface CheckoutPopupProps {
     plan: {
-        id: string;
+        packageId: string;
         name: string;
         price: string;
         priceNote: string;
@@ -16,53 +21,190 @@ interface CheckoutPopupProps {
     onConfirm: () => void;
 }
 
-type PaymentMethod = 'credit' | 'banking';
+type Step = 'select_family' | 'payment';
 
-export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({
-    plan,
-    onClose,
-    onConfirm,
-}) => {
-    const [method, setMethod] = useState<PaymentMethod>('credit');
-    const [cardNumber, setCardNumber] = useState('');
-    const [expiry, setExpiry] = useState('');
-    const [cvv, setCvv] = useState('');
-    const [step, setStep] = useState<'payment' | 'success'>('payment');
+export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({ plan, onClose, onConfirm }) => {
+    const router = useRouter();
 
-    const isPremium = plan.id === 'premium';
+    const [step, setStep] = useState<Step>('select_family');
+    const [families, setFamilies] = useState<FamilyData[]>([]);
+    const [selectedFamily, setSelectedFamily] = useState<FamilyData | null>(null);
+    const [familiesLoading, setFamiliesLoading] = useState(true);
+    const [paying, setPaying] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
+
+    const isPremium = plan.badge === 'CAO CẤP';
     const headerColor = isPremium ? '#FFD700' : '#A3E6A1';
-    const accentColor = isPremium ? '#B8860B' : '#2D5A27';
 
-    const formatCard = (text: string) => {
-        const cleaned = text.replace(/\D/g, '').slice(0, 16);
-        return cleaned.replace(/(.{4})/g, '$1 ').trim();
-    };
+    useEffect(() => {
+        (async () => {
+            const res = await getFamilies();
+            if (res.success && res.data) {
+                const shared = res.data.filter(f => f.type === 'Shared');
+                setFamilies(shared);
+                if (shared.length === 1) setSelectedFamily(shared[0]);
+            }
+            setFamiliesLoading(false);
+        })();
+    }, []);
 
-    const formatExpiry = (text: string) => {
-        const cleaned = text.replace(/\D/g, '').slice(0, 4);
-        if (cleaned.length >= 3) {
-            return cleaned.slice(0, 2) + '/' + cleaned.slice(2);
+    const handlePayment = async () => {
+        if (!selectedFamily) return;
+        setPaying(true);
+        setErrorMsg('');
+
+        const body: CreatePaymentRequest = {
+            packageId: plan.packageId,
+            familyId: selectedFamily.familyId,
+            buyerName: selectedFamily.familyName,
+            buyerEmail: 'user@medimate.vn',
+            buyerPhone: '0900000000',
+            returnUrl: 'medimate://payment/success',
+            cancelUrl: 'medimate://payment/cancel',
+        };
+
+        const res = await createPayment(body);
+        setPaying(false);
+
+        if (res.success && res.data?.paymentUrl) {
+            onClose();
+            router.push({
+                pathname: '/(manager)/(subscription)/payment-webview',
+                params: {
+                    url: res.data.paymentUrl,
+                    qrCode: res.data.qrCode ?? '',
+                    planName: plan.name,
+                    familyName: selectedFamily.familyName,
+                    price: plan.price,
+                    orderCode: String(res.data.orderCode ?? ''),
+                },
+            });
+        } else {
+            setErrorMsg(res.message ?? 'Thanh toán thất bại. Vui lòng thử lại.');
         }
-        return cleaned;
-    };
-
-    const isFormValid = method === 'banking' || (cardNumber.replace(/\s/g, '').length === 16 && expiry.length === 5 && cvv.length === 3);
-
-    const handlePayment = () => {
-        // Switch internally to avoid "double popup" issues
-        setStep('success');
-    };
-
-    const handleDone = () => {
-        onClose();
     };
 
     return (
-        <BottomSheetBase onClose={handleDone} centered={step === 'success'}>
-            {step === 'payment' ? (
-                /* ═══════════════════════════════════════════════
-                   PAYMENT VIEW — Bottom Sheet Style (Light)
-                   ═══════════════════════════════════════════════ */
+        <BottomSheetBase onClose={onClose} centered={false}>
+
+            {/* ════════════════════════════════════
+                STEP 1 — CHỌN GIA ĐÌNH
+            ════════════════════════════════════ */}
+            {step === 'select_family' && (
+                <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
+                    {/* Header */}
+                    <View className="flex-row items-center justify-between mb-6">
+                        <View className="flex-row items-center gap-x-3">
+                            <View
+                                className="w-12 h-12 rounded-2xl border-2 border-black items-center justify-center"
+                                style={{ backgroundColor: headerColor }}
+                            >
+                                <Users size={24} color="black" />
+                            </View>
+                            <View>
+                                <Text className="text-xl font-space-bold text-black">Chọn gia đình</Text>
+                                <Text className="text-xs font-space-medium text-gray-500">
+                                    Gói {plan.name} — {plan.price}
+                                </Text>
+                            </View>
+                        </View>
+                        <Pressable
+                            onPress={onClose}
+                            className="w-10 h-10 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm"
+                        >
+                            <X size={20} color="black" strokeWidth={2.5} />
+                        </Pressable>
+                    </View>
+
+                    {/* Family list */}
+                    {familiesLoading ? (
+                        <View className="items-center py-10">
+                            <ActivityIndicator size="small" color="#000" />
+                            <Text className="mt-2 text-xs font-space-medium text-black/40">
+                                Đang tải danh sách gia đình...
+                            </Text>
+                        </View>
+                    ) : families.length === 0 ? (
+                        <View className="items-center py-10 px-4">
+                            <Shield size={40} color="#CCC" />
+                            <Text className="mt-3 text-sm font-space-bold text-black/50 text-center">
+                                Bạn chưa có gia đình nào.{'\n'}Hãy tạo gia đình trước khi đăng ký gói.
+                            </Text>
+                        </View>
+                    ) : (
+                        <View className="gap-y-3 mb-6">
+                            {families.map((fam) => {
+                                const isSel = selectedFamily?.familyId === fam.familyId;
+                                return (
+                                    <Pressable
+                                        key={fam.familyId}
+                                        onPress={() => setSelectedFamily(fam)}
+                                        style={{
+                                            borderWidth: 2,
+                                            borderColor: isSel ? '#000' : '#E0E0E0',
+                                            borderRadius: 20,
+                                            padding: 16,
+                                            backgroundColor: isSel ? headerColor : '#FFF',
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            gap: 12,
+                                            shadowColor: '#000',
+                                            shadowOffset: isSel ? { width: 3, height: 3 } : { width: 0, height: 0 },
+                                            shadowOpacity: isSel ? 1 : 0,
+                                            shadowRadius: 0,
+                                            elevation: isSel ? 3 : 0,
+                                        }}
+                                    >
+                                        <View style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#F9F6FC', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Users size={22} color="#000" strokeWidth={2} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text className="text-base font-space-bold text-black">{fam.familyName}</Text>
+                                            <Text className="text-xs font-space-medium text-black/50">{fam.memberCount} thành viên</Text>
+                                        </View>
+                                        {isSel && (
+                                            <View className="w-7 h-7 rounded-full bg-black items-center justify-center">
+                                                <Check size={16} color="#FFF" strokeWidth={3} />
+                                            </View>
+                                        )}
+                                    </Pressable>
+                                );
+                            })}
+                        </View>
+                    )}
+
+                    {/* Buttons */}
+                    <View className="flex-row gap-x-4 mt-2">
+                        <Pressable
+                            onPress={onClose}
+                            className="flex-1 h-14 bg-white border-2 border-black rounded-2xl items-center justify-center"
+                        >
+                            <Text className="font-space-bold uppercase text-black">Hủy</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={() => { if (selectedFamily) setStep('payment'); }}
+                            disabled={!selectedFamily || familiesLoading}
+                            style={{
+                                flex: 1,
+                                height: 56,
+                                borderWidth: 2,
+                                borderColor: '#000',
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: selectedFamily && !familiesLoading ? '#000' : '#DDD',
+                            }}
+                        >
+                            <Text className="font-space-bold uppercase text-white">Tiếp tục</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            )}
+
+            {/* ════════════════════════════════════
+                STEP 2 — XÁC NHẬN & THANH TOÁN
+            ════════════════════════════════════ */}
+            {step === 'payment' && (
                 <View style={{ paddingHorizontal: 24, paddingTop: 8 }}>
                     {/* Header */}
                     <View className="flex-row items-center justify-between mb-6">
@@ -74,8 +216,8 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({
                                 {isPremium ? <Crown size={24} color="black" /> : <Star size={24} color="black" />}
                             </View>
                             <View>
-                                <Text className="text-xl font-space-bold text-black font-space-bold">Thanh toán</Text>
-                                <Text className="text-xs font-space-medium text-gray-500 font-space-medium">Gói {plan.name}</Text>
+                                <Text className="text-xl font-space-bold text-black">Xác nhận</Text>
+                                <Text className="text-xs font-space-medium text-gray-500">Gói {plan.name}</Text>
                             </View>
                         </View>
                         <Pressable
@@ -86,203 +228,62 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({
                         </Pressable>
                     </View>
 
-                    {/* Method Tabs */}
-                    <View className="flex-row gap-x-3 mb-6">
-                        <Pressable
-                            onPress={() => setMethod('credit')}
-                            style={{
-                                flex: 1,
-                                height: 52,
-                                borderWidth: 2,
-                                borderColor: '#000',
-                                borderRadius: 16,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                backgroundColor: method === 'credit' ? '#000' : '#FFF',
-                            }}
-                        >
-                            <CreditCard size={18} color={method === 'credit' ? '#FFF' : '#000'} strokeWidth={2.5} />
-                            <Text className="font-space-bold uppercase text-[11px]" style={{ color: method === 'credit' ? '#FFF' : '#000' }}>
-                                Thẻ tín dụng
-                            </Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={() => setMethod('banking')}
-                            style={{
-                                flex: 1,
-                                height: 52,
-                                borderWidth: 2,
-                                borderColor: '#000',
-                                borderRadius: 16,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                backgroundColor: method === 'banking' ? '#000' : '#FFF',
-                            }}
-                        >
-                            <Landmark size={18} color={method === 'banking' ? '#FFF' : '#000'} strokeWidth={2.5} />
-                            <Text className="font-space-bold uppercase text-[11px]" style={{ color: method === 'banking' ? '#FFF' : '#000' }}>
-                                Banking QR
-                            </Text>
-                        </Pressable>
-                    </View>
-
-                    {/* Form/QR */}
-                    <View className="mb-4">
-                        {method === 'credit' ? (
-                            <View>
-                                <View className="flex-row items-center bg-white border-2 border-black rounded-2xl px-4 py-1 mb-3 shadow-sm">
-                                    <CreditCard size={20} color="#000" strokeWidth={2} />
-                                    <TextInput
-                                        className="flex-1 h-12 ml-3 font-space-bold text-black"
-                                        placeholder="0000 0000 0000 0000"
-                                        placeholderTextColor="#A0A0A0"
-                                        value={cardNumber}
-                                        onChangeText={(t) => setCardNumber(formatCard(t))}
-                                        keyboardType="number-pad"
-                                        maxLength={19}
-                                    />
-                                </View>
-                                <View className="flex-row gap-x-3">
-                                    <View className="flex-1 flex-row items-center bg-white border-2 border-black rounded-2xl px-4 py-1 shadow-sm">
-                                        <TextInput className="flex-1 h-12 font-space-bold text-black" placeholder="MM/YY" placeholderTextColor="#A0A0A0" value={expiry} onChangeText={formatExpiry} keyboardType="number-pad" maxLength={5} />
-                                    </View>
-                                    <View className="flex-1 flex-row items-center bg-white border-2 border-black rounded-2xl px-4 py-1 shadow-sm">
-                                        <TextInput className="flex-1 h-12 font-space-bold text-black" placeholder="CVV" placeholderTextColor="#A0A0A0" value={cvv} onChangeText={t => setCvv(t.replace(/\D/g, '').slice(0, 3))} keyboardType="number-pad" maxLength={3} secureTextEntry />
-                                    </View>
-                                </View>
-                            </View>
-                        ) : (
-                            <View style={{ backgroundColor: '#F9F6FC', borderStyle: 'dashed', borderWidth: 2, borderColor: '#000', borderRadius: 28, padding: 20 }}>
-                                {/* Receipt Header */}
-                                <View className="flex-row justify-between items-center mb-6">
-                                    <View>
-                                        <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-widest">Tổng thanh toán</Text>
-                                        <Text className="text-2xl font-space-bold text-black">{plan.price}</Text>
-                                    </View>
-                                    <View className="bg-black px-3 py-1.5 rounded-xl">
-                                        <Text className="text-[9px] font-space-bold text-white uppercase tracking-tighter">Hóa đơn chờ</Text>
-                                    </View>
-                                </View>
-
-                                {/* QR Scanner Frame */}
-                                <View className="items-center mb-6">
-                                    <View className="p-4 bg-white border-2 border-black rounded-[32px] shadow-sm relative">
-                                        {/* Scanner Corners */}
-                                        <View className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-black rounded-tl-lg opacity-20" />
-                                        <View className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-black rounded-tr-lg opacity-20" />
-                                        <View className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-black rounded-bl-lg opacity-20" />
-                                        <View className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-black rounded-br-lg opacity-20" />
-
-                                        <View className="bg-[#A3E6A1]/10 rounded-2xl p-2 items-center justify-center">
-                                            <QrCode size={130} color="#000" strokeWidth={1.5} />
-                                        </View>
-                                    </View>
-                                </View>
-
-                                {/* Banking Master Info */}
-                                <View className="gap-y-3">
-                                    <View className="bg-white border-2 border-black rounded-2xl p-4 shadow-sm">
-                                        <View className="flex-row items-center mb-1">
-                                            <Landmark size={14} color="#000" strokeWidth={2.5} />
-                                            <Text className="text-[10px] font-space-bold text-black/40 uppercase ml-2">Tài khoản thụ hưởng</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-end">
-                                            <View>
-                                                <Text className="text-sm font-space-bold text-black italic">Vietcombank (VCB)</Text>
-                                                <Text className="text-lg font-space-bold text-black tracking-wider">1234 5678 9000</Text>
-                                            </View>
-                                            <Pressable className="bg-black px-3 py-1.5 rounded-xl border border-black shadow-sm active:translate-y-0.5">
-                                                <Text className="text-[10px] font-space-bold text-white">SAO CHÉP</Text>
-                                            </Pressable>
-                                        </View>
-                                    </View>
-
-                                    <View className="bg-white border-2 border-black rounded-2xl p-4 shadow-sm">
-                                        <View className="flex-row items-center mb-1">
-                                            <Check size={14} color="#2D5A27" strokeWidth={3} />
-                                            <Text className="text-[10px] font-space-bold text-black/40 uppercase ml-2">Nội dung chuyển khoản</Text>
-                                        </View>
-                                        <View className="flex-row justify-between items-end">
-                                            <Text className="text-sm font-space-bold text-black uppercase">MDM {plan.id.toUpperCase()} 2026</Text>
-                                            <Pressable className="bg-gray-100 px-3 py-1.5 rounded-xl border border-black/10 active:bg-gray-200">
-                                                <Text className="text-[10px] font-space-bold text-black/40">COPY</Text>
-                                            </Pressable>
-                                        </View>
-                                    </View>
-                                </View>
-
-                                <Text className="text-[9px] font-space-bold text-black/20 text-center mt-6 italic">
-                                    Thanh toán sẽ được tự động xác nhận sau 1-2 phút
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Confirm Button */}
-                    <View className="flex-row gap-x-4 mt-2">
-                        <Pressable onPress={onClose} className="flex-1 h-14 bg-white border-2 border-black rounded-2xl items-center justify-center">
-                            <Text className="font-space-bold uppercase text-black">Hủy</Text>
-                        </Pressable>
-                        <Pressable
-                            onPress={handlePayment}
-                            disabled={!isFormValid}
-                            style={{ flex: 1, height: 56, borderWidth: 2, borderColor: '#000', borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: isFormValid ? headerColor : '#DDD' }}
-                        >
-                            <Text className="font-space-bold uppercase text-black">Thanh toán</Text>
-                        </Pressable>
-                    </View>
-                </View>
-            ) : (
-                /* ═══════════════════════════════════════════════
-                   SUCCESS VIEW — Blackbird Pay Style (Centered White)
-                   ═══════════════════════════════════════════════ */
-                <View style={{ backgroundColor: '#FFF', borderRadius: 28, padding: 28, width: '100%', shadowColor: '#000', shadowOffset: { width: 4, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 12 }}>
-
-                    {/* Brand Tag */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', letterSpacing: 1.5, textTransform: 'uppercase' }}>MEDIMATE</Text>
-                        <View style={{ backgroundColor: '#000', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 8, color: '#FFF', textTransform: 'uppercase' }}>PAY</Text>
+                    {/* Summary card */}
+                    <View style={{ borderWidth: 2, borderColor: '#000', borderRadius: 20, padding: 20, backgroundColor: headerColor, marginBottom: 20, gap: 10 }}>
+                        <View className="flex-row justify-between items-center">
+                            <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Gói dịch vụ</Text>
+                            <Text className="text-base font-space-bold text-black">{plan.name}</Text>
+                        </View>
+                        <View className="flex-row justify-between items-center">
+                            <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Gia đình</Text>
+                            <Text className="text-base font-space-bold text-black">{selectedFamily?.familyName}</Text>
+                        </View>
+                        <View className="h-[1px] bg-black/10 my-1" />
+                        <View className="flex-row justify-between items-center">
+                            <Text className="text-xs font-space-bold text-black/60 uppercase tracking-wider">Tổng cộng</Text>
+                            <Text className="text-xl font-space-bold text-black">{plan.price}</Text>
                         </View>
                     </View>
 
-                    {/* Message */}
-                    <View style={{ marginBottom: 32 }}>
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 28, color: '#000', lineHeight: 36, letterSpacing: -0.5 }}>
-                            Cảm ơn đã đăng ký <Text style={{ color: accentColor }}>Medimate {plan.name}</Text>. Hóa đơn sẽ được gửi sớm.
+                    {/* PayOS info */}
+                    <View className="flex-row items-center gap-x-3 mb-5 px-4 py-3 bg-white border-2 border-black/10 rounded-2xl">
+                        <Landmark size={22} color="#555" strokeWidth={2} />
+                        <Text className="flex-1 text-sm font-space-medium text-black/60 leading-5">
+                            Trang thanh toán <Text className="font-space-bold text-black">PayOS</Text> sẽ mở ngay sau khi bấm thanh toán.
                         </Text>
                     </View>
 
-                    {/* Receipt Details (Ref Image Style) */}
-                    <View style={{ marginBottom: 24 }}>
-                        {[
-                            { label: 'Số tiền', value: plan.price },
-                            { label: 'Phương thức', value: method === 'credit' ? 'VISA/MASTER' : 'QR CHUYÊN KHOẢN' },
-                            { label: 'Dịch vụ', value: plan.name },
-                            { label: 'Gia hạn', value: plan.priceNote },
-                        ].map((item, idx) => (
-                            <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: idx === 3 ? 0 : 1, borderBottomColor: 'rgba(0,0,0,0.06)' }}>
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#AAA', textTransform: 'uppercase', letterSpacing: 1 }}>{item.label}</Text>
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }}>{item.value}</Text>
-                            </View>
-                        ))}
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 16 }}>
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: accentColor, textTransform: 'uppercase' }}>Medimate Reward</Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: accentColor }}>+50 Điểm 🎁</Text>
-                        </View>
-                    </View>
+                    {errorMsg ? (
+                        <Text className="text-sm font-space-bold text-red-500 text-center mb-4">{errorMsg}</Text>
+                    ) : null}
 
-                    {/* Outlined Button */}
-                    <Pressable
-                        onPress={handleDone}
-                        style={{ height: 60, borderWidth: 1.5, borderColor: '#000', borderRadius: 20, alignItems: 'center', justifyContent: 'center' }}
-                    >
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 17, color: '#000' }}>Đã hiểu</Text>
-                    </Pressable>
+                    {/* Buttons */}
+                    <View className="flex-row gap-x-4">
+                        <Pressable
+                            onPress={() => setStep('select_family')}
+                            className="flex-1 h-14 bg-white border-2 border-black rounded-2xl items-center justify-center"
+                        >
+                            <Text className="font-space-bold uppercase text-black">Quay lại</Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={handlePayment}
+                            disabled={paying}
+                            style={{
+                                flex: 1,
+                                height: 56,
+                                borderWidth: 2,
+                                borderColor: '#000',
+                                borderRadius: 16,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: paying ? '#DDD' : headerColor,
+                            }}
+                        >
+                            {paying
+                                ? <ActivityIndicator size="small" color="#000" />
+                                : <Text className="font-space-bold uppercase text-black">Thanh toán</Text>}
+                        </Pressable>
+                    </View>
                 </View>
             )}
         </BottomSheetBase>
