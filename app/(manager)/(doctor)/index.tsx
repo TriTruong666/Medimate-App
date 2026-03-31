@@ -8,11 +8,16 @@ import {
     Star,
     Video
 } from "lucide-react-native";
-import React, { useState } from "react";
-import { Dimensions, Image, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Dimensions, Image, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
 import { usePopup } from "../../../stores/popupStore";
+import { getDoctors } from "../../../apis/doctor.api";
+import { DoctorListItem } from "../../../types/Doctor";
+import { getMyAppointments } from "../../../apis/appointment.api";
+import { AppointmentResponse } from "../../../types/Appointment";
+import dayjs from "dayjs";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -25,53 +30,44 @@ const CATEGORIES = [
     { id: '5', name: 'Thần kinh', icon: '🧠', color: '#E4D1FF' },
 ];
 
-const POPULAR_DOCTORS = [
-    {
-        id: 'd1',
-        name: 'TS. BS. Amelia Emma',
-        specialty: 'Sản phụ khoa',
-        rating: 4.9,
-        reviews: 2435,
-        price: '500k/giờ',
-        avatar: 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png',
-        color: '#A3E6A1'
-    },
-    {
-        id: 'd2',
-        name: 'ThS. BS. Daniel Jack',
-        specialty: 'Tim mạch',
-        rating: 4.8,
-        reviews: 1820,
-        price: '650k/giờ',
-        avatar: 'https://cdn-icons-png.flaticon.com/512/2785/2785482.png',
-        color: '#D9AEF6'
-    },
-    {
-        id: 'd3',
-        name: 'BS. Logan Mason',
-        specialty: 'Nha khoa',
-        rating: 4.7,
-        reviews: 950,
-        price: '450k/giờ',
-        avatar: 'https://cdn-icons-png.flaticon.com/512/3845/3845868.png',
-        color: '#FFD700'
-    }
-];
-
-const UPCOMING_SCHEDULE = {
-    doctorName: 'GS. TS. Logan Mason',
-    specialty: 'Nha khoa',
-    date: 'Thứ 6, 27 Tháng 3',
-    time: '09:30 AM',
-    avatar: 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png'
-};
+// Removed redundant mock data for doctors and upcoming schedules. Colors are randomly assigned for UI variation in mapping.
+const CARD_COLORS = ['#A3E6A1', '#D9AEF6', '#FFD700', '#FFD1D1', '#D1EFFF'];
 
 export default function DoctorScreen() {
     const router = useRouter();
     const [search, setSearch] = useState("");
     const [selectedCategory, setSelectedCategory] = useState('1');
+    const [doctors, setDoctors] = useState<DoctorListItem[]>([]);
+    const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const { open } = usePopup();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            setLoading(true);
+            try {
+                const [docRes, apptRes] = await Promise.all([
+                    getDoctors(),
+                    getMyAppointments({ status: "Confirmed" })
+                ]);
+                if (docRes.success) {
+                    setDoctors(Array.isArray(docRes.data) ? docRes.data : (docRes.data?.items || []));
+                }
+                if (apptRes.success) {
+                    setAppointments(Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data?.items || []));
+                }
+            } catch (error) {
+                console.error("Error fetching doctor tab data:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    const ongoingAppt = appointments[0]; // Assuming first is most imminent for simplicity
+    const upcomingAppt = appointments.length > 1 ? appointments[1] : null;
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
@@ -123,99 +119,127 @@ export default function DoctorScreen() {
 
                 {/* 3. Ongoing & Upcoming Schedule (Synchronized Design) */}
                 <View className="px-5 mb-8">
-                    <Text className="text-xl font-space-bold text-black mb-4">Lịch hẹn của bạn (3)</Text>
-
-                    {/* Ongoing Card */}
-                    <View className="bg-[#A3E6A1] border-2 border-black rounded-[28px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4">
-                        <View className="flex-row items-center justify-between mb-3">
-                            <View className="bg-black/10 px-3 py-1 rounded-full border border-black/10">
-                                <Text className="text-[10px] font-space-bold uppercase text-black/60">Đang diễn ra</Text>
-                            </View>
-                            <View className="flex-row items-center gap-x-1">
-                                <View className="w-2 h-2 rounded-full bg-red-500" />
-                                <Text className="text-[10px] font-space-bold text-red-500 uppercase">Trực tuyến</Text>
-                            </View>
-                        </View>
-
-                        <View className="flex-row items-center justify-between">
-                            <View className="flex-1">
-                                <Text className="text-lg font-space-bold text-black uppercase">{UPCOMING_SCHEDULE.doctorName}</Text>
-                                <Text className="text-xs font-space-medium text-black/40 mt-1">Video Call: {UPCOMING_SCHEDULE.time} (Đang chờ)</Text>
-                            </View>
-
-                            <Pressable className="bg-black w-14 h-14 rounded-2xl items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
-                                <Video size={24} color="#A3E6A1" strokeWidth={2.5} />
-                            </Pressable>
-                        </View>
+                    <View className="flex-row items-center justify-between mb-4">
+                        <Text className="text-xl font-space-bold text-black">Lịch hẹn của bạn ({appointments.length})</Text>
+                        <Pressable onPress={() => router.push("/(manager)/(doctor)/appointments")}>
+                            <Text className="text-sm font-space-bold text-[#B3354B]">Xem lịch</Text>
+                        </Pressable>
                     </View>
 
-                    {/* Upcoming Schedule Link */}
-                    <View className="bg-white border-2 border-black rounded-[24px] p-4 flex-row items-center justify-between">
-                        <View className="flex-row items-center gap-x-3">
-                            <View className="w-10 h-10 bg-[#FFD1D1] rounded-xl border-2 border-black items-center justify-center">
-                                <Calendar size={18} color="#000" strokeWidth={2.5} />
-                            </View>
-                            <View>
-                                <Text className="text-sm font-space-bold text-black">Lịch hẹn tiếp theo</Text>
-                                <Text className="text-[10px] font-space-medium text-black/40">Thứ 7, 28/03 • 09:30 AM</Text>
-                            </View>
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#000" />
+                    ) : appointments.length === 0 ? (
+                        <View className="bg-white border-2 border-black/10 border-dashed rounded-[24px] p-5 items-center">
+                            <Text className="text-sm font-space-medium text-black/40">Chưa có lịch hẹn nào</Text>
                         </View>
-                        <View className="w-10 h-10 bg-gray-50 border-2 border-black rounded-xl items-center justify-center">
-                            <Clock size={16} color="#000" strokeWidth={2.5} />
-                        </View>
-                    </View>
+                    ) : (
+                        <>
+                            {/* Ongoing Card (Latest) */}
+                            {ongoingAppt && (
+                                <View className="bg-[#A3E6A1] border-2 border-black rounded-[28px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4">
+                                    <View className="flex-row items-center justify-between mb-3">
+                                        <View className="bg-black/10 px-3 py-1 rounded-full border border-black/10">
+                                            <Text className="text-[10px] font-space-bold uppercase text-black/60">
+                                                {dayjs(ongoingAppt.appointmentDate).format("DD/MM/YYYY")}
+                                            </Text>
+                                        </View>
+                                        <View className="flex-row items-center gap-x-1">
+                                            <View className="w-2 h-2 rounded-full bg-red-500" />
+                                            <Text className="text-[10px] font-space-bold text-red-500 uppercase">Trực tuyến</Text>
+                                        </View>
+                                    </View>
+
+                                    <View className="flex-row items-center justify-between">
+                                        <View className="flex-1">
+                                            <Text className="text-lg font-space-bold text-black uppercase" numberOfLines={1}>{ongoingAppt.doctorName}</Text>
+                                            <Text className="text-xs font-space-medium text-black/50 mt-1 uppercase tracking-tight">{ongoingAppt.doctorSpecialty || "Bác sĩ tư vấn"}</Text>
+                                            <Text className="text-[11px] font-space-bold text-black/80 mt-1">Video Call: {ongoingAppt.appointmentTime}</Text>
+                                        </View>
+
+                                        <Pressable 
+                                            onPress={() => router.push(`/(manager)/(doctor)/appointments` as any)}
+                                            className="bg-black w-14 h-14 rounded-2xl items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)] active:translate-y-0.5"
+                                        >
+                                            <Video size={24} color="#A3E6A1" strokeWidth={2.5} />
+                                        </Pressable>
+                                    </View>
+                                </View>
+                            )}
+
+                            {/* Upcoming Schedule Link */}
+                            {upcomingAppt && (
+                                <View className="bg-white border-2 border-black rounded-[24px] p-4 flex-row items-center justify-between">
+                                    <View className="flex-row items-center gap-x-3">
+                                        <View className="w-10 h-10 bg-[#FFD1D1] rounded-xl border-2 border-black items-center justify-center">
+                                            <Calendar size={18} color="#000" strokeWidth={2.5} />
+                                        </View>
+                                        <View>
+                                            <Text className="text-sm font-space-bold text-black">Lịch hẹn tiếp theo</Text>
+                                            <Text className="text-[10px] font-space-medium text-black/40 text-left">{dayjs(upcomingAppt.appointmentDate).format("DD/MM")} • {upcomingAppt.appointmentTime}</Text>
+                                        </View>
+                                    </View>
+                                    <View className="w-10 h-10 bg-gray-50 border-2 border-black rounded-xl items-center justify-center">
+                                        <Clock size={16} color="#000" strokeWidth={2.5} />
+                                    </View>
+                                </View>
+                            )}
+                        </>
+                    )}
                 </View>
 
                 {/* 4. Popular Doctors (Khúc giữa - Theo hình 2) */}
                 <View className="px-5">
                     <View className="flex-row items-center justify-between mb-5">
-                        <Text className="text-xl font-space-bold text-black">Bác sĩ đang online</Text>
+                        <Text className="text-xl font-space-bold text-black">Danh sách bác sĩ</Text>
                         <Pressable>
                             <Text className="text-sm font-space-bold text-[#B3354B]">Xem tất cả</Text>
                         </Pressable>
                     </View>
 
-                    {POPULAR_DOCTORS.map((doc) => (
-                        <Pressable
-                            key={doc.id}
-                            onPress={() => router.push({ pathname: "/(manager)/(doctor)/doctor_detail", params: { id: doc.id } } as any)}
-                            className="bg-white border-2 border-black rounded-[28px] p-4 flex-row items-center mb-4 shadow-sm active:translate-x-1 active:translate-y-1 active:shadow-none"
-                        >
-                            <View
-                                className="w-20 h-20 rounded-2xl border-2 border-black items-center justify-center overflow-hidden"
-                                style={{ backgroundColor: doc.color }}
-                            >
-                                <Image source={{ uri: doc.avatar }} className="w-16 h-16" />
-                            </View>
-
-                            <View className="flex-1 ml-4 py-1">
-                                <View className="flex-row justify-between items-start">
-                                    <View>
-                                        <Text className="text-lg font-space-bold text-black leading-tight uppercase">{doc.name}</Text>
-                                        <Text className="text-xs font-space-medium text-black/40 mt-0.5">{doc.specialty}</Text>
-                                    </View>
-                                </View>
-
-                                <View className="flex-row items-center justify-between mt-auto pt-2">
-                                    <View className="flex-row items-center gap-x-1">
-                                        <Star size={14} color="#FFD700" fill="#FFD700" />
-                                        <Text className="text-xs font-space-bold text-black">{doc.rating}</Text>
-                                        <Text className="text-[10px] font-space-medium text-black/30">({doc.reviews})</Text>
-                                    </View>
-
-                                    <Pressable
-                                        onPress={(e) => {
-                                            e.stopPropagation(); // Ngăn sự kiện nhảy tọt vào trang chi tiết
-                                            open({ type: 'booking_confirm' });
-                                        }}
-                                        className="bg-[#B3354B] border-2 border-black px-4 py-1.5 rounded-xl shadow-sm active:translate-y-0.5"
+                    {loading ? (
+                        <ActivityIndicator size="small" color="#000" className="mt-4" />
+                    ) : doctors.length === 0 ? (
+                        <Text className="text-center font-space-medium text-black/40 mt-5">Không tìm thấy bác sĩ</Text>
+                    ) : (
+                        doctors.map((doc, index) => {
+                            const color = CARD_COLORS[index % CARD_COLORS.length];
+                            return (
+                                <Pressable
+                                    key={doc.doctorId}
+                                    onPress={() => router.push({ pathname: "/(manager)/(doctor)/doctor_detail", params: { id: doc.doctorId } } as any)}
+                                    className="bg-white border-2 border-black rounded-[28px] p-4 flex-row items-center mb-4 shadow-sm active:translate-x-1 active:translate-y-1 active:shadow-none"
+                                >
+                                    <View
+                                        className="w-20 h-20 rounded-2xl border-2 border-black items-center justify-center overflow-hidden"
+                                        style={{ backgroundColor: color }}
                                     >
-                                        <Text className="text-white font-space-bold text-[10px] uppercase">Đặt lịch</Text>
-                                    </Pressable>
-                                </View>
-                            </View>
-                        </Pressable>
-                    ))}
+                                        <Image source={{ uri: doc.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} className="w-16 h-16" />
+                                    </View>
+
+                                    <View className="flex-1 ml-4 py-1">
+                                        <View className="flex-row justify-between items-start">
+                                            <View>
+                                                <Text className="text-lg font-space-bold text-black leading-tight uppercase" numberOfLines={1}>{doc.fullName}</Text>
+                                                <Text className="text-xs font-space-medium text-black/40 mt-0.5">{doc.specialty}</Text>
+                                            </View>
+                                        </View>
+
+                                        <View className="flex-row items-center justify-between mt-auto pt-2">
+                                            <View className="flex-row items-center gap-x-1">
+                                                <Star size={14} color="#FFD700" fill="#FFD700" />
+                                                <Text className="text-xs font-space-bold text-black">{doc.averageRating.toFixed(1)}</Text>
+                                                <Text className="text-[10px] font-space-medium text-black/30">({doc.totalReviews})</Text>
+                                            </View>
+
+                                            <View className="bg-[#B3354B]/10 px-3 py-1 rounded-lg">
+                                                <Text className="text-[#B3354B] font-space-bold text-[10px] uppercase">Khám ngay</Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </Pressable>
+                            );
+                        })
+                    )}
                 </View>
 
             </ScrollView>

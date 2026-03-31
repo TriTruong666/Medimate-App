@@ -60,11 +60,11 @@ export default function LoginScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <Link href="/" asChild>
-            <Pressable className="w-12 h-12 rounded-2xl items-center justify-center shadow-sm bg-white border-2 border-black mb-8">
-              <AntDesign name="arrow-left" size={24} color="black" />
-            </Pressable>
-          </Link>
+          <Pressable 
+            onPress={() => router.back()}
+            className="w-12 h-12 rounded-2xl items-center justify-center shadow-sm bg-white border-2 border-black mb-8">
+            <AntDesign name="arrow-left" size={24} color="black" />
+          </Pressable>
 
           {/* Tiêu đề & Lời chào kiểu Soft UI */}
           <View className="mb-8">

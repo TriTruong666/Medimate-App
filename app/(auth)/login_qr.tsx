@@ -5,7 +5,7 @@ import { AntDesign, Feather } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -100,11 +100,11 @@ export default function LoginQRScreen() {
     return (
       <SafeAreaView className="flex-1 bg-white px-8">
         <View className="pt-6">
-          <Link href="/" asChild>
-            <Pressable className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
-              <AntDesign name="arrow-left" size={24} color="black" />
-            </Pressable>
-          </Link>
+          <Pressable 
+            onPress={() => router.back()}
+            className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
+            <AntDesign name="arrow-left" size={24} color="black" />
+          </Pressable>
         </View>
         <View className="flex-1 items-center justify-center">
           <View className="w-24 h-24 bg-[#FFA07A] border-2 border-black rounded-[24px] items-center justify-center mb-8 shadow-md">
@@ -136,11 +136,11 @@ export default function LoginQRScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between mb-8">
           <View className="flex-row items-center flex-1">
-            <Link href="/" asChild>
-              <Pressable className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
-                <AntDesign name="arrow-left" size={24} color="black" />
-              </Pressable>
-            </Link>
+            <Pressable 
+              onPress={() => router.back()}
+              className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
+              <AntDesign name="arrow-left" size={24} color="black" />
+            </Pressable>
           </View>
           {isPending && <ActivityIndicator color="black" />}
         </View>
