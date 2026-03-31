@@ -1,5 +1,8 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
+import { getPaymentInfo } from "@/apis/payment.api";
+import { useUpdatePaymentStatus } from "@/hooks/usePayment";
+import { useUpdateTransactionStatus } from "@/hooks/useTransaction";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
@@ -10,12 +13,11 @@ import {
     QrCode,
     XCircle,
 } from "lucide-react-native";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useCallback } from "react";
 import {
     ActivityIndicator,
     Alert,
     Clipboard,
-    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -48,31 +50,78 @@ export default function PaymentWebViewScreen() {
     const [webLoading, setWebLoading] = useState(true);
     const [payResult, setPayResult] = useState<PayResult>(null);
     const [saving, setSaving] = useState(false);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     const qrRef = useRef<any>(null);
+    const { mutateAsync: updatePaymentStatus } = useUpdatePaymentStatus();
+    const { mutateAsync: updateTransactionStatus } = useUpdateTransactionStatus();
+
+    // ─── Gọi API cập nhật trạng thái Payment + Transaction ─────
+    const syncPaymentStatus = useCallback(async (result: "success" | "cancelled") => {
+        const orderCodeNum = Number(orderCode);
+        if (!orderCodeNum) return;
+
+        const apiStatus = result === "success" ? "SUCCESS" : "CANCELLED";
+        setUpdatingStatus(true);
+
+        try {
+            // 1. Cập nhật trạng thái Payment
+            await updatePaymentStatus({ orderCode: orderCodeNum, data: { status: apiStatus } });
+
+            // 2. Lấy thông tin Payment để lấy transactionId
+            const infoRes = await getPaymentInfo(orderCodeNum);
+            if (infoRes.success && infoRes.data?.transactionId) {
+                // 3. Cập nhật trạng thái Transaction
+                await updateTransactionStatus({
+                    transactionId: infoRes.data.transactionId,
+                    data: { status: apiStatus },
+                });
+            }
+        } catch (err) {
+            // Không block UI nếu API lỗi — vẫn hiển thị kết quả cho user
+            console.warn('[payment-webview] syncPaymentStatus error:', err);
+        } finally {
+            setUpdatingStatus(false);
+            setPayResult(result);
+        }
+    }, [orderCode, updatePaymentStatus, updateTransactionStatus]);
 
     // ─── WebView: intercept custom scheme redirection ──────────
+    // cancelUrl = 'medimate://payment/cancel'
+    // returnUrl = 'medimate://payment/success'
+    const isCancelUrl = (u: string) =>
+        u.includes("/payment/cancel") ||
+        u.includes("cancel=true") ||
+        u.includes("status=CANCELLED");
+
+    const isSuccessUrl = (u: string) =>
+        u.includes("/payment/success") ||
+        u.includes("status=PAID") ||
+        u.includes("success=true") ||
+        u.includes("payment_status=PAID");
+
     const handleShouldStartLoad = (request: { url: string }) => {
         const reqUrl = request.url;
-        // Cho phép load bình thường
         for (const scheme of HANDLED_SCHEMES) {
             if (reqUrl.startsWith(scheme)) {
-                // Detect success / cancel từ URL params
-                if (reqUrl.includes("cancel=true") || reqUrl.includes("status=CANCELLED")) {
-                    setPayResult("cancelled");
-                } else if (reqUrl.includes("status=PAID") || reqUrl.includes("success=true")) {
-                    setPayResult("success");
+                if (isCancelUrl(reqUrl)) {
+                    syncPaymentStatus("cancelled");
+                } else if (isSuccessUrl(reqUrl)) {
+                    syncPaymentStatus("success");
                 }
                 return false; // Chặn WebView load URL này
             }
         }
-        return true; // Cho phép tiếp tục
+        return true;
     };
 
     const handleWebNavChange = (nav: WebViewNavigation) => {
         const navUrl = nav.url ?? "";
-        if (navUrl.includes("status=PAID") || navUrl.includes("payment_status=PAID")) {
-            setPayResult("success");
+        // Kiểm tra cả hai hướng success và cancel
+        if (isSuccessUrl(navUrl)) {
+            syncPaymentStatus("success");
+        } else if (isCancelUrl(navUrl)) {
+            syncPaymentStatus("cancelled");
         }
     };
 
@@ -114,6 +163,21 @@ export default function PaymentWebViewScreen() {
         Clipboard.setString(url ?? "");
         Alert.alert("✓ Đã sao chép", "Link thanh toán đã được sao chép.");
     };
+
+    // ─── UPDATING STATUS OVERLAY ───────────────────────────────
+    if (updatingStatus) {
+        return (
+            <SafeAreaView style={{ flex: 1, backgroundColor: "#F9F6FC", alignItems: "center", justifyContent: "center", padding: 32 }}>
+                <ActivityIndicator size="large" color="#000" />
+                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#000", marginTop: 20, textAlign: "center" }}>
+                    Đang cập nhật trạng thái...{"\n"}
+                </Text>
+                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#888", textAlign: "center", marginTop: 4 }}>
+                    Vui lòng không tắt ứng dụng
+                </Text>
+            </SafeAreaView>
+        );
+    }
 
     // ─── SUCCESS SCREEN ────────────────────────────────────────
     if (payResult === "success") {
@@ -308,7 +372,7 @@ export default function PaymentWebViewScreen() {
                                     `Bạn có chắc muốn hủy đơn #${orderCode}?`,
                                     [
                                         { text: "Không", style: "cancel" },
-                                        { text: "Hủy đơn", style: "destructive", onPress: () => setPayResult("cancelled") },
+                                        { text: "Hủy đơn", style: "destructive", onPress: () => syncPaymentStatus("cancelled") },
                                     ]
                                 );
                             }}
@@ -327,26 +391,58 @@ export default function PaymentWebViewScreen() {
             {tab === "web" && (
                 <View style={{ flex: 1 }}>
                     {url ? (
-                        <WebView
-                            source={{ uri: url }}
-                            style={{ flex: 1 }}
-                            // Intercept custom scheme URLs để tránh lỗi "Can't open url"
-                            onShouldStartLoadWithRequest={handleShouldStartLoad}
-                            onNavigationStateChange={handleWebNavChange}
-                            onLoadStart={() => setWebLoading(true)}
-                            onLoadEnd={() => setWebLoading(false)}
-                            javaScriptEnabled
-                            domStorageEnabled
-                            startInLoadingState
-                            renderLoading={() => (
-                                <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "#F9F6FC" }]}>
-                                    <ActivityIndicator size="large" color="#000" />
-                                    <Text style={{ marginTop: 12, fontFamily: "SpaceGrotesk_500Medium", color: "#888", fontSize: 13 }}>
-                                        Đang tải cổng thanh toán...
+                        <>
+                            <WebView
+                                source={{ uri: url }}
+                                style={{ flex: 1 }}
+                                onShouldStartLoadWithRequest={handleShouldStartLoad}
+                                onNavigationStateChange={handleWebNavChange}
+                                onLoadStart={() => setWebLoading(true)}
+                                onLoadEnd={() => setWebLoading(false)}
+                                javaScriptEnabled
+                                domStorageEnabled
+                                startInLoadingState
+                                renderLoading={() => (
+                                    <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "#F9F6FC" }]}>
+                                        <ActivityIndicator size="large" color="#000" />
+                                        <Text style={{ marginTop: 12, fontFamily: "SpaceGrotesk_500Medium", color: "#888", fontSize: 13 }}>
+                                            Đang tải cổng thanh toán...
+                                        </Text>
+                                    </View>
+                                )}
+                            />
+                            {/* Nút hủy đơn nổi phía dưới Web tab */}
+                            <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#fff", borderTopWidth: 2, borderTopColor: "#000" }}>
+                                <Pressable
+                                    onPress={() => {
+                                        Alert.alert(
+                                            "Hủy đơn hàng",
+                                            `Bạn có chắc muốn hủy đơn #${orderCode}?`,
+                                            [
+                                                { text: "Không", style: "cancel" },
+                                                { text: "Hủy đơn", style: "destructive", onPress: () => syncPaymentStatus("cancelled") },
+                                            ]
+                                        );
+                                    }}
+                                    style={{
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 10,
+                                        height: 52,
+                                        borderRadius: 16,
+                                        borderWidth: 2,
+                                        borderColor: "#EF4444",
+                                        backgroundColor: "#FFF8F8",
+                                    }}
+                                >
+                                    <XCircle size={18} color="#EF4444" strokeWidth={2.5} />
+                                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#EF4444", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                        Hủy đơn hàng #{orderCode}
                                     </Text>
-                                </View>
-                            )}
-                        />
+                                </Pressable>
+                            </View>
+                        </>
                     ) : (
                         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
                             <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#EF4444", fontSize: 14 }}>

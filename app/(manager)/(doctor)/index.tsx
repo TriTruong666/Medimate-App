@@ -4,78 +4,105 @@ import {
     Clock,
     Mic,
     Search,
-    SlidersHorizontal,
     Star,
     Video
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
-import { Dimensions, Image, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator } from "react-native";
+import React, { useState, useCallback, useMemo } from "react";
+import { Dimensions, Image, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator, RefreshControl } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
-import { usePopup } from "../../../stores/popupStore";
-import { getDoctors } from "../../../apis/doctor.api";
-import { DoctorListItem } from "../../../types/Doctor";
-import { getMyAppointments } from "../../../apis/appointment.api";
-import { AppointmentResponse } from "../../../types/Appointment";
+import { useGetDoctors } from "../../../hooks/useDoctor";
+import { useGetMyAppointments } from "../../../hooks/useAppointment";
 import dayjs from "dayjs";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// ─── Mock Data ───────────────────────────────────────────────
-const CATEGORIES = [
-    { id: '1', name: 'Tim mạch', icon: '❤️', color: '#FFD1D1' },
-    { id: '2', name: 'Thận', icon: '🧬', color: '#D1EFFF' },
-    { id: '3', name: 'Gan', icon: '🍃', color: '#D1FFD1' },
-    { id: '4', name: 'Tai mũi họng', icon: '👂', color: '#FFF4D1' },
-    { id: '5', name: 'Thần kinh', icon: '🧠', color: '#E4D1FF' },
-];
-
-// Removed redundant mock data for doctors and upcoming schedules. Colors are randomly assigned for UI variation in mapping.
 const CARD_COLORS = ['#A3E6A1', '#D9AEF6', '#FFD700', '#FFD1D1', '#D1EFFF'];
+
+// Specialty icon mapping (fallback to 🩺)
+const SPECIALTY_ICONS: Record<string, string> = {
+    'Tim mạch': '❤️',
+    'Thần kinh': '🧠',
+    'Nha khoa': '🦷',
+    'Nhi khoa': '👶',
+    'Da liễu': '🌿',
+    'Mắt': '👁️',
+    'Tai mũi họng': '👂',
+    'Xương khớp': '🦴',
+    'Tiêu hóa': '🫀',
+    'Thận': '🧬',
+    'Gan': '🍃',
+    'Phổi': '🫁',
+    'Sản phụ khoa': '🌸',
+    'Ung bướu': '🔬',
+    'Nội tiết': '⚗️',
+    'Tâm thần': '🧘',
+};
+
+const getSpecialtyIcon = (specialty: string) => {
+    for (const key in SPECIALTY_ICONS) {
+        if (specialty?.toLowerCase().includes(key.toLowerCase())) return SPECIALTY_ICONS[key];
+    }
+    return '🩺';
+};
+
+const SPECIALTY_BG_COLORS = [
+    '#FFD1D1', '#D1EFFF', '#D1FFD1', '#FFF4D1', '#E4D1FF',
+    '#FFE4D1', '#D1FFF4', '#F4D1FF', '#D1FFFF', '#FFD1F4'
+];
 
 export default function DoctorScreen() {
     const router = useRouter();
     const [search, setSearch] = useState("");
-    const [selectedCategory, setSelectedCategory] = useState('1');
-    const [doctors, setDoctors] = useState<DoctorListItem[]>([]);
-    const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
 
-    const { open } = usePopup();
+    const { data: doctorsData, isLoading: isDoctorsLoading, refetch: refetchDoctors } = useGetDoctors();
+    const { data: appointmentsData, isLoading: isAppointmentsLoading, refetch: refetchAppointments } = useGetMyAppointments({ status: "Confirmed" });
+    const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            try {
-                const [docRes, apptRes] = await Promise.all([
-                    getDoctors(),
-                    getMyAppointments({ status: "Confirmed" })
-                ]);
-                if (docRes.success) {
-                    setDoctors(Array.isArray(docRes.data) ? docRes.data : (docRes.data?.items || []));
-                }
-                if (apptRes.success) {
-                    setAppointments(Array.isArray(apptRes.data) ? apptRes.data : (apptRes.data?.items || []));
-                }
-            } catch (error) {
-                console.error("Error fetching doctor tab data:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([refetchDoctors(), refetchAppointments()]);
+        setRefreshing(false);
+    }, [refetchDoctors, refetchAppointments]);
 
-    const ongoingAppt = appointments[0]; // Assuming first is most imminent for simplicity
+    const doctors = doctorsData || [];
+    const appointments = appointmentsData || [];
+    const loading = isDoctorsLoading || isAppointmentsLoading;
+
+    // Derive unique specialties from actual doctor data
+    const specialties = useMemo(() => {
+        const set = new Set<string>();
+        doctors.forEach(doc => {
+            if (doc.specialty) set.add(doc.specialty);
+        });
+        return Array.from(set).sort();
+    }, [doctors]);
+
+    // Filter doctors by search + specialty
+    const filteredDoctors = useMemo(() => {
+        return doctors.filter(doc => {
+            const matchSearch = !search || doc.fullName.toLowerCase().includes(search.toLowerCase()) || doc.specialty?.toLowerCase().includes(search.toLowerCase());
+            const matchSpecialty = !selectedSpecialty || doc.specialty === selectedSpecialty;
+            return matchSearch && matchSpecialty;
+        });
+    }, [doctors, search, selectedSpecialty]);
+
+    const ongoingAppt = appointments[0];
     const upcomingAppt = appointments.length > 1 ? appointments[1] : null;
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
             <ManagerHeader />
 
-            <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 110 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 110 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            >
 
-                {/* 1. Search Bar (Khúc giữa - Theo hình 2) */}
+                {/* 1. Search Bar */}
                 <View className="px-5 mb-6">
                     <View className="flex-row items-center gap-x-3">
                         <View className="flex-1 flex-row items-center bg-white border-2 border-black rounded-[20px] px-4 py-1 shadow-sm">
@@ -86,38 +113,73 @@ export default function DoctorScreen() {
                                 value={search}
                                 onChangeText={setSearch}
                             />
-                            <Mic size={20} color="#A0A0A0" strokeWidth={2} />
+                            {search.length > 0 && (
+                                <Pressable onPress={() => setSearch('')}>
+                                    <Text style={{ fontSize: 18, color: '#A0A0A0' }}>✕</Text>
+                                </Pressable>
+                            )}
                         </View>
-                        <Pressable className="w-14 h-14 bg-black border-2 border-black rounded-[20px] items-center justify-center shadow-[4px_4px_0px_0px_rgba(163,230,161,1)]">
-                            <SlidersHorizontal size={22} color="#FFF" strokeWidth={2.5} />
-                        </Pressable>
                     </View>
                 </View>
 
-                {/* 2. Categories (Khúc giữa - Theo hình 2) */}
+                {/* 2. Specialty Filter – derived from actual doctors */}
                 <View className="mb-8">
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
-                        {CATEGORIES.map((cat) => (
-                            <Pressable
-                                key={cat.id}
-                                onPress={() => setSelectedCategory(cat.id)}
-                                className="items-center mr-6"
+                        {/* "Tất cả" chip */}
+                        <Pressable
+                            onPress={() => setSelectedSpecialty(null)}
+                            className="items-center mr-5"
+                        >
+                            <View
+                                className="w-16 h-16 rounded-full border-2 border-black items-center justify-center mb-2 shadow-sm"
+                                style={{ backgroundColor: selectedSpecialty === null ? '#000' : '#fff' }}
                             >
-                                <View
-                                    className={`w-16 h-16 rounded-full border-2 border-black items-center justify-center mb-2 shadow-sm ${selectedCategory === cat.id ? 'bg-black' : 'bg-white'}`}
-                                    style={{ backgroundColor: selectedCategory === cat.id ? '#000' : cat.color }}
-                                >
-                                    <Text className="text-2xl">{cat.icon}</Text>
-                                </View>
-                                <Text className={`text-[11px] font-space-bold uppercase tracking-wider ${selectedCategory === cat.id ? 'text-black' : 'text-black/40'}`}>
-                                    {cat.name}
-                                </Text>
-                            </Pressable>
-                        ))}
+                                <Text className="text-2xl">🏥</Text>
+                            </View>
+                            <Text
+                                className="text-[11px] font-space-bold uppercase tracking-wider"
+                                style={{ color: selectedSpecialty === null ? '#000' : 'rgba(0,0,0,0.35)' }}
+                                numberOfLines={1}
+                            >
+                                Tất cả
+                            </Text>
+                        </Pressable>
+
+                        {isDoctorsLoading ? (
+                            <View className="justify-center px-4">
+                                <ActivityIndicator size="small" color="#000" />
+                            </View>
+                        ) : (
+                            specialties.map((spec, idx) => {
+                                const isActive = selectedSpecialty === spec;
+                                const bgColor = SPECIALTY_BG_COLORS[idx % SPECIALTY_BG_COLORS.length];
+                                return (
+                                    <Pressable
+                                        key={spec}
+                                        onPress={() => setSelectedSpecialty(isActive ? null : spec)}
+                                        className="items-center mr-5"
+                                    >
+                                        <View
+                                            className="w-16 h-16 rounded-full border-2 border-black items-center justify-center mb-2 shadow-sm"
+                                            style={{ backgroundColor: isActive ? '#000' : bgColor }}
+                                        >
+                                            <Text className="text-2xl">{getSpecialtyIcon(spec)}</Text>
+                                        </View>
+                                        <Text
+                                            className="text-[10px] font-space-bold uppercase tracking-tight text-center"
+                                            style={{ color: isActive ? '#000' : 'rgba(0,0,0,0.35)', maxWidth: 64 }}
+                                            numberOfLines={2}
+                                        >
+                                            {spec}
+                                        </Text>
+                                    </Pressable>
+                                );
+                            })
+                        )}
                     </ScrollView>
                 </View>
 
-                {/* 3. Ongoing & Upcoming Schedule (Synchronized Design) */}
+                {/* 3. Ongoing & Upcoming Schedule */}
                 <View className="px-5 mb-8">
                     <View className="flex-row items-center justify-between mb-4">
                         <Text className="text-xl font-space-bold text-black">Lịch hẹn của bạn ({appointments.length})</Text>
@@ -126,7 +188,7 @@ export default function DoctorScreen() {
                         </Pressable>
                     </View>
 
-                    {loading ? (
+                    {isAppointmentsLoading ? (
                         <ActivityIndicator size="small" color="#000" />
                     ) : appointments.length === 0 ? (
                         <View className="bg-white border-2 border-black/10 border-dashed rounded-[24px] p-5 items-center">
@@ -156,7 +218,7 @@ export default function DoctorScreen() {
                                             <Text className="text-[11px] font-space-bold text-black/80 mt-1">Video Call: {ongoingAppt.appointmentTime}</Text>
                                         </View>
 
-                                        <Pressable 
+                                        <Pressable
                                             onPress={() => router.push(`/(manager)/(doctor)/appointments` as any)}
                                             className="bg-black w-14 h-14 rounded-2xl items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)] active:translate-y-0.5"
                                         >
@@ -187,21 +249,31 @@ export default function DoctorScreen() {
                     )}
                 </View>
 
-                {/* 4. Popular Doctors (Khúc giữa - Theo hình 2) */}
+                {/* 4. Doctor List */}
                 <View className="px-5">
                     <View className="flex-row items-center justify-between mb-5">
-                        <Text className="text-xl font-space-bold text-black">Danh sách bác sĩ</Text>
-                        <Pressable>
-                            <Text className="text-sm font-space-bold text-[#B3354B]">Xem tất cả</Text>
-                        </Pressable>
+                        <Text className="text-xl font-space-bold text-black">
+                            {selectedSpecialty ? `Khoa ${selectedSpecialty}` : 'Danh sách bác sĩ'}
+                            {filteredDoctors.length > 0 ? ` (${filteredDoctors.length})` : ''}
+                        </Text>
+                        {selectedSpecialty && (
+                            <Pressable onPress={() => setSelectedSpecialty(null)}>
+                                <Text className="text-sm font-space-bold text-[#B3354B]">Xem tất cả</Text>
+                            </Pressable>
+                        )}
                     </View>
 
-                    {loading ? (
+                    {isDoctorsLoading ? (
                         <ActivityIndicator size="small" color="#000" className="mt-4" />
-                    ) : doctors.length === 0 ? (
-                        <Text className="text-center font-space-medium text-black/40 mt-5">Không tìm thấy bác sĩ</Text>
+                    ) : filteredDoctors.length === 0 ? (
+                        <View className="bg-white border-2 border-dashed border-black/20 rounded-[24px] p-10 items-center">
+                            <Text className="text-3xl mb-3">🔍</Text>
+                            <Text className="text-center font-space-medium text-black/40">
+                                {search ? `Không tìm thấy bác sĩ "${search}"` : 'Không có bác sĩ trong khoa này'}
+                            </Text>
+                        </View>
                     ) : (
-                        doctors.map((doc, index) => {
+                        filteredDoctors.map((doc, index) => {
                             const color = CARD_COLORS[index % CARD_COLORS.length];
                             return (
                                 <Pressable
@@ -218,9 +290,13 @@ export default function DoctorScreen() {
 
                                     <View className="flex-1 ml-4 py-1">
                                         <View className="flex-row justify-between items-start">
-                                            <View>
-                                                <Text className="text-lg font-space-bold text-black leading-tight uppercase" numberOfLines={1}>{doc.fullName}</Text>
-                                                <Text className="text-xs font-space-medium text-black/40 mt-0.5">{doc.specialty}</Text>
+                                            <View className="flex-1 mr-2">
+                                                <Text className="text-base font-space-bold text-black leading-tight uppercase" numberOfLines={1}>{doc.fullName}</Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                                                    <View style={{ backgroundColor: SPECIALTY_BG_COLORS[index % SPECIALTY_BG_COLORS.length], paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}>
+                                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>{doc.specialty}</Text>
+                                                    </View>
+                                                </View>
                                             </View>
                                         </View>
 

@@ -2,23 +2,41 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
     Calendar,
+    ChevronLeft,
+    ChevronRight,
     Clock,
     Heart,
     MessageCircle,
     Share2,
     Star,
-    Video
+    Video,
+    X
 } from "lucide-react-native";
-import React, { useState, useEffect } from "react";
-import { Dimensions, Image, Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import {
+    Dimensions,
+    Image,
+    Modal,
+    Pressable,
+    ScrollView,
+    Text,
+    View,
+    ActivityIndicator,
+    RefreshControl
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePopup } from "../../../stores/popupStore";
-import { getDoctorDetail, getDoctorAvailabilities, getDoctorReviews } from "../../../apis/doctor.api";
-import { getDoctorAvailableSlots } from "../../../apis/appointment.api";
+import { useGetDoctorDetail, useGetDoctorAvailabilities, useGetDoctorReviews } from "../../../hooks/useDoctor";
+import { useGetDoctorAvailableSlots } from "../../../hooks/useAppointment";
 import { DoctorDetailResponse, DoctorAvailabilityResponse, DoctorReviewResponse } from "../../../types/Doctor";
 import { AvailableSlotResponse } from "../../../types/Appointment";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
 
 // Set locale to Vietnamese for proper day formatting
 dayjs.locale('vi');
@@ -26,6 +44,17 @@ dayjs.locale('vi');
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const TABS = ['Đặt lịch', 'Thông tin', 'Đánh giá'];
+
+const BORDER_COLOR = '#000000';
+const SOFT_PURPLE = '#D9AEF6';
+
+const SHADOW_MD = {
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+};
 
 // Utility to convert english day part to Vietnamese abbreviations
 const formatVietnameseDay = (d: dayjs.Dayjs) => {
@@ -59,96 +88,106 @@ export default function DoctorDetailScreen() {
     const { id } = useLocalSearchParams();
     const doctorId = typeof id === 'string' ? id : (Array.isArray(id) ? id[0] : '');
 
-    const [doctor, setDoctor] = useState<DoctorDetailResponse | null>(null);
-    const [reviews, setReviews] = useState<DoctorReviewResponse[]>([]);
-    const [availableDates, setAvailableDates] = useState<{ day: string, date: string, fullDate: string }[]>([]);
-    
-    // UI state
     const [selectedTab, setSelectedTab] = useState('Đặt lịch');
     const [selectedDateItem, setSelectedDateItem] = useState<{ day: string, date: string, fullDate: string } | null>(null);
     const [selectedSlot, setSelectedSlot] = useState<AvailableSlotResponse | null>(null);
-    const [slots, setSlots] = useState<AvailableSlotResponse[]>([]);
-    
-    // Load state
-    const [loading, setLoading] = useState(true);
-    const [slotsLoading, setSlotsLoading] = useState(false);
+
+    // Month calendar modal state
+    const [showMonthCalendar, setShowMonthCalendar] = useState(false);
+    const [currentMonthStr, setCurrentMonthStr] = useState(dayjs().format('YYYY-MM-DD'));
 
     const { open } = usePopup();
 
+    const { data: doctor, isLoading: isDoctorLoading, refetch: refetchDoctor } = useGetDoctorDetail(doctorId);
+    const { data: reviewsData, isLoading: isReviewsLoading, refetch: refetchReviews } = useGetDoctorReviews(doctorId);
+    const { data: availabilities, isLoading: isAvailLoading, refetch: refetchAvail } = useGetDoctorAvailabilities(doctorId);
+    const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetDoctorAvailableSlots(doctorId, selectedDateItem?.fullDate);
+
+    const [refreshing, setRefreshing] = useState(false);
+
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await Promise.all([
+            refetchDoctor(),
+            refetchReviews(),
+            refetchAvail(),
+            selectedDateItem ? refetchSlots() : Promise.resolve()
+        ]);
+        setRefreshing(false);
+    }, [refetchDoctor, refetchReviews, refetchAvail, refetchSlots, selectedDateItem]);
+
+    const reviews = reviewsData || [];
+    const slots = Array.isArray(slotsData) ? slotsData : [];
+    const loading = isDoctorLoading || isReviewsLoading || isAvailLoading;
+
+    // Active doctor days-of-week (English)
+    const activeDays = useMemo(() => {
+        if (!availabilities) return [];
+        return availabilities.filter(a => a.isActive).map(a => a.dayOfWeek);
+    }, [availabilities]);
+
+    // Is a given date available (doctor works that day)?
+    const isAvailableDate = useCallback((d: dayjs.Dayjs) => {
+        return activeDays.includes(formatDayOfWeekEn(d));
+    }, [activeDays]);
+
+    // Current week (Mon → Sun of THIS week) days
+    const today = dayjs();
+    const weekStart = today.startOf('week'); // Sunday=0
+    const currentWeekDays = useMemo(() => {
+        return Array.from({ length: 7 }).map((_, i) => weekStart.add(i, 'day'));
+    }, [weekStart.toString()]);
+
+    // Auto-select first available future or today date when availabilities load
     useEffect(() => {
-        if (!doctorId) return;
-        const fetchDoctorData = async () => {
-            setLoading(true);
-            try {
-                const [docRes, availRes, reviewsRes] = await Promise.all([
-                    getDoctorDetail(doctorId),
-                    getDoctorAvailabilities(doctorId),
-                    getDoctorReviews(doctorId)
-                ]);
-
-                if (docRes.success && docRes.data) {
-                    setDoctor(docRes.data);
-                }
-
-                if (reviewsRes.success && reviewsRes.data) {
-                    setReviews(reviewsRes.data);
-                }
-
-                if (availRes.success && availRes.data) {
-                    // Compute next 14 days
-                    const activeDays = availRes.data.filter(a => a.isActive).map(a => a.dayOfWeek);
-                    const validDates = [];
-                    for (let i = 0; i < 14; i++) {
-                        const d = dayjs().add(i, 'day');
-                        const enDay = formatDayOfWeekEn(d);
-                        if (activeDays.includes(enDay)) {
-                            validDates.push({
-                                day: formatVietnameseDay(d),
-                                date: d.format('DD'),
-                                fullDate: d.format('YYYY-MM-DD')
-                            });
-                        }
-                    }
-                    setAvailableDates(validDates);
-                    if (validDates.length > 0) {
-                        setSelectedDateItem(validDates[0]);
-                    }
-                }
-            } catch (error) {
-                console.error("Error fetching doctor detail:", error);
-            } finally {
-                setLoading(false);
+        if (!availabilities || activeDays.length === 0) return;
+        if (selectedDateItem) return; // don't override user selection
+        // Find first available day in current week starting from today
+        for (let i = 0; i < 7; i++) {
+            const d = today.add(i, 'day');
+            if (isAvailableDate(d)) {
+                setSelectedDateItem({
+                    day: formatVietnameseDay(d),
+                    date: d.format('DD'),
+                    fullDate: d.format('YYYY-MM-DD')
+                });
+                return;
             }
-        };
-        fetchDoctorData();
-    }, [doctorId]);
+        }
+    }, [availabilities, activeDays.length]);
 
-    useEffect(() => {
-        if (!doctorId || !selectedDateItem) return;
-        const fetchSlots = async () => {
-            setSlotsLoading(true);
-            try {
-                const res = await getDoctorAvailableSlots(doctorId, selectedDateItem.fullDate);
-                if (res.success && res.data) {
-                    setSlots(res.data);
-                } else {
-                    setSlots([]);
-                }
-            } catch (error) {
-                console.error("Error fetching slots:", error);
-                setSlots([]);
-            } finally {
-                setSlotsLoading(false);
-            }
-        };
-        fetchSlots();
-    }, [doctorId, selectedDateItem]);
+    // Month calendar data
+    const currentMonth = useMemo(() => dayjs(currentMonthStr), [currentMonthStr]);
+    const monthDays = useMemo(() => {
+        const startOfMonth = currentMonth.startOf('month');
+        const daysInMonth = currentMonth.daysInMonth();
+        const startDay = startOfMonth.day();
+        const days: dayjs.Dayjs[] = [];
+        for (let i = startDay - 1; i >= 0; i--) days.push(startOfMonth.subtract(i + 1, 'day'));
+        for (let i = 0; i < daysInMonth; i++) days.push(startOfMonth.add(i, 'day'));
+        const remaining = (7 - (days.length % 7)) % 7;
+        for (let i = 0; i < remaining; i++) days.push(startOfMonth.add(daysInMonth + i, 'day'));
+        return days;
+    }, [currentMonthStr]);
+
+    const handleSelectMonthDay = (d: dayjs.Dayjs) => {
+        // Only allow future dates (today or after) that are available
+        if (d.isBefore(today, 'day')) return;
+        if (!isAvailableDate(d)) return;
+        setSelectedDateItem({
+            day: formatVietnameseDay(d),
+            date: d.format('DD'),
+            fullDate: d.format('YYYY-MM-DD')
+        });
+        setSelectedSlot(null);
+        setShowMonthCalendar(false);
+    };
 
     const handleBooking = () => {
         if (!selectedDateItem || !selectedSlot) return;
         if (selectedSlot.isBooked) return;
-        
-        open({ 
+
+        open({
             type: 'booking_confirm',
             data: {
                 doctorId: doctor?.doctorId,
@@ -192,7 +231,12 @@ export default function DoctorDetailScreen() {
                 </View>
             </View>
 
-            <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                className="flex-1"
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            >
                 {/* 1. Doctor Profile Card */}
                 <View className="px-5 mb-6">
                     <View className="bg-white border-2 border-black rounded-[32px] p-6 shadow-sm overflow-hidden">
@@ -233,8 +277,6 @@ export default function DoctorDetailScreen() {
                     </View>
                 </View>
 
-                {/* Note: Upcoming Schedule removed from standard doctor detail as they are now dynamically processed in manager tab */}
-
                 {/* 2. Tabs Selector */}
                 <View className="mb-6">
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20 }}>
@@ -257,57 +299,143 @@ export default function DoctorDetailScreen() {
 
                 {selectedTab === 'Đặt lịch' && (
                     <View>
-                        {/* 3. Date Selection */}
+                        {/* 3. Date Selection – Current Week */}
                         <View style={{ paddingHorizontal: 20, marginBottom: 32 }}>
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#000', marginBottom: 20 }}>
-                                Chọn ngày
-                            </Text>
-                            {availableDates.length > 0 ? (
-                                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                                    {availableDates.map((d) => {
-                                        const isSelected = selectedDateItem?.fullDate === d.fullDate;
-                                        return (
-                                            <Pressable
-                                                key={d.fullDate}
-                                                onPress={() => {
-                                                    setSelectedDateItem(d);
-                                                    setSelectedSlot(null);
-                                                }}
-                                                style={{
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    width: 56,
-                                                    height: 80,
-                                                    borderRadius: 24,
-                                                    borderWidth: 2,
-                                                    marginRight: 16,
-                                                    backgroundColor: isSelected ? '#B3354B' : '#FFF',
-                                                    borderColor: isSelected ? '#000' : 'rgba(0,0,0,0.05)',
-                                                    shadowColor: '#000',
-                                                    shadowOffset: isSelected ? { width: 4, height: 4 } : { width: 0, height: 0 },
-                                                    shadowOpacity: isSelected ? 1 : 0,
-                                                    shadowRadius: 0,
-                                                    elevation: isSelected ? 4 : 0,
-                                                }}
-                                            >
-                                                <Text style={{
-                                                    fontFamily: 'SpaceGrotesk_700Bold',
-                                                    fontSize: 10,
-                                                    marginBottom: 4,
-                                                    color: isSelected ? '#FFF' : 'rgba(0,0,0,0.3)'
-                                                }}>{d.day}</Text>
-                                                <Text style={{
-                                                    fontFamily: 'SpaceGrotesk_700Bold',
-                                                    fontSize: 18,
-                                                    color: isSelected ? '#FFF' : '#000'
-                                                }}>{d.date}</Text>
-                                            </Pressable>
-                                        );
-                                    })}
-                                </ScrollView>
-                            ) : (
-                                <Text className="font-space-medium text-black/50">Không có ngày khám trống trong 14 ngày tới.</Text>
+                            {/* Section header with month calendar button */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#000' }}>
+                                    Chọn ngày
+                                </Text>
+                                <Pressable
+                                    onPress={() => setShowMonthCalendar(true)}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        backgroundColor: '#fff',
+                                        borderWidth: 2,
+                                        borderColor: BORDER_COLOR,
+                                        borderRadius: 14,
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 7,
+                                        ...SHADOW_MD
+                                    }}
+                                >
+                                    <Calendar size={15} color="#000" strokeWidth={2.5} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#000' }}>
+                                        Lịch tháng
+                                    </Text>
+                                </Pressable>
+                            </View>
+
+                            {/* Selected date outside current week badge */}
+                            {selectedDateItem && !currentWeekDays.some(d => d.format('YYYY-MM-DD') === selectedDateItem.fullDate) && (
+                                <View style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    backgroundColor: SOFT_PURPLE,
+                                    borderWidth: 2,
+                                    borderColor: BORDER_COLOR,
+                                    borderRadius: 16,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    marginBottom: 16,
+                                    gap: 8
+                                }}>
+                                    <Calendar size={16} color="#000" strokeWidth={2.5} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000', flex: 1 }}>
+                                        Đã chọn: {dayjs(selectedDateItem.fullDate).format('dddd, DD/MM/YYYY')}
+                                    </Text>
+                                    <Pressable onPress={() => {
+                                        setSelectedDateItem(null);
+                                        setSelectedSlot(null);
+                                    }}>
+                                        <X size={16} color="#000" strokeWidth={2.5} />
+                                    </Pressable>
+                                </View>
                             )}
+
+                            {/* Current week horizontal selector */}
+                            <View style={{
+                                flexDirection: 'row',
+                                backgroundColor: '#fff',
+                                borderWidth: 2,
+                                borderColor: BORDER_COLOR,
+                                borderRadius: 28,
+                                padding: 6,
+                                ...SHADOW_MD
+                            }}>
+                                {currentWeekDays.map((d) => {
+                                    const fullDate = d.format('YYYY-MM-DD');
+                                    const isPast = d.isBefore(today, 'day');
+                                    const available = isAvailableDate(d);
+                                    const disabled = isPast || !available;
+                                    const isSelected = selectedDateItem?.fullDate === fullDate;
+                                    const isToday = d.isSame(today, 'day');
+
+                                    return (
+                                        <Pressable
+                                            key={fullDate}
+                                            onPress={() => {
+                                                if (disabled) return;
+                                                setSelectedDateItem({
+                                                    day: formatVietnameseDay(d),
+                                                    date: d.format('DD'),
+                                                    fullDate
+                                                });
+                                                setSelectedSlot(null);
+                                            }}
+                                            style={{
+                                                flex: 1,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                paddingVertical: 12,
+                                                paddingHorizontal: 4,
+                                                borderRadius: 22,
+                                                backgroundColor: isSelected ? '#000' : 'transparent',
+                                                opacity: disabled ? 0.35 : 1,
+                                            }}
+                                        >
+                                            <Text style={{
+                                                fontFamily: 'SpaceGrotesk_700Bold',
+                                                fontSize: 9,
+                                                marginBottom: 4,
+                                                color: isSelected ? '#9CA3AF' : (disabled ? '#94A3B8' : '#94A3B8'),
+                                                textTransform: 'uppercase'
+                                            }}>
+                                                {formatVietnameseDay(d)}
+                                            </Text>
+                                            <View style={{
+                                                width: 30,
+                                                height: 30,
+                                                borderRadius: 15,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                backgroundColor: isToday && !isSelected ? '#FEF9C3' : 'transparent'
+                                            }}>
+                                                <Text style={{
+                                                    fontFamily: 'SpaceGrotesk_700Bold',
+                                                    fontSize: 16,
+                                                    color: isSelected ? '#FFF' : (disabled ? '#94A3B8' : '#000')
+                                                }}>
+                                                    {d.format('D')}
+                                                </Text>
+                                            </View>
+                                            {/* Available dot indicator */}
+                                            <View style={{ height: 5, marginTop: 3 }}>
+                                                {available && !isPast && (
+                                                    <View style={{
+                                                        width: 5,
+                                                        height: 5,
+                                                        borderRadius: 2.5,
+                                                        backgroundColor: isSelected ? '#A3E6A1' : '#A3E6A1'
+                                                    }} />
+                                                )}
+                                            </View>
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
                         </View>
 
                         {/* 4. Time Selection */}
@@ -316,46 +444,80 @@ export default function DoctorDetailScreen() {
                                 Thời gian
                             </Text>
 
-                            {slotsLoading ? (
+                            {!selectedDateItem ? (
+                                <Text className="font-space-medium text-black/50">Vui lòng chọn ngày để xem khung giờ.</Text>
+                            ) : slotsLoading ? (
                                 <ActivityIndicator size="small" color="#000" />
                             ) : slots.length === 0 ? (
                                 <Text className="font-space-medium text-black/50">Không có khung giờ trống.</Text>
                             ) : (
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                                <View style={{
+                                    backgroundColor: '#fff',
+                                    borderWidth: 2,
+                                    borderColor: '#000',
+                                    borderRadius: 28,
+                                    padding: 10,
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: 4 },
+                                    shadowOpacity: 0.1,
+                                    shadowRadius: 8,
+                                    elevation: 4,
+                                    flexDirection: 'row',
+                                    flexWrap: 'wrap',
+                                    gap: 8,
+                                }}>
                                     {slots.map((slot) => {
-                                        const isSelected = selectedSlot?.availabilityId === slot.availabilityId;
+                                        const isSelected = selectedSlot?.time === slot.time;
                                         const isBooked = slot.isBooked;
                                         return (
                                             <Pressable
-                                                key={slot.availabilityId}
+                                                key={slot.availabilityId + '_' + slot.time}
                                                 onPress={() => {
                                                     if (!isBooked) setSelectedSlot(slot);
                                                 }}
                                                 style={{
-                                                    width: (SCREEN_WIDTH - 60) / 2 - 5, // Display times can be wider "16:00 - 17:00"
-                                                    paddingVertical: 16,
-                                                    borderRadius: 16,
-                                                    borderWidth: 2,
+                                                    // ~3 per row: (100% - 2*gap) / 3
+                                                    width: '31%',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    marginBottom: 16,
-                                                    backgroundColor: isBooked ? '#f5f5f5' : '#FFF',
-                                                    borderColor: isSelected ? '#B3354B' : 'rgba(0,0,0,0.1)',
-                                                    shadowColor: '#000',
-                                                    shadowOffset: isSelected ? { width: 3, height: 3 } : { width: 0, height: 0 },
-                                                    shadowOpacity: isSelected ? 1 : 0,
-                                                    shadowRadius: 0,
-                                                    elevation: isSelected ? 3 : 0,
-                                                    opacity: isBooked ? 0.5 : 1
+                                                    paddingVertical: 16,
+                                                    borderRadius: 18,
+                                                    borderWidth: 2,
+                                                    borderColor: isBooked
+                                                        ? 'rgba(0,0,0,0.06)'
+                                                        : isSelected
+                                                            ? '#000'
+                                                            : 'rgba(0,0,0,0.08)',
+                                                    backgroundColor: isBooked
+                                                        ? 'rgba(0,0,0,0.03)'
+                                                        : isSelected
+                                                            ? '#000'
+                                                            : '#F8FAFC',
+                                                    opacity: isBooked ? 0.45 : 1,
                                                 }}
                                             >
-                                                <Text style={{ 
-                                                    fontFamily: 'SpaceGrotesk_700Bold', 
-                                                    fontSize: 14, 
-                                                    color: isBooked ? 'rgba(0,0,0,0.3)' : (isSelected ? '#B3354B' : '#000')
+                                                <Text style={{
+                                                    fontFamily: 'SpaceGrotesk_700Bold',
+                                                    fontSize: 13,
+                                                    color: isBooked
+                                                        ? 'rgba(0,0,0,0.35)'
+                                                        : isSelected
+                                                            ? '#FFF'
+                                                            : '#000',
                                                 }}>
                                                     {slot.displayTime}
                                                 </Text>
+                                                {isBooked && (
+                                                    <Text style={{
+                                                        fontFamily: 'SpaceGrotesk_700Bold',
+                                                        fontSize: 9,
+                                                        color: 'rgba(0,0,0,0.3)',
+                                                        marginTop: 3,
+                                                        textTransform: 'uppercase',
+                                                    }}>
+                                                        Đã đặt
+                                                    </Text>
+                                                )}
                                             </Pressable>
                                         );
                                     })}
@@ -370,21 +532,19 @@ export default function DoctorDetailScreen() {
                         <View className="bg-white border-2 border-black rounded-[24px] p-6 shadow-sm mb-6">
                             <Text className="text-lg font-space-bold text-black mb-3">Tiểu sử</Text>
                             <Text className="text-sm font-space-medium text-black/60 leading-6">
-                                GS. TS. Logan Mason là chuyên gia hàng đầu trong lĩnh vực Nha khoa với hơn 14 năm kinh nghiệm công tác tại các bệnh viện lớn trên thế giới. Ông nổi tiếng với các ca phẫu thuật hàm mặt phức tạp và các kỹ thuật phục hình răng thẩm mỹ tiên tiến.
+                                {doctor?.bio || 'Chưa có thông tin tiểu sử.'}
                             </Text>
                         </View>
-                        
+
                         <View className="flex-row flex-wrap gap-2">
-                            {['Răng hàm mặt', 'Chỉnh nha', 'Implant', 'Phẫu thuật nướu'].map(item => (
-                                <View key={item} className="bg-[#D1EFFF] border-2 border-black px-4 py-2 rounded-full">
-                                    <Text className="text-xs font-space-bold text-black">{item}</Text>
+                            {doctor?.specialty ? (
+                                <View className="bg-[#D1EFFF] border-2 border-black px-4 py-2 rounded-full">
+                                    <Text className="text-xs font-space-bold text-black">{doctor.specialty}</Text>
                                 </View>
-                            ))}
+                            ) : null}
                         </View>
                     </View>
                 )}
-
-                                {/* No static "Kinh nghiệm" implementation required as stats are in header */}
 
                 {selectedTab === 'Đánh giá' && (
                     <View className="px-5">
@@ -394,7 +554,7 @@ export default function DoctorDetailScreen() {
                                 <Text className="text-xs font-space-medium text-black/40">Trên 5 sao</Text>
                             </View>
                             <View className="flex-row gap-x-1">
-                                {[1,2,3,4,5].map(s => <Star key={s} size={20} color="#000" fill={s <= (doctor?.averageRating || 0) ? "#000" : "transparent"} />)}
+                                {[1, 2, 3, 4, 5].map(s => <Star key={s} size={20} color="#000" fill={s <= (doctor?.averageRating || 0) ? "#000" : "transparent"} />)}
                             </View>
                         </View>
 
@@ -420,21 +580,21 @@ export default function DoctorDetailScreen() {
 
             {/* 5. Footer CTA */}
             <View className="absolute bottom-6 left-6 right-6 flex-row items-center gap-x-4">
-                <Pressable 
-                    onPress={() => open({ 
-                        type: 'chat_detail', 
-                        data: { 
-                            name: 'Prof. Dr. Logan Mason', 
-                            avatar: 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
-                            specialty: 'Nha khoa' 
-                        } 
+                <Pressable
+                    onPress={() => open({
+                        type: 'chat_detail',
+                        data: {
+                            name: doctor?.fullName || 'Bác sĩ',
+                            avatar: doctor?.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
+                            specialty: doctor?.specialty || ''
+                        }
                     })}
                     className="w-16 h-16 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm active:translate-y-1 active:shadow-none"
                 >
                     <MessageCircle size={24} color="#000" strokeWidth={2.5} />
                 </Pressable>
 
-                <Pressable 
+                <Pressable
                     onPress={handleBooking}
                     className={`flex-1 h-16 border-2 border-black rounded-2xl items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-1 active:translate-y-1 active:shadow-none ${(!selectedDateItem || !selectedSlot) ? 'bg-gray-300' : 'bg-[#B3354B]'}`}
                     disabled={!selectedDateItem || !selectedSlot}
@@ -444,6 +604,134 @@ export default function DoctorDetailScreen() {
                     </Text>
                 </Pressable>
             </View>
+
+            {/* ─── Month Calendar Modal ─── */}
+            <Modal
+                visible={showMonthCalendar}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setShowMonthCalendar(false)}
+            >
+                <Pressable
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
+                    onPress={() => setShowMonthCalendar(false)}
+                >
+                    <Pressable
+                        style={{
+                            backgroundColor: '#F9F6FC',
+                            borderTopLeftRadius: 32,
+                            borderTopRightRadius: 32,
+                            borderTopWidth: 2,
+                            borderLeftWidth: 2,
+                            borderRightWidth: 2,
+                            borderColor: BORDER_COLOR,
+                            paddingTop: 20,
+                            paddingBottom: 40,
+                            paddingHorizontal: 20,
+                        }}
+                        onPress={e => e.stopPropagation()}
+                    >
+                        {/* Modal header */}
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#000' }}>
+                                Chọn ngày khám
+                            </Text>
+                            <Pressable
+                                onPress={() => setShowMonthCalendar(false)}
+                                style={{ width: 36, height: 36, backgroundColor: '#fff', borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <X size={18} color="#000" strokeWidth={2.5} />
+                            </Pressable>
+                        </View>
+
+                        {/* Month calendar */}
+                        <View style={{ backgroundColor: '#fff', borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 24, padding: 14, ...SHADOW_MD }}>
+                            {/* Day headers */}
+                            <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+                                {['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'].map((d, i) => (
+                                    <Text key={i} style={{ flex: 1, textAlign: 'center', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold', color: '#94A3B8' }}>{d}</Text>
+                                ))}
+                            </View>
+
+                            {/* Days grid */}
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                                {monthDays.map((day, idx) => {
+                                    const isCurrentMonth = day.isSame(currentMonth, 'month');
+                                    const isPast = day.isBefore(today, 'day');
+                                    const available = isCurrentMonth && isAvailableDate(day) && !isPast;
+                                    const isSelected = selectedDateItem?.fullDate === day.format('YYYY-MM-DD');
+                                    const isToday = day.isSame(today, 'day');
+                                    const disabled = !isCurrentMonth || isPast || !isAvailableDate(day);
+
+                                    return (
+                                        <Pressable
+                                            key={idx}
+                                            onPress={() => handleSelectMonthDay(day)}
+                                            disabled={disabled}
+                                            style={{
+                                                width: '14.28%',
+                                                aspectRatio: 1,
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                padding: 2,
+                                                borderWidth: isSelected ? 2 : 1,
+                                                borderColor: isSelected ? BORDER_COLOR : 'rgba(0,0,0,0.05)',
+                                                backgroundColor: isSelected ? SOFT_PURPLE : (available ? 'rgba(163,230,161,0.15)' : 'transparent'),
+                                                borderRadius: isSelected ? 12 : (available ? 10 : 0),
+                                                opacity: disabled && isCurrentMonth ? 0.3 : 1,
+                                            }}
+                                        >
+                                            <Text style={{
+                                                fontSize: 14,
+                                                fontFamily: 'SpaceGrotesk_700Bold',
+                                                color: isSelected ? '#000' : isCurrentMonth
+                                                    ? (isToday ? '#B3354B' : (available ? '#000' : '#94A3B8'))
+                                                    : '#E2E8F0'
+                                            }}>
+                                                {day.format('D')}
+                                            </Text>
+                                            {available && !isSelected && (
+                                                <View style={{ width: 3, height: 3, borderRadius: 1.5, backgroundColor: '#A3E6A1', marginTop: 1 }} />
+                                            )}
+                                        </Pressable>
+                                    );
+                                })}
+                            </View>
+
+                            {/* Month navigator */}
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 14, borderTopWidth: 1.5, borderTopColor: 'rgba(0,0,0,0.05)' }}>
+                                <Pressable
+                                    onPress={() => setCurrentMonthStr(currentMonth.subtract(1, 'month').format('YYYY-MM-DD'))}
+                                    style={{ padding: 8, backgroundColor: '#F9FAFB', borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 10 }}
+                                >
+                                    <ChevronLeft size={20} color="#000" strokeWidth={2.5} />
+                                </Pressable>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.5, color: '#64748B' }}>
+                                    {currentMonth.format('MMMM YYYY')}
+                                </Text>
+                                <Pressable
+                                    onPress={() => setCurrentMonthStr(currentMonth.add(1, 'month').format('YYYY-MM-DD'))}
+                                    style={{ padding: 8, backgroundColor: '#F9FAFB', borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 10 }}
+                                >
+                                    <ChevronRight size={20} color="#000" strokeWidth={2.5} />
+                                </Pressable>
+                            </View>
+                        </View>
+
+                        {/* Legend */}
+                        <View style={{ flexDirection: 'row', gap: 20, marginTop: 16, justifyContent: 'center' }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#A3E6A1' }} />
+                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#64748B' }}>Có lịch khám</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: SOFT_PURPLE, borderWidth: 1.5, borderColor: BORDER_COLOR }} />
+                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#64748B' }}>Đã chọn</Text>
+                            </View>
+                        </View>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </SafeAreaView>
     );
 }

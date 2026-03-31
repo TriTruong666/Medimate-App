@@ -16,6 +16,37 @@ export function useGetDoctorAvailableSlots(doctorId: string | undefined, date: s
     });
 }
 
+export function useGetMyAppointments(filter?: any) {
+    return useQuery({
+        queryKey: ["my-appointments", filter],
+        queryFn: async () => {
+            const res = await AppointmentApi.getMyAppointments(filter);
+            if (!res.success) throw new Error(res.message);
+            // API trả BaseResponse<AppointmentResponse[]> — data là array trực tiếp
+            return Array.isArray(res.data) ? res.data : [];
+        },
+        // Refetch mỗi 15 giây để bắt kịp thông tin status mới
+        refetchInterval: 15000,
+        refetchIntervalInBackground: false,
+    });
+}
+
+// Hook lấy chi tiết 1 appointment (có doctorName, appointmentTime, ...)
+export function useGetAppointmentDetail(appointmentId: string | undefined, options?: { pollingInterval?: number }) {
+    return useQuery({
+        // Dùng queryKey riêng biệt chứa ID để cache riêng từng lịch hẹn
+        queryKey: ["appointment-detail", appointmentId],
+        queryFn: async () => {
+            if (!appointmentId) throw new Error("Missing Appointment ID");
+            const res = await AppointmentApi.getAppointmentDetail(appointmentId);
+            if (!res.success) throw new Error(res.message);
+            return res.data;
+        },
+        enabled: !!appointmentId, // Chỉ gọi API khi ID đã có sẵn (không bị undefined)
+        refetchInterval: options?.pollingInterval,
+    });
+}
+
 export function useCreateAppointment() {
     const queryClient = useQueryClient();
 
