@@ -1,5 +1,5 @@
 import * as PaymentApi from "@/apis/payment.api";
-import { CreatePaymentRequest, PaymentFilterRequest } from "@/types/Payment";
+import { CreatePaymentRequest, PaymentFilterRequest, UpdateStatusRequest } from "@/types/Payment";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Alert, Linking } from "react-native";
 
@@ -61,5 +61,12 @@ export function useGetTransactionByPaymentId(paymentId: string | undefined) {
             return res.data;
         },
         enabled: !!paymentId,
+    });
+}
+
+export function useUpdatePaymentStatus() {
+    return useMutation({
+        mutationFn: ({ orderCode, data }: { orderCode: number; data: UpdateStatusRequest }) =>
+            PaymentApi.updatePaymentStatus(orderCode, data),
     });
 }
