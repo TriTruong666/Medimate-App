@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { ArrowLeft, ArrowRight, Calendar, Clock, Filter, RefreshCw } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Calendar, Clock, Filter, MessageSquare, RefreshCw } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -28,10 +28,12 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
 function AppointmentCard({
     appt,
     onJoin,
+    onViewHistory,
     joiningState,
 }: {
     appt: AppointmentResponse;
     onJoin: (a: AppointmentResponse) => void;
+    onViewHistory: (a: AppointmentResponse) => void;
     joiningState: Record<string, boolean>;
 }) {
     // Fetch chi tiết từ API mới cập nhật
@@ -45,6 +47,7 @@ function AppointmentCard({
     };
 
     const isUpcoming = merged.status === 'Approved' || merged.status === 'Pending';
+    const isCompleted = merged.status === 'Completed';
     const isJoining = joiningState[appt.appointmentId];
     const statusCfg = STATUS_CONFIG[merged.status] ?? { label: merged.status, bg: '#E2E8F0' };
 
@@ -162,38 +165,31 @@ function AppointmentCard({
             </View>
 
             {/* --- CTA button --- */}
-            {isUpcoming && (
+            {/* --- Nút bấm thay đổi theo trạng thái --- */}
+            {isUpcoming ? (
                 <Pressable
                     onPress={() => onJoin(merged)}
                     disabled={isJoining}
+                    style={{ /* style nút Tham gia (Màu đỏ/Nâu) */ backgroundColor: isJoining ? '#94A3B8' : '#B3354B' }}
+                >
+                    {isJoining ? <ActivityIndicator color="white" /> : <Text style={{ color: '#fff' }}>Tham gia phòng khám</Text>}
+                    {!isJoining && <ArrowRight size={20} color="#fff" />}
+                </Pressable>
+            ) : isCompleted ? (
+                <Pressable
+                    onPress={() => onViewHistory(merged)}
                     style={{
-                        width: '100%',
-                        height: 56,
-                        backgroundColor: isJoining ? '#94A3B8' : '#B3354B',
-                        borderWidth: 2,
-                        borderColor: '#000',
-                        borderRadius: 18,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'row',
-                        gap: 10,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 3, height: 3 },
-                        shadowOpacity: 1,
-                        shadowRadius: 0,
-                        elevation: 4,
+                        width: '100%', height: 56, backgroundColor: '#fff',
+                        borderWidth: 2, borderColor: '#000', borderRadius: 18,
+                        alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10
                     }}
                 >
-                    {isJoining ? (
-                        <ActivityIndicator color="white" size="small" />
-                    ) : (
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            Tham gia phòng khám
-                        </Text>
-                    )}
-                    {!isJoining && <ArrowRight size={20} color="#fff" strokeWidth={2.5} />}
+                    <MessageSquare size={20} color="#000" />
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000', textTransform: 'uppercase' }}>
+                        Xem lại tư vấn & Đơn thuốc
+                    </Text>
                 </Pressable>
-            )}
+            ) : null}
         </View>
     );
 }
@@ -333,6 +329,7 @@ export default function AppointmentsScreen() {
                             key={appt.appointmentId}
                             appt={appt}
                             onJoin={handleJoinSession}
+                            onViewHistory={handleJoinSession}
                             joiningState={joiningState}
                         />
                     ))

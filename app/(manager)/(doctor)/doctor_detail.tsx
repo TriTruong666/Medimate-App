@@ -85,7 +85,7 @@ const formatDayOfWeekEn = (d: dayjs.Dayjs) => {
 
 export default function DoctorDetailScreen() {
     const router = useRouter();
-    const { id } = useLocalSearchParams();
+    const { id, sessionId, status } = useLocalSearchParams();
     const doctorId = typeof id === 'string' ? id : (Array.isArray(id) ? id[0] : '');
 
     const [selectedTab, setSelectedTab] = useState('Đặt lịch');
@@ -97,6 +97,8 @@ export default function DoctorDetailScreen() {
     const [currentMonthStr, setCurrentMonthStr] = useState(dayjs().format('YYYY-MM-DD'));
 
     const { open } = usePopup();
+
+    const isCompleted = status === 'Completed' || status === 'completed' || status === 'Đã khám';
 
     const { data: doctor, isLoading: isDoctorLoading, refetch: refetchDoctor } = useGetDoctorDetail(doctorId);
     const { data: reviewsData, isLoading: isReviewsLoading, refetch: refetchReviews } = useGetDoctorReviews(doctorId);
@@ -586,7 +588,9 @@ export default function DoctorDetailScreen() {
                         data: {
                             name: doctor?.fullName || 'Bác sĩ',
                             avatar: doctor?.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
-                            specialty: doctor?.specialty || ''
+                            specialty: doctor?.specialty || '',
+                            sessionId: typeof sessionId === 'string' ? sessionId : (Array.isArray(sessionId) ? sessionId[0] : undefined),
+                            isCompleted: isCompleted,
                         }
                     })}
                     className="w-16 h-16 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm active:translate-y-1 active:shadow-none"

@@ -16,8 +16,10 @@ import {
     Text,
     TextInput,
     View,
+    ActivityIndicator,
 } from "react-native";
 import { popupAtom } from "../../stores/popupStore";
+import { getMessages, sendMessage } from "../../apis/chat.api";
 
 // ─── Types ───────────────────────────────────────────────────
 interface ChatMessage {
@@ -31,6 +33,8 @@ interface ChatDetailPopupProps {
     name?: string;
     avatar?: string;
     specialty?: string;
+    sessionId?: string;
+    isCompleted?: boolean;
     onClose: () => void;
 }
 
@@ -51,24 +55,66 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     name = "Prof. Dr. Logan Mason",
     avatar = "https://cdn-icons-png.flaticon.com/512/3845/3842326.png",
     specialty = "Nha khoa",
+    sessionId,
+    isCompleted = false,
     onClose,
 }) => {
     const [messages, setMessages] = useState<ChatMessage[]>(MOCK_MESSAGES);
     const [inputText, setInputText] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
     const flatListRef = useRef<FlatList>(null);
 
-    const handleSend = () => {
+    React.useEffect(() => {
+        if (!sessionId) return;
+        const fetchMsgs = async () => {
+            setIsLoading(true);
+            try {
+                const res = await getMessages(sessionId);
+                if (res.success && res.data) {
+                    const sorted = res.data.sort((a,b) => new Date(a.sendAt).getTime() - new Date(b.sendAt).getTime());
+                    const mapped: ChatMessage[] = sorted.map(m => ({
+                        id: m.messageId,
+                        text: m.content || "",
+                        sender: m.senderType === 0 ? "me" : "other", // 0 is User, 1 is Doctor
+                        time: new Date(m.sendAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+                    }));
+                    setMessages(mapped);
+                }
+            } catch (e) {
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchMsgs();
+        
+        let interval: any;
+        if (!isCompleted) {
+            interval = setInterval(fetchMsgs, 3000);
+        }
+        return () => { if (interval) clearInterval(interval); }
+    }, [sessionId, isCompleted]);
+
+    const handleSend = async () => {
         if (!inputText.trim()) return;
+        const text = inputText.trim();
+        setInputText("");
 
         const newMsg: ChatMessage = {
             id: Date.now().toString(),
-            text: inputText.trim(),
+            text: text,
             sender: "me",
             time: new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
         };
 
         setMessages((prev) => [...prev, newMsg]);
-        setInputText("");
+
+        if (sessionId) {
+            try {
+                await sendMessage(sessionId, text);
+            } catch (e) {
+                console.error(e);
+            }
+        }
 
         setTimeout(() => {
             flatListRef.current?.scrollToEnd({ animated: true });
@@ -171,53 +217,68 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                 </View>
 
                 {/* 3. Input Area (Seamless Bottom White) */}
-                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                {isCompleted ? (
                     <View style={{
                         backgroundColor: "#FFF",
                         borderTopWidth: 2,
                         borderTopColor: "rgba(0,0,0,0.06)",
                         paddingHorizontal: 16,
-                        paddingTop: 12,
-                        paddingBottom: Platform.OS === "ios" ? 40 : 25,
+                        paddingVertical: 20,
+                        alignItems: "center"
                     }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                            <Pressable style={{ width: 42, height: 42, borderRadius: 12, borderWidth: 2, borderColor: "rgba(0,0,0,0.05)", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
-                                <Paperclip size={18} color="rgba(0,0,0,0.2)" strokeWidth={2} />
-                            </Pressable>
-
-                            <View style={{ flex: 1, backgroundColor: "#F5F3F8", borderWidth: 2, borderColor: "#000", borderRadius: 18, paddingHorizontal: 15, height: 46, justifyContent: 'center' }}>
-                                <TextInput
-                                    style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#000" }}
-                                    placeholder="Nhập tin nhắn..."
-                                    placeholderTextColor="rgba(0,0,0,0.2)"
-                                    value={inputText}
-                                    onChangeText={setInputText}
-                                    onSubmitEditing={handleSend}
-                                />
-                            </View>
-
-                            <Pressable
-                                onPress={handleSend}
-                                style={{
-                                    width: 46,
-                                    height: 46,
-                                    borderRadius: 14,
-                                    borderWidth: 2,
-                                    borderColor: "#000",
-                                    backgroundColor: inputText.trim() ? "#000" : "#E5E7EB",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    shadowColor: "#000",
-                                    shadowOffset: inputText.trim() ? { width: 3, height: 3 } : { width: 0, height: 0 },
-                                    shadowOpacity: inputText.trim() ? 1 : 0,
-                                    shadowRadius: 0,
-                                }}
-                            >
-                                <Send size={18} color={inputText.trim() ? "#FFF" : "rgba(0,0,0,0.2)"} strokeWidth={2.5} />
-                            </Pressable>
-                        </View>
+                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "rgba(0,0,0,0.4)" }}>
+                            Phiên tư vấn đã kết thúc. Bạn không thể gửi thêm tin nhắn.
+                        </Text>
                     </View>
-                </KeyboardAvoidingView>
+                ) : (
+                    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                        <View style={{
+                            backgroundColor: "#FFF",
+                            borderTopWidth: 2,
+                            borderTopColor: "rgba(0,0,0,0.06)",
+                            paddingHorizontal: 16,
+                            paddingTop: 12,
+                            paddingBottom: Platform.OS === "ios" ? 40 : 25,
+                        }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                <Pressable style={{ width: 42, height: 42, borderRadius: 12, borderWidth: 2, borderColor: "rgba(0,0,0,0.05)", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
+                                    <Paperclip size={18} color="rgba(0,0,0,0.2)" strokeWidth={2} />
+                                </Pressable>
+
+                                <View style={{ flex: 1, backgroundColor: "#F5F3F8", borderWidth: 2, borderColor: "#000", borderRadius: 18, paddingHorizontal: 15, height: 46, justifyContent: 'center' }}>
+                                    <TextInput
+                                        style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#000" }}
+                                        placeholder="Nhập tin nhắn..."
+                                        placeholderTextColor="rgba(0,0,0,0.2)"
+                                        value={inputText}
+                                        onChangeText={setInputText}
+                                        onSubmitEditing={handleSend}
+                                    />
+                                </View>
+
+                                <Pressable
+                                    onPress={handleSend}
+                                    style={{
+                                        width: 46,
+                                        height: 46,
+                                        borderRadius: 14,
+                                        borderWidth: 2,
+                                        borderColor: "#000",
+                                        backgroundColor: inputText.trim() ? "#000" : "#E5E7EB",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        shadowColor: "#000",
+                                        shadowOffset: inputText.trim() ? { width: 3, height: 3 } : { width: 0, height: 0 },
+                                        shadowOpacity: inputText.trim() ? 1 : 0,
+                                        shadowRadius: 0,
+                                    }}
+                                >
+                                    <Send size={18} color={inputText.trim() ? "#FFF" : "rgba(0,0,0,0.2)"} strokeWidth={2.5} />
+                                </Pressable>
+                            </View>
+                        </View>
+                    </KeyboardAvoidingView>
+                )}
             </View>
         </View>
     );

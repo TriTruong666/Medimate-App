@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, Mic, MicOff, PhoneOff, SwitchCamera } from 'lucide-react-native';
+import { Camera, Mic, MicOff, PhoneOff, SwitchCamera, MessageSquare, X, Send } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, PermissionsAndroid, Platform, Pressable, Text, View, ActivityIndicator } from 'react-native';
+import { Dimensions, PermissionsAndroid, Platform, Pressable, Text, View, ActivityIndicator, KeyboardAvoidingView, ScrollView, TextInput, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
     ChannelProfileType,
@@ -13,6 +13,9 @@ import {
 } from 'react-native-agora';
 import { useToast } from '../../../stores/toastStore';
 import { endSession } from '../../../apis/session.api';
+import { getVideoCallToken } from '../../../apis/videoCall.api';
+import { getMessages, sendMessage } from '../../../apis/chat.api';
+import { MessageDto } from '../../../types/Chat';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,9 +31,48 @@ export default function VideoCallScreen() {
     const [isMuted, setIsMuted] = useState(false);
     const [isCameraOff, setIsCameraOff] = useState(false);
     
+    // Chat States
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [chatText, setChatText] = useState('');
+    const [messages, setMessages] = useState<MessageDto[]>([]);
+    const scrollViewRef = useRef<ScrollView>(null);
+
     // Agora Engine Reference
     const agoraEngineRef = useRef<IRtcEngine | null>(null);
     const isLocalCameraActive = !isCameraOff;
+    const sid = typeof sessionId === 'string' ? sessionId : (sessionId?.[0] || '');
+
+    // Chat Polling
+    useEffect(() => {
+        if (!sid) return;
+        const fetchMsg = async () => {
+            try {
+                const res = await getMessages(sid);
+                if (res.success && res.data) setMessages(res.data);
+            } catch (e) {}
+        };
+        fetchMsg();
+        const interval = setInterval(fetchMsg, 3000);
+        return () => clearInterval(interval);
+    }, [sid]);
+
+    const handleSendChat = async () => {
+        if (!chatText.trim() || !sid) return;
+        const text = chatText.trim();
+        setChatText('');
+        try {
+            const res = await sendMessage(sid, text);
+            if (res.success && res.data) {
+                setMessages(prev => {
+                    if (prev.find(m => m.messageId === res.data!.messageId)) return prev;
+                    return [...prev, res.data!];
+                });
+                setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
+            }
+        } catch (e) {
+            toast.error("Lỗi", "Không thể gửi tin nhắn");
+        }
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -79,8 +121,19 @@ export default function VideoCallScreen() {
                     agoraEngineRef.current.enableVideo();
                     agoraEngineRef.current.startPreview();
 
+                    // Fetch Token from API
+                    let rtcToken = '';
+                    try {
+                        const tokenRes = await getVideoCallToken(sid, "publisher");
+                        if (tokenRes.success && tokenRes.data) {
+                            rtcToken = tokenRes.data;
+                        }
+                    } catch (e) {
+                        console.log('Error fetching Agora Token:', e);
+                    }
+
                     // Join Channel (ChannelName = sessionId)
-                    agoraEngineRef.current.joinChannel('', typeof sessionId === 'string' ? sessionId : (sessionId?.[0] || 'test'), 0, {
+                    agoraEngineRef.current.joinChannel(rtcToken, sid, 0, {
                         clientRoleType: ClientRoleType.ClientRoleBroadcaster,
                         channelProfile: ChannelProfileType.ChannelProfileCommunication,
                     });
@@ -203,46 +256,90 @@ export default function VideoCallScreen() {
 
                 {/* Controls Overlay */}
                 <View className="absolute bottom-10 left-0 right-0 items-center">
-                    <View className="flex-row items-center gap-x-6 px-8 py-5 bg-black/60 rounded-[32px] backdrop-blur-xl border border-white/10 shadow-2xl">
+                    <View className="flex-row items-center gap-x-4 px-6 py-4 bg-black/60 rounded-[32px] backdrop-blur-xl border border-white/10 shadow-2xl">
                         
+                        {/* Chat Toggle */}
+                        <Pressable 
+                            onPress={() => setIsChatOpen(!isChatOpen)}
+                            className={`w-12 h-12 rounded-full items-center justify-center active:scale-90 ${isChatOpen ? 'bg-[#FFD700]' : 'bg-white/20'}`}
+                        >
+                            <MessageSquare size={20} color={isChatOpen ? "black" : "white"} />
+                        </Pressable>
+
                         {/* Mic Toggle */}
                         <Pressable 
                             onPress={toggleMute}
-                            className={`w-14 h-14 rounded-full items-center justify-center active:scale-90 ${isMuted ? 'bg-[#FF4A4A]' : 'bg-white/20'}`}
+                            className={`w-12 h-12 rounded-full items-center justify-center active:scale-90 ${isMuted ? 'bg-[#FF4A4A]' : 'bg-white/20'}`}
                         >
-                            {isMuted ? (
-                                <MicOff size={24} color="white" />
-                            ) : (
-                                <Mic size={24} color="white" />
-                            )}
+                            {isMuted ? <MicOff size={20} color="white" /> : <Mic size={20} color="white" />}
                         </Pressable>
 
                         {/* Camera Toggle */}
                         <Pressable 
                             onPress={toggleCamera}
-                            className={`w-14 h-14 rounded-full items-center justify-center active:scale-90 ${isCameraOff ? 'bg-[#FF4A4A]' : 'bg-white/20'}`}
+                            className={`w-12 h-12 rounded-full items-center justify-center active:scale-90 ${isCameraOff ? 'bg-[#FF4A4A]' : 'bg-white/20'}`}
                         >
-                            <Camera size={24} color="white" />
-                        </Pressable>
-
-                        {/* Switch Camera */}
-                        <Pressable 
-                            onPress={switchCamera}
-                            className="w-14 h-14 rounded-full items-center justify-center bg-white/20 active:scale-90"
-                        >
-                            <SwitchCamera size={24} color="white" />
+                            <Camera size={20} color="white" />
                         </Pressable>
 
                         {/* End Call */}
                         <Pressable 
                             onPress={handleEndCall}
-                            className="w-16 h-16 rounded-full items-center justify-center bg-[#FF4A4A] shadow-[0_0_20px_rgba(255,74,74,0.5)] active:scale-90 border-2 border-[#FF4A4A]"
+                            className="w-14 h-14 rounded-full items-center justify-center bg-[#FF4A4A] shadow-[0_0_20px_rgba(255,74,74,0.5)] active:scale-90 border-2 border-[#FF4A4A]"
                         >
-                            <PhoneOff size={28} color="white" strokeWidth={2.5} />
+                            <PhoneOff size={24} color="white" strokeWidth={2.5} />
                         </Pressable>
                         
                     </View>
                 </View>
+
+                {/* Sliding Chat Panel */}
+                {isChatOpen && (
+                    <KeyboardAvoidingView 
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                        className="absolute bottom-32 left-4 right-4 h-96 bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/20 rounded-3xl p-4 shadow-2xl"
+                    >
+                        <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-white/10">
+                            <Text className="text-white font-space-bold text-lg">Chat tư vấn</Text>
+                            <Pressable onPress={() => { setIsChatOpen(false); Keyboard.dismiss(); }} className="w-8 h-8 bg-white/10 rounded-full items-center justify-center">
+                                <X size={18} color="white"/>
+                            </Pressable>
+                        </View>
+                        
+                        <ScrollView 
+                            ref={scrollViewRef}
+                            className="flex-1 mb-2"
+                            showsVerticalScrollIndicator={false}
+                            contentContainerStyle={{ gap: 12, paddingBottom: 10 }}
+                            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+                        >
+                            {messages.map((msg) => {
+                                const isMe = msg.senderType === 1; // 1 is Doctor, 0 is User
+                                return (
+                                    <View key={msg.messageId} className={`flex-row ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                        <View className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMe ? 'bg-[#FFD700] rounded-tr-sm' : 'bg-white/10 rounded-tl-sm'}`}>
+                                            <Text className={`font-space-medium ${isMe ? 'text-black' : 'text-white'}`}>{msg.content}</Text>
+                                        </View>
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <View className="flex-row items-center gap-3 mt-2">
+                            <TextInput 
+                                className="flex-1 h-12 bg-black/50 text-white rounded-2xl px-4 font-space-medium border border-white/10" 
+                                placeholder="Nhập tin nhắn..." 
+                                placeholderTextColor="#888" 
+                                value={chatText} 
+                                onChangeText={setChatText}
+                                onSubmitEditing={handleSendChat}
+                            />
+                            <Pressable onPress={handleSendChat} className="w-12 h-12 bg-[#FFD700] rounded-2xl items-center justify-center active:scale-95 shadow-lg">
+                                <Send size={20} color="black"/>
+                            </Pressable>
+                        </View>
+                    </KeyboardAvoidingView>
+                )}
 
             </View>
         </SafeAreaView>

@@ -1,19 +1,18 @@
-import * as FileSystem from "expo-file-system/legacy";
-import * as MediaLibrary from "expo-media-library";
 import { getPaymentInfo } from "@/apis/payment.api";
 import { useUpdatePaymentStatus } from "@/hooks/usePayment";
 import { useUpdateTransactionStatus } from "@/hooks/useTransaction";
+import * as FileSystem from "expo-file-system/legacy";
+import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
-    CheckCircle,
     Copy,
     Download,
     Globe,
     QrCode,
-    XCircle,
+    XCircle
 } from "lucide-react-native";
-import React, { useRef, useState, useCallback, useEffect } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -28,11 +27,9 @@ import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
 
-// ─── Intercept các scheme custom để tránh lỗi "Can't open url" ───
 const HANDLED_SCHEMES = ["medimate://", "intent://", "kakao://"];
 
 type Tab = "qr" | "web";
-type PayResult = "success" | "cancelled" | null;
 
 export default function PaymentWebViewScreen() {
     const router = useRouter();
@@ -48,16 +45,29 @@ export default function PaymentWebViewScreen() {
 
     const [tab, setTab] = useState<Tab>("qr");
     const [webLoading, setWebLoading] = useState(true);
-    const [payResult, setPayResult] = useState<PayResult>(null);
     const [saving, setSaving] = useState(false);
     const [updatingStatus, setUpdatingStatus] = useState(false);
 
     const qrRef = useRef<any>(null);
+    const isSyncing = useRef(false);
+
     const { mutateAsync: updatePaymentStatus } = useUpdatePaymentStatus();
     const { mutateAsync: updateTransactionStatus } = useUpdateTransactionStatus();
 
-    // ─── Gọi API cập nhật trạng thái Payment + Transaction ─────
-    const syncPaymentStatus = useCallback(async (result: "success" | "cancelled") => {
+    // ─── Điều hướng ───
+    const navigateToSuccess = useCallback(() => {
+        router.replace({ pathname: "/payment-success", params: { planName, familyName } });
+    }, [router, planName, familyName]);
+
+    const navigateToCancel = useCallback(() => {
+        router.replace({ pathname: "/payment-cancelled", params: { orderCode } });
+    }, [router, orderCode]);
+
+    // ─── Đồng bộ trạng thái (Được kích hoạt bởi WebView chạy ngầm) ───
+    const forceSyncPaymentStatus = useCallback(async (result: "success" | "cancelled") => {
+        if (isSyncing.current) return;
+        isSyncing.current = true;
+
         const orderCodeNum = Number(orderCode);
         if (!orderCodeNum) return;
 
@@ -65,123 +75,67 @@ export default function PaymentWebViewScreen() {
         setUpdatingStatus(true);
 
         try {
-            // 1. Cập nhật trạng thái Payment
             await updatePaymentStatus({ orderCode: orderCodeNum, data: { status: apiStatus } });
-
-            // 2. Lấy thông tin Payment để lấy transactionId
             const infoRes = await getPaymentInfo(orderCodeNum);
             if (infoRes.success && infoRes.data?.transactionId) {
-                // 3. Cập nhật trạng thái Transaction
                 await updateTransactionStatus({
                     transactionId: infoRes.data.transactionId,
                     data: { status: apiStatus },
                 });
             }
         } catch (err) {
-            // Không block UI nếu API lỗi — vẫn hiển thị kết quả cho user
-            console.warn('[payment-webview] syncPaymentStatus error:', err);
+            console.warn('[payment] force sync error:', err);
         } finally {
             setUpdatingStatus(false);
-            setPayResult(result);
-        }
-    }, [orderCode, updatePaymentStatus, updateTransactionStatus]);
-
-    // ─── Tự động kiểm tra trạng thái thanh toán liên tục (Polling) ───
-    useEffect(() => {
-        if (payResult || updatingStatus) return;
-        const orderCodeNum = Number(orderCode);
-        if (!orderCodeNum) return;
-
-        const interval = setInterval(async () => {
-            try {
-                const infoRes = await getPaymentInfo(orderCodeNum);
-                if (infoRes.success && infoRes.data) {
-                    const st = infoRes.data.status;
-                    if (st === "PAID" || st === "SUCCESS") {
-                        setPayResult("success");
-                    } else if (st === "CANCELLED") {
-                        setPayResult("cancelled");
-                    }
-                }
-            } catch (error) {
-                // Ignore polling errors
+            if (result === "success") {
+                navigateToSuccess();
+            } else {
+                navigateToCancel();
             }
-        }, 5000);
+        }
+    }, [orderCode, updatePaymentStatus, updateTransactionStatus, navigateToSuccess, navigateToCancel]);
 
-        return () => clearInterval(interval);
-    }, [orderCode, payResult, updatingStatus]);
 
-    // ─── WebView: intercept custom scheme redirection ──────────
-    // cancelUrl = 'medimate://payment/cancel'
-    // returnUrl = 'medimate://payment/success'
-    const isCancelUrl = (u: string) =>
-        u.includes("/payment/cancel") ||
-        u.includes("cancel=true") ||
-        u.includes("status=CANCELLED");
-
-    const isSuccessUrl = (u: string) =>
-        u.includes("/payment/success") ||
-        u.includes("status=PAID") ||
-        u.includes("success=true") ||
-        u.includes("payment_status=PAID");
-
+    // ─── WebView Intercept (Cỗ máy chạy ngầm) ───
     const handleShouldStartLoad = (request: { url: string }) => {
-        const reqUrl = request.url;
-        for (const scheme of HANDLED_SCHEMES) {
-            if (reqUrl.startsWith(scheme)) {
-                if (isCancelUrl(reqUrl)) {
-                    syncPaymentStatus("cancelled");
-                } else if (isSuccessUrl(reqUrl)) {
-                    syncPaymentStatus("success");
-                }
-                return false; // Chặn WebView load URL này
-            }
+        const u = request.url;
+        if (u.includes("/payment/success") || u.includes("status=PAID") || u.includes("success=true")) {
+            forceSyncPaymentStatus("success");
+            return false;
         }
-        return true;
+        if (u.includes("/payment/cancel") || u.includes("status=CANCELLED") || u.includes("cancel=true")) {
+            forceSyncPaymentStatus("cancelled");
+            return false;
+        }
+        return u.startsWith("http");
     };
 
     const handleWebNavChange = (nav: WebViewNavigation) => {
         const navUrl = nav.url ?? "";
-        // Kiểm tra cả hai hướng success và cancel
-        if (isSuccessUrl(navUrl)) {
-            syncPaymentStatus("success");
-        } else if (isCancelUrl(navUrl)) {
-            syncPaymentStatus("cancelled");
+        if (navUrl.includes("/payment/success") || navUrl.includes("status=PAID")) {
+            forceSyncPaymentStatus("success");
+        } else if (navUrl.includes("/payment/cancel") || navUrl.includes("status=CANCELLED")) {
+            forceSyncPaymentStatus("cancelled");
         }
     };
 
-    // ─── Lưu QR vào thư viện ảnh ──────────────────────────────
+
+    // ─── Lưu ảnh QR & Copy Link ───
     const saveQR = async () => {
         if (!qrRef.current) return;
         setSaving(true);
         try {
             const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status !== "granted") {
-                Alert.alert("Thiếu quyền", "Vui lòng cấp quyền truy cập thư viện ảnh.");
-                setSaving(false);
-                return;
-            }
-
-            // Chụp SVG thành base64 PNG
+            if (status !== "granted") return Alert.alert("Lỗi", "Vui lòng cấp quyền lưu ảnh.");
             qrRef.current.toDataURL(async (data: string) => {
-                try {
-                    const path = FileSystem.cacheDirectory + `qr_${orderCode}.png`;
-                    await FileSystem.writeAsStringAsync(path, data, {
-                        encoding: FileSystem.EncodingType.Base64,
-                    });
-                    const asset = await MediaLibrary.createAssetAsync(path);
-                    await MediaLibrary.createAlbumAsync("Medimate", asset, false);
-                    Alert.alert("✅ Đã lưu", "Ảnh QR đã được lưu vào thư viện ảnh.");
-                } catch (e) {
-                    Alert.alert("Lỗi", "Không thể lưu ảnh QR.");
-                } finally {
-                    setSaving(false);
-                }
+                const path = FileSystem.cacheDirectory + `qr_${orderCode}.png`;
+                await FileSystem.writeAsStringAsync(path, data, { encoding: FileSystem.EncodingType.Base64 });
+                const asset = await MediaLibrary.createAssetAsync(path);
+                await MediaLibrary.createAlbumAsync("Medimate", asset, false);
+                Alert.alert("Thành công", "Đã lưu mã QR vào máy.");
+                setSaving(false);
             });
-        } catch (e) {
-            setSaving(false);
-            Alert.alert("Lỗi", "Không thể lưu ảnh QR.");
-        }
+        } catch (e) { setSaving(false); }
     };
 
     const copyUrl = () => {
@@ -189,300 +143,162 @@ export default function PaymentWebViewScreen() {
         Alert.alert("✓ Đã sao chép", "Link thanh toán đã được sao chép.");
     };
 
-    // ─── UPDATING STATUS OVERLAY ───────────────────────────────
+    const handleCancelConfirmation = () => {
+        Alert.alert(
+            "Xác nhận hủy",
+            `Bạn có chắc chắn muốn hủy đơn hàng #${orderCode} không?`,
+            [
+                { text: "Không", style: "cancel" },
+                { text: "Hủy đơn", style: "destructive", onPress: () => forceSyncPaymentStatus("cancelled") }
+            ]
+        );
+    };
+
+
+    // ─── UPDATING STATUS OVERLAY ───
     if (updatingStatus) {
         return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F9F6FC", alignItems: "center", justifyContent: "center", padding: 32 }}>
+            <SafeAreaView style={s.centerContainer}>
                 <ActivityIndicator size="large" color="#000" />
-                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#000", marginTop: 20, textAlign: "center" }}>
-                    Đang cập nhật trạng thái...{"\n"}
-                </Text>
-                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#888", textAlign: "center", marginTop: 4 }}>
-                    Vui lòng không tắt ứng dụng
-                </Text>
+                <Text style={s.statusText}>Đang xử lý giao dịch...{"\n"}</Text>
             </SafeAreaView>
         );
     }
 
-    // ─── SUCCESS SCREEN ────────────────────────────────────────
-    if (payResult === "success") {
-        return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#F0FDF4", alignItems: "center", justifyContent: "center", padding: 32 }}>
-                <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "#DCFCE7", borderWidth: 2, borderColor: "#000", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-                    <CheckCircle size={44} color="#22C55E" strokeWidth={2} />
-                </View>
-                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 28, color: "#000", textAlign: "center", lineHeight: 36, letterSpacing: -0.5, marginBottom: 8 }}>
-                    Thanh toán{"\n"}thành công!
-                </Text>
-                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 14, color: "#555", textAlign: "center", marginBottom: 6 }}>
-                    Gói <Text style={{ color: "#000", fontFamily: "SpaceGrotesk_700Bold" }}>{planName}</Text>
-                    {familyName ? ` cho gia đình\n${familyName}` : ""} đã được kích hoạt.
-                </Text>
-                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#AAA", textAlign: "center", marginBottom: 40 }}>
-                    Hóa đơn sẽ được gửi qua email sớm.
-                </Text>
-                <Pressable
-                    onPress={() => {
-                        router.dismissAll();
-                        router.push("/(manager)/(home)");
-                    }}
-                    style={{ backgroundColor: "#000", borderRadius: 20, paddingHorizontal: 48, paddingVertical: 16, shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}
-                >
-                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#fff", textTransform: "uppercase", letterSpacing: 1 }}>Hoàn tất</Text>
-                </Pressable>
-            </SafeAreaView>
-        );
-    }
-
-    // ─── CANCELLED SCREEN ──────────────────────────────────────
-    if (payResult === "cancelled") {
-        return (
-            <SafeAreaView style={{ flex: 1, backgroundColor: "#FFF8F8", alignItems: "center", justifyContent: "center", padding: 32 }}>
-                <View style={{ width: 80, height: 80, borderRadius: 24, backgroundColor: "#FEE2E2", borderWidth: 2, borderColor: "#000", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
-                    <XCircle size={44} color="#EF4444" strokeWidth={2} />
-                </View>
-                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 28, color: "#000", textAlign: "center", lineHeight: 36, letterSpacing: -0.5, marginBottom: 8 }}>
-                    Đã hủy{"\n"}thanh toán
-                </Text>
-                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 14, color: "#888", textAlign: "center", marginBottom: 40 }}>
-                    Đơn hàng #{orderCode} đã bị hủy.{"\n"}Bạn có thể thử lại bất cứ lúc nào.
-                </Text>
-                <Pressable
-                    onPress={() => {
-                        router.dismissAll();
-                        router.push("/(manager)/(home)");
-                    }}
-                    style={{ borderWidth: 2, borderColor: "#000", borderRadius: 20, paddingHorizontal: 48, paddingVertical: 16, backgroundColor: "#fff", shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}
-                >
-                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>Quay lại Trang Chủ</Text>
-                </Pressable>
-            </SafeAreaView>
-        );
-    }
-
-    // ─── MAIN PAYMENT SCREEN ───────────────────────────────────
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F9F6FC" }} edges={["top"]}>
-            {/* ── Header ── */}
-            <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#fff", borderBottomWidth: 2, borderBottomColor: "#000", flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <Pressable
-                    onPress={() => router.back()}
-                    style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 2, borderColor: "#000", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}
-                >
-                    <ArrowLeft size={22} color="#000" strokeWidth={2.5} />
+            {/* 1. Header (Luôn hiện) */}
+            <View style={s.header}>
+                <Pressable onPress={() => router.back()} style={s.backBtn}><ArrowLeft size={22} color="#000" /></Pressable>
+                <View style={{ flex: 1 }}>
+                    <Text style={s.headerTitle}>Thanh toán · {planName}</Text>
+                    <Text style={s.headerSub}>Đơn #{orderCode} · {price}</Text>
+                </View>
+            </View>
+
+            {/* 2. Tab Bar (Luôn hiện) */}
+            <View style={s.tabBar}>
+                <Pressable onPress={() => setTab("qr")} style={[s.tabItem, tab === "qr" && s.tabActive]}>
+                    <QrCode size={18} color={tab === "qr" ? "#fff" : "#888"} />
+                    <Text style={[s.tabText, tab === "qr" && { color: "#fff" }]}>Mã QR</Text>
                 </Pressable>
-                <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#000" }}>
-                        Thanh toán · {planName}
-                    </Text>
-                    <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 11, color: "#888", marginTop: 1 }}>
-                        Đơn #{orderCode}  ·  {price}
-                    </Text>
-                </View>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" }} />
-                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 10, color: "#22C55E" }}>SECURE</Text>
-                </View>
+                <Pressable onPress={() => setTab("web")} style={[s.tabItem, tab === "web" && s.tabActive]}>
+                    <Globe size={18} color={tab === "web" ? "#fff" : "#888"} />
+                    <Text style={[s.tabText, tab === "web" && { color: "#fff" }]}>Cổng Web</Text>
+                </Pressable>
             </View>
 
-            {/* ── Tab bar ── */}
-            <View style={{ flexDirection: "row", paddingHorizontal: 16, paddingVertical: 12, gap: 10 }}>
-                {([
-                    { key: "qr", label: "Mã QR", icon: QrCode },
-                    { key: "web", label: "Cổng Web", icon: Globe },
-                ] as { key: Tab; label: string; icon: any }[]).map(({ key, label, icon: Icon }) => (
-                    <Pressable
-                        key={key}
-                        onPress={() => setTab(key)}
-                        style={{
-                            flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
-                            gap: 6, paddingVertical: 10, borderRadius: 14, borderWidth: 2,
-                            borderColor: tab === key ? "#000" : "#E0E0E0",
-                            backgroundColor: tab === key ? "#000" : "#fff",
-                            shadowColor: "#000",
-                            shadowOffset: tab === key ? { width: 3, height: 3 } : { width: 0, height: 0 },
-                            shadowOpacity: tab === key ? 1 : 0, shadowRadius: 0,
-                            elevation: tab === key ? 3 : 0,
-                        }}
-                    >
-                        <Icon size={16} color={tab === key ? "#fff" : "#888"} strokeWidth={2.5} />
-                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: tab === key ? "#fff" : "#888" }}>
-                            {label}
-                        </Text>
-                    </Pressable>
-                ))}
-            </View>
+            {/* 3. VÙNG NỘI DUNG CHÍNH */}
+            <View style={{ flex: 1 }}>
 
-            {/* ── QR Tab ── */}
-            {tab === "qr" && (
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
-                    {/* Info card */}
-                    <View style={{ borderWidth: 2, borderColor: "#000", borderRadius: 24, padding: 20, backgroundColor: "#fff", marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}>
-                        {[
-                            { label: "Gói dịch vụ", value: planName },
-                            { label: "Gia đình",    value: familyName },
-                            { label: "Mã đơn",      value: `#${orderCode}` },
-                            { label: "Số tiền",     value: price },
-                        ].map((item, i, arr) => (
-                            <View key={i} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 12, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: "rgba(0,0,0,0.06)" }}>
-                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 11, color: "#AAA", textTransform: "uppercase", letterSpacing: 1 }}>{item.label}</Text>
-                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>{item.value}</Text>
-                            </View>
-                        ))}
-                        {/* Amount highlight */}
-                        <View style={{ marginTop: 12, backgroundColor: "#F0FDF4", borderRadius: 14, padding: 14, borderWidth: 2, borderColor: "#000", alignItems: "center" }}>
-                            <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 11, color: "#888", textTransform: "uppercase", letterSpacing: 1 }}>Tổng thanh toán</Text>
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 28, color: "#000", marginTop: 4 }}>{price}</Text>
-                        </View>
-                    </View>
+                {/* ─── LỚP WEBVIEW CHẠY NGẦM (BÍ QUYẾT FIX IPHONE) ─── */}
+                <View
+                    style={[
+                        StyleSheet.absoluteFill,
+                        {
+                            // Nếu đang ở tab QR: Cho tàng hình và không cho bấm trúng (nhưng vẫn load)
+                            // Nếu đang ở tab Web: Cho hiện lên bình thường
+                            opacity: tab === "web" ? 1 : 0,
+                            zIndex: tab === "web" ? 10 : -1,
+                            pointerEvents: tab === "web" ? "auto" : "none"
+                        }
+                    ]}
+                >
+                    <WebView
+                        source={{ uri: url ?? "" }}
+                        style={{ flex: 1 }}
+                        originWhitelist={['*']}
+                        onShouldStartLoadWithRequest={handleShouldStartLoad}
+                        onNavigationStateChange={handleWebNavChange}
+                        onLoadStart={() => setWebLoading(true)}
+                        onLoadEnd={() => setWebLoading(false)}
+                        // Ép load ngay cả khi không nhìn thấy
+                        startInLoadingState={true}
+                    />
+                    {webLoading && tab === "web" && (
+                        <ActivityIndicator style={StyleSheet.absoluteFill} size="large" color="#000" />
+                    )}
 
-                    {/* QR Code card */}
-                    <View style={{ borderWidth: 2, borderColor: "#000", borderRadius: 24, padding: 24, backgroundColor: "#fff", alignItems: "center", marginBottom: 16, shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}>
-                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, color: "#888", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 16 }}>
-                            Quét mã để thanh toán
-                        </Text>
-
-                        {/* Logo above QR */}
-                        <View style={{ marginBottom: 12 }}>
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 11, color: "#000", letterSpacing: 2, textTransform: "uppercase", textAlign: "center" }}>
-                                MEDIMATE  ·  PAYOS
-                            </Text>
-                        </View>
-
-                        {qrCode ? (
-                            <View style={{ padding: 12, backgroundColor: "#fff", borderRadius: 16, borderWidth: 2, borderColor: "#000" }}>
-                                <QRCode
-                                    value={qrCode}
-                                    size={220}
-                                    color="#000"
-                                    backgroundColor="#fff"
-                                    getRef={(ref) => { qrRef.current = ref; }}
-                                />
-                            </View>
-                        ) : (
-                            <View style={{ width: 220, height: 220, backgroundColor: "#F3F4F6", borderRadius: 16, alignItems: "center", justifyContent: "center" }}>
-                                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", color: "#AAA", fontSize: 13 }}>Không có mã QR</Text>
-                            </View>
-                        )}
-
-                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 11, color: "#AAA", marginTop: 16, textAlign: "center" }}>
-                            Sử dụng app ngân hàng hoặc ví điện tử để quét
-                        </Text>
-                    </View>
-
-                    {/* Action buttons */}
-                    <View style={{ gap: 12 }}>
-                        {/* Lưu QR */}
-                        <Pressable
-                            onPress={saveQR}
-                            disabled={saving || !qrCode}
-                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 56, borderRadius: 18, borderWidth: 2, borderColor: "#000", backgroundColor: saving ? "#DDD" : "#000", shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}
-                        >
-                            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Download size={20} color="#fff" strokeWidth={2.5} />}
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 15, color: "#fff", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                {saving ? "Đang lưu..." : "Lưu ảnh QR"}
-                            </Text>
-                        </Pressable>
-
-                        {/* Sao chép link */}
-                        <Pressable
-                            onPress={copyUrl}
-                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 56, borderRadius: 18, borderWidth: 2, borderColor: "#000", backgroundColor: "#fff" }}
-                        >
-                            <Copy size={20} color="#000" strokeWidth={2.5} />
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 15, color: "#000", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Sao chép link PayOS
-                            </Text>
-                        </Pressable>
-
-                        {/* Hủy đơn */}
-                        <Pressable
-                            onPress={() => {
-                                Alert.alert(
-                                    "Hủy đơn hàng",
-                                    `Bạn có chắc muốn hủy đơn #${orderCode}?`,
-                                    [
-                                        { text: "Không", style: "cancel" },
-                                        { text: "Hủy đơn", style: "destructive", onPress: () => syncPaymentStatus("cancelled") },
-                                    ]
-                                );
-                            }}
-                            style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, height: 56, borderRadius: 18, borderWidth: 2, borderColor: "#EF4444", backgroundColor: "#FFF8F8" }}
-                        >
-                            <XCircle size={20} color="#EF4444" strokeWidth={2.5} />
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 15, color: "#EF4444", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                Hủy đơn hàng
-                            </Text>
-                        </Pressable>
-                    </View>
-                </ScrollView>
-            )}
-
-            {/* ── Web Tab ── */}
-            {tab === "web" && (
-                <View style={{ flex: 1 }}>
-                    {url ? (
-                        <>
-                            <WebView
-                                source={{ uri: url }}
-                                style={{ flex: 1 }}
-                                onShouldStartLoadWithRequest={handleShouldStartLoad}
-                                onNavigationStateChange={handleWebNavChange}
-                                onLoadStart={() => setWebLoading(true)}
-                                onLoadEnd={() => setWebLoading(false)}
-                                javaScriptEnabled
-                                domStorageEnabled
-                                startInLoadingState
-                                renderLoading={() => (
-                                    <View style={[StyleSheet.absoluteFill, { alignItems: "center", justifyContent: "center", backgroundColor: "#F9F6FC" }]}>
-                                        <ActivityIndicator size="large" color="#000" />
-                                        <Text style={{ marginTop: 12, fontFamily: "SpaceGrotesk_500Medium", color: "#888", fontSize: 13 }}>
-                                            Đang tải cổng thanh toán...
-                                        </Text>
-                                    </View>
-                                )}
-                            />
-                            {/* Nút hủy đơn nổi phía dưới Web tab */}
-                            <View style={{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: "#fff", borderTopWidth: 2, borderTopColor: "#000" }}>
-                                <Pressable
-                                    onPress={() => {
-                                        Alert.alert(
-                                            "Hủy đơn hàng",
-                                            `Bạn có chắc muốn hủy đơn #${orderCode}?`,
-                                            [
-                                                { text: "Không", style: "cancel" },
-                                                { text: "Hủy đơn", style: "destructive", onPress: () => syncPaymentStatus("cancelled") },
-                                            ]
-                                        );
-                                    }}
-                                    style={{
-                                        flexDirection: "row",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                        gap: 10,
-                                        height: 52,
-                                        borderRadius: 16,
-                                        borderWidth: 2,
-                                        borderColor: "#EF4444",
-                                        backgroundColor: "#FFF8F8",
-                                    }}
-                                >
-                                    <XCircle size={18} color="#EF4444" strokeWidth={2.5} />
-                                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#EF4444", textTransform: "uppercase", letterSpacing: 0.5 }}>
-                                        Hủy đơn hàng #{orderCode}
-                                    </Text>
-                                </Pressable>
-                            </View>
-                        </>
-                    ) : (
-                        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#EF4444", fontSize: 14 }}>
-                                Không tìm thấy link thanh toán.
-                            </Text>
+                    {tab === "web" && (
+                        <View style={s.webFooter}>
+                            <Pressable onPress={handleCancelConfirmation} style={s.btnDangerSmall}>
+                                <XCircle size={18} color="#EF4444" />
+                                <Text style={s.btnTextDanger}>Hủy đơn #{orderCode}</Text>
+                            </Pressable>
                         </View>
                     )}
                 </View>
-            )}
+
+                {/* ─── LỚP TAB QR (HIỂN THỊ ĐÈ LÊN TRÊN) ─── */}
+                {tab === "qr" && (
+                    <ScrollView contentContainerStyle={{ padding: 16 }} style={{ flex: 1 }}>
+                        <View style={s.card}>
+                            <View style={s.infoRow}><Text style={s.infoLabel}>GÓI DỊCH VỤ</Text><Text style={s.infoValue}>{planName}</Text></View>
+                            <View style={s.infoRow}><Text style={s.infoLabel}>GIA ĐÌNH</Text><Text style={s.infoValue}>{familyName}</Text></View>
+                            <View style={s.amountBox}>
+                                <Text style={s.infoLabel}>TỔNG THANH TOÁN</Text>
+                                <Text style={s.amountText}>{price}</Text>
+                            </View>
+                        </View>
+
+                        <View style={s.qrCard}>
+                            <Text style={s.qrHint}>QUÉT MÃ ĐỂ THANH TOÁN</Text>
+                            <View style={s.qrBorder}>
+                                <QRCode value={qrCode} size={200} getRef={(r) => (qrRef.current = r)} />
+                            </View>
+                            <Text style={s.qrSubHint}>Hệ thống sẽ tự động chuyển trang khi nhận được tiền</Text>
+                        </View>
+
+                        <View style={{ gap: 12, marginTop: 8 }}>
+                            <Pressable onPress={saveQR} disabled={saving} style={[s.btnSecondary, saving && { opacity: 0.7 }]}>
+                                {saving ? <ActivityIndicator color="#000" /> : <Download size={20} color="#000" />}
+                                <Text style={s.btnTextDark}>Lưu ảnh QR</Text>
+                            </Pressable>
+
+                            <Pressable onPress={copyUrl} style={s.btnSecondary}>
+                                <Copy size={20} color="#000" />
+                                <Text style={s.btnTextDark}>Sao chép link PayOS</Text>
+                            </Pressable>
+
+                            <Pressable onPress={handleCancelConfirmation} style={s.btnDanger}>
+                                <XCircle size={20} color="#EF4444" />
+                                <Text style={s.btnTextDanger}>Hủy đơn hàng</Text>
+                            </Pressable>
+                        </View>
+                    </ScrollView>
+                )}
+            </View>
         </SafeAreaView>
     );
 }
+
+const s = StyleSheet.create({
+    header: { padding: 16, flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: "#fff", borderBottomWidth: 2 },
+    backBtn: { width: 40, height: 40, borderRadius: 12, borderWidth: 2, alignItems: "center", justifyContent: "center" },
+    headerTitle: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 16 },
+    headerSub: { fontFamily: "SpaceGrotesk_500Medium", fontSize: 11, color: "#888" },
+    tabBar: { flexDirection: "row", padding: 16, gap: 10 },
+    tabItem: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: "#E0E0E0", backgroundColor: "#fff" },
+    tabActive: { backgroundColor: "#000", borderColor: "#000" },
+    tabText: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#888" },
+    card: { borderWidth: 2, borderRadius: 24, padding: 20, backgroundColor: "#fff", marginBottom: 16 },
+    infoRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 10 },
+    infoLabel: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 10, color: "#AAA" },
+    infoValue: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 14 },
+    amountBox: { marginTop: 12, backgroundColor: "#F0FDF4", borderRadius: 16, padding: 16, borderWidth: 2, alignItems: "center" },
+    amountText: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 28, marginTop: 4 },
+    qrCard: { borderWidth: 2, borderRadius: 24, padding: 24, backgroundColor: "#fff", alignItems: "center", marginBottom: 16 },
+    qrHint: { fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, color: "#888", marginBottom: 16 },
+    qrBorder: { padding: 12, borderWidth: 2, borderRadius: 16, backgroundColor: "#fff" },
+    qrSubHint: { fontFamily: "SpaceGrotesk_500Medium", fontSize: 11, color: "#AAA", marginTop: 16, textAlign: "center" },
+    btnPrimary: { height: 56, borderRadius: 18, backgroundColor: "#000", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderWidth: 2 },
+    btnSecondary: { height: 56, borderRadius: 18, backgroundColor: "#fff", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderWidth: 2 },
+    btnDanger: { height: 56, borderRadius: 18, backgroundColor: "#FFF8F8", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, borderWidth: 2, borderColor: "#EF4444" },
+    btnTextLight: { color: "#fff", fontFamily: "SpaceGrotesk_700Bold" },
+    btnTextDark: { color: "#000", fontFamily: "SpaceGrotesk_700Bold" },
+    btnTextDanger: { color: "#EF4444", fontFamily: "SpaceGrotesk_700Bold" },
+    webFooter: { padding: 12, backgroundColor: "#fff", borderTopWidth: 2 },
+    btnDangerSmall: { height: 48, borderRadius: 14, backgroundColor: "#FFF8F8", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 2, borderColor: "#EF4444" },
+    centerContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
+    statusText: { fontFamily: "SpaceGrotesk_700Bold", marginTop: 20 }
+});

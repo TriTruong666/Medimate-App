@@ -12,7 +12,6 @@ import {
     Shield,
     Sparkles,
     Star,
-    TrendingUp,
     Users,
     Zap,
 } from "lucide-react-native";
@@ -28,8 +27,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePopup } from "../../../stores/popupStore";
-
-// <-- Đổi useEffect thành useCallback (có thể xóa useEffect)
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -60,59 +57,62 @@ function buildFeatures(pkg: MembershipPackage) {
     ];
 }
 
-/** So sánh tên gói (case-insensitive substring) */
-function isPkgCurrent(pkg: MembershipPackage, sub: SubscriptionData | null): boolean {
-    if (!sub) return false;
-    return sub.packageName.toLowerCase().includes(pkg.packageName.toLowerCase())
-        || pkg.packageName.toLowerCase().includes(sub.packageName.toLowerCase());
-}
+// Kiểu dữ liệu gom chung Gia đình + Gói đăng ký hiện tại của họ
+type FamilySubscriptionPair = {
+    family: FamilyData;
+    subscription: SubscriptionData;
+};
 
 export default function SubscriptionScreen() {
     const router = useRouter();
     const popup = usePopup();
 
     const [packages, setPackages] = useState<MembershipPackage[]>([]);
-    const [family, setFamily] = useState<FamilyData | null>(null);
-    const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
+    const [activeFamilySubs, setActiveFamilySubs] = useState<FamilySubscriptionPair[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
     useFocusEffect(
         useCallback(() => {
-            let isActive = true; // Biến cờ để tránh lỗi "memory leak" khi unmount
+            let isActive = true;
 
             const loadData = async () => {
-                // Tải song song: danh sách gói + gia đình
+                // Tải song song danh sách gói và danh sách gia đình
                 const [pkgRes, famRes] = await Promise.all([
                     getMembershipPackages(),
-                    getFamilies(),
+                    getFamilies()
                 ]);
 
                 if (!isActive) return;
 
-                let activePkgs: MembershipPackage[] = [];
+                // 1. Set Packages
                 if (pkgRes.success && pkgRes.data) {
-                    activePkgs = pkgRes.data.filter(p => p.isActive);
+                    const activePkgs = pkgRes.data.filter(p => p.isActive);
                     setPackages(activePkgs);
                 }
 
-                // Lấy gia đình Shared đầu tiên
-                let sharedFamily: FamilyData | null = null;
+                // 2. Lấy danh sách các gia đình và check gói của TỪNG gia đình
                 if (famRes.success && famRes.data) {
-                    sharedFamily = famRes.data.find(f => f.type === "Shared") ?? null;
-                    setFamily(sharedFamily);
-                }
+                    const sharedFamilies = famRes.data.filter(f => f.type === "Shared");
 
-                // Lấy subscription của gia đình
-                if (sharedFamily) {
-                    const subRes = await getSubscription(sharedFamily.familyId);
-                    if (isActive && subRes.success && subRes.data) {
-                        const sub = subRes.data;
-                        setSubscription(sub);
+                    // Tạo mảng Promise để gọi API getSubscription cho tất cả gia đình cùng lúc
+                    const subPromises = sharedFamilies.map(async (family) => {
+                        const subRes = await getSubscription(family.familyId);
+                        return { family, subRes };
+                    });
 
-                        // Tự động chọn tab của gói hiện tại
-                        const currentIdx = activePkgs.findIndex(p => isPkgCurrent(p, sub));
-                        if (currentIdx >= 0) setSelectedIndex(currentIdx);
+                    const subResults = await Promise.all(subPromises);
+
+                    // Lọc ra những gia đình đang có gói Active
+                    const activeSubsList = subResults
+                        .filter(item => item.subRes.success && item.subRes.data && item.subRes.data.status === 'Active')
+                        .map(item => ({
+                            family: item.family,
+                            subscription: item.subRes.data!
+                        }));
+
+                    if (isActive) {
+                        setActiveFamilySubs(activeSubsList);
                     }
                 }
 
@@ -121,7 +121,6 @@ export default function SubscriptionScreen() {
 
             loadData();
 
-            // Cleanup function chạy khi màn hình bị ẩn đi
             return () => {
                 isActive = false;
             };
@@ -130,12 +129,6 @@ export default function SubscriptionScreen() {
 
     const currentPkg = packages[selectedIndex];
     const currentColor = PLAN_COLORS[selectedIndex % PLAN_COLORS.length];
-
-    // Gói đang dùng có khớp với tab đang xem?
-    const isViewingCurrentPlan = currentPkg ? isPkgCurrent(currentPkg, subscription) : false;
-
-    // Index gói đang dùng (để so sánh upgrade)
-    const activePlanIndex = packages.findIndex(p => isPkgCurrent(p, subscription));
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
@@ -173,7 +166,7 @@ export default function SubscriptionScreen() {
                 {loading && (
                     <View className="items-center py-16">
                         <ActivityIndicator size="large" color="#000" />
-                        <Text className="mt-3 font-space-medium text-black/40 text-sm">Đang tải gói dịch vụ...</Text>
+                        <Text className="mt-3 font-space-medium text-black/40 text-sm">Đang tải dữ liệu...</Text>
                     </View>
                 )}
 
@@ -186,62 +179,72 @@ export default function SubscriptionScreen() {
                 {!loading && packages.length > 0 && (
                     <>
                         {/* ═══════════════════════════════════════════════
-                            CURRENT PLAN BANNER — chỉ hiện khi có subscription
+                            DANH SÁCH GÓI ĐANG SỬ DỤNG (CỦA CÁC GIA ĐÌNH)
                         ═══════════════════════════════════════════════ */}
-                        {subscription && family && (
-                            <View className="px-5 mb-5">
-                                <View
-                                    style={{
-                                        borderWidth: 2, borderColor: '#000', borderRadius: 20,
-                                        padding: 16, backgroundColor: '#fff',
-                                        flexDirection: 'row', alignItems: 'center', gap: 14,
-                                        shadowColor: '#000', shadowOffset: { width: 3, height: 3 },
-                                        shadowOpacity: 1, shadowRadius: 0, elevation: 3,
-                                    }}
-                                >
-                                    {/* Icon */}
-                                    <View style={{ width: 48, height: 48, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Check size={24} color="#22C55E" strokeWidth={3} />
-                                    </View>
+                        {activeFamilySubs.length > 0 && (
+                            <View className="px-5 mb-8">
+                                <View className="flex-row items-center mb-4">
+                                    <Text className="text-xs font-space-bold text-gray-500 uppercase tracking-[2px]">Gói gia đình đang dùng</Text>
+                                    <View className="flex-1 h-[2px] bg-black/5 ml-3 rounded-full" />
+                                </View>
 
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                            Gia đình · {family.familyName}
-                                        </Text>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 17, color: '#000', marginTop: 2 }}>
-                                            {subscription.packageName}
-                                        </Text>
-                                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#22C55E', marginTop: 1 }}>
-                                            {subscription.status === 'Active' ? '● Đang hoạt động' : '○ Không hoạt động'}
-                                        </Text>
-                                    </View>
+                                <View className="gap-y-4">
+                                    {activeFamilySubs.map((item, index) => (
+                                        <View
+                                            key={item.family.familyId}
+                                            style={{
+                                                borderWidth: 2, borderColor: '#000', borderRadius: 20,
+                                                padding: 16, backgroundColor: '#fff',
+                                                flexDirection: 'row', alignItems: 'center', gap: 14,
+                                                shadowColor: '#000', shadowOffset: { width: 3, height: 3 },
+                                                shadowOpacity: 1, shadowRadius: 0, elevation: 3,
+                                            }}
+                                        >
+                                            {/* Icon */}
+                                            <View style={{ width: 48, height: 48, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#F0FDF4', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Check size={24} color="#22C55E" strokeWidth={3} />
+                                            </View>
 
-                                    {/* Remaining stats */}
-                                    <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                                        <View style={{ backgroundColor: '#F9F6FC', borderWidth: 1.5, borderColor: '#000', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-                                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>
-                                                {subscription.remainingOcrCount}/{subscription.ocrLimit} OCR
-                                            </Text>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#888', textTransform: 'uppercase', letterSpacing: 1 }} numberOfLines={1}>
+                                                    GĐ · {item.family.familyName}
+                                                </Text>
+                                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 17, color: '#000', marginTop: 2 }}>
+                                                    {item.subscription.packageName}
+                                                </Text>
+                                            </View>
+
+                                            {/* Remaining stats */}
+                                            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                                                <View style={{ backgroundColor: '#F9F6FC', borderWidth: 1.5, borderColor: '#000', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>
+                                                        {item.subscription.remainingOcrCount}/{item.subscription.ocrLimit} OCR
+                                                    </Text>
+                                                </View>
+                                                <View style={{ backgroundColor: '#F9F6FC', borderWidth: 1.5, borderColor: '#000', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>
+                                                        {item.subscription.remainingConsultantCount}/{item.subscription.consultantLimit} Call
+                                                    </Text>
+                                                </View>
+                                            </View>
                                         </View>
-                                        <View style={{ backgroundColor: '#F9F6FC', borderWidth: 1.5, borderColor: '#000', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 }}>
-                                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>
-                                                {subscription.remainingConsultantCount}/{subscription.consultantLimit} Tư vấn
-                                            </Text>
-                                        </View>
-                                    </View>
+                                    ))}
                                 </View>
                             </View>
                         )}
 
+
                         {/* ═══════ PLAN SELECTOR TABS ═══════ */}
                         <View className="px-5 mb-6">
+                            <View className="flex-row items-center mb-4">
+                                <Text className="text-xs font-space-bold text-gray-500 uppercase tracking-[2px]">Khám phá gói mới</Text>
+                                <View className="flex-1 h-[2px] bg-black/5 ml-3 rounded-full" />
+                            </View>
                             <View className="flex-row bg-white border-2 border-black rounded-[20px] p-1.5 shadow-sm">
                                 {packages.map((pkg, idx) => {
                                     const isSelected = selectedIndex === idx;
                                     const color = PLAN_COLORS[idx % PLAN_COLORS.length];
-                                    const isCurrent = isPkgCurrent(pkg, subscription);
-                                    const isUpgrade = !isCurrent && activePlanIndex >= 0 && idx > activePlanIndex;
-                                    const isFirstPaid = !isCurrent && idx === (activePlanIndex >= 0 ? activePlanIndex + 1 : 1);
+                                    const isFirstPaid = idx === 1; // Gắn mác HOT cho gói trả phí đầu tiên
 
                                     return (
                                         <Pressable key={pkg.packageId} onPress={() => setSelectedIndex(idx)} className="flex-1 relative">
@@ -257,12 +260,7 @@ export default function SubscriptionScreen() {
                                                 }}
                                             >
                                                 {/* Badges */}
-                                                {isCurrent && (
-                                                    <View style={{ position: 'absolute', top: -10, right: 4, backgroundColor: '#22C55E', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#000' }}>
-                                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 8, color: '#fff', textTransform: 'uppercase' }}>✓ HIỆN TẠI</Text>
-                                                    </View>
-                                                )}
-                                                {isFirstPaid && !isCurrent && (
+                                                {isFirstPaid && (
                                                     <View style={{ position: 'absolute', top: -10, right: 4, backgroundColor: '#000', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
                                                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 8, color: '#fff', textTransform: 'uppercase' }}>HOT</Text>
                                                     </View>
@@ -283,7 +281,7 @@ export default function SubscriptionScreen() {
                                 className="border-2 border-black rounded-[24px] p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden"
                                 style={{ backgroundColor: currentColor }}
                             >
-                                {selectedIndex > 0 && !isViewingCurrentPlan && (
+                                {selectedIndex > 0 && (
                                     <View className="absolute -right-5 -top-5 opacity-10">
                                         <Crown size={130} color="#000" />
                                     </View>
@@ -299,19 +297,11 @@ export default function SubscriptionScreen() {
                                 </View>
 
                                 <View className="flex-row items-center mt-3 gap-x-2 flex-wrap" style={{ gap: 8 }}>
-                                    {/* Pill trái: trạng thái */}
-                                    {isViewingCurrentPlan ? (
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#22C55E', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 2, borderColor: '#000' }}>
-                                            <Check size={12} color="#fff" strokeWidth={3} />
-                                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>Gói hiện tại</Text>
-                                        </View>
-                                    ) : (
-                                        <View className="bg-black px-3 py-1 rounded-lg">
-                                            <Text className="text-white font-space-bold text-[11px] uppercase tracking-wider">
-                                                {currentPkg.activeSubscriberCount > 0 ? `${currentPkg.activeSubscriberCount} đang dùng` : "MỚI"}
-                                            </Text>
-                                        </View>
-                                    )}
+                                    <View className="bg-black px-3 py-1 rounded-lg">
+                                        <Text className="text-white font-space-bold text-[11px] uppercase tracking-wider">
+                                            {currentPkg.activeSubscriberCount > 0 ? `${currentPkg.activeSubscriberCount} đang dùng` : "MỚI"}
+                                        </Text>
+                                    </View>
 
                                     <Text className="text-sm font-space-medium text-black/60">
                                         {currentPkg.price === 0
@@ -347,7 +337,7 @@ export default function SubscriptionScreen() {
                                             <Text className={`flex-1 text-[15px] font-space-bold ${feature.included ? "text-black" : "text-gray-300 line-through"}`}>
                                                 {feature.text}
                                             </Text>
-                                            {feature.included && !isViewingCurrentPlan && selectedIndex > 0 && (
+                                            {feature.included && selectedIndex > 0 && (
                                                 <Sparkles size={14} color="#FFD700" strokeWidth={2.5} />
                                             )}
                                         </View>
@@ -358,16 +348,18 @@ export default function SubscriptionScreen() {
 
                         {/* ═══════ CTA ═══════ */}
                         <View className="px-5">
-                            {isViewingCurrentPlan ? (
-                                /* Gói đang dùng → disabled */
-                                <View className="border-2 border-black/20 rounded-[24px] py-5 items-center justify-center" style={{ backgroundColor: '#F0FDF4' }}>
+                            {currentPkg.price === 0 ? (
+                                /* Gói Free -> Hiển thị nút trạng thái mặc định (không cho bấm) */
+                                <View className="border-2 border-black/10 rounded-[24px] py-5 items-center justify-center" style={{ backgroundColor: '#F3F4F6' }}>
                                     <View className="flex-row items-center gap-x-2">
-                                        <Check size={20} color="#22C55E" strokeWidth={3} />
-                                        <Text className="text-[#22C55E] font-space-bold text-lg uppercase tracking-wider">Đang sử dụng</Text>
+                                        <Check size={20} color="#888" strokeWidth={3} />
+                                        <Text className="text-[#888] font-space-bold text-lg uppercase tracking-wider">
+                                            Gói mặc định
+                                        </Text>
                                     </View>
                                 </View>
                             ) : (
-                                /* Gói khác → nút nâng cấp / đăng ký */
+                                /* Các gói trả phí -> Nút đăng ký bình thường */
                                 <Pressable
                                     className="border-2 border-black rounded-[24px] py-5 items-center justify-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
                                     style={{ backgroundColor: "#000" }}
@@ -387,13 +379,9 @@ export default function SubscriptionScreen() {
                                     }}
                                 >
                                     <View className="flex-row items-center gap-x-2">
-                                        {activePlanIndex >= 0 && selectedIndex > activePlanIndex
-                                            ? <TrendingUp size={22} color="#FFD700" strokeWidth={2.5} />
-                                            : <Crown size={22} color="#FFD700" strokeWidth={2.5} />}
+                                        <Crown size={22} color="#FFD700" strokeWidth={2.5} />
                                         <Text className="text-white font-space-bold text-lg uppercase tracking-wider">
-                                            {activePlanIndex >= 0 && selectedIndex > activePlanIndex
-                                                ? `Nâng cấp lên ${currentPkg.packageName}`
-                                                : `Đăng ký ${currentPkg.packageName}`}
+                                            Đăng ký {currentPkg.packageName}
                                         </Text>
                                     </View>
                                 </Pressable>
