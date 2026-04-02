@@ -170,22 +170,58 @@ function AppointmentCard({
                 <Pressable
                     onPress={() => onJoin(merged)}
                     disabled={isJoining}
-                    style={{ /* style nút Tham gia (Màu đỏ/Nâu) */ backgroundColor: isJoining ? '#94A3B8' : '#B3354B' }}
+                    style={{
+                        width: '100%',
+                        height: 56,
+                        backgroundColor: isJoining ? '#F1F5F9' : '#fff',
+                        borderWidth: 2,
+                        borderColor: '#000',
+                        borderRadius: 18,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 10,
+                    }}
                 >
-                    {isJoining ? <ActivityIndicator color="white" /> : <Text style={{ color: '#fff' }}>Tham gia phòng khám</Text>}
-                    {!isJoining && <ArrowRight size={20} color="#fff" />}
+                    {isJoining ? (
+                        <ActivityIndicator color="#000" />
+                    ) : (
+                        <>
+                            <ArrowRight size={20} color="#000" strokeWidth={2.5} />
+                            <Text style={{ 
+                                fontFamily: 'SpaceGrotesk_700Bold', 
+                                fontSize: 15, 
+                                color: '#000', 
+                                textTransform: 'uppercase' 
+                            }}>
+                                Tham gia phòng khám
+                            </Text>
+                        </>
+                    )}
                 </Pressable>
             ) : isCompleted ? (
                 <Pressable
                     onPress={() => onViewHistory(merged)}
                     style={{
-                        width: '100%', height: 56, backgroundColor: '#fff',
-                        borderWidth: 2, borderColor: '#000', borderRadius: 18,
-                        alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10
+                        width: '100%',
+                        height: 56,
+                        backgroundColor: '#fff',
+                        borderWidth: 2,
+                        borderColor: '#000',
+                        borderRadius: 18,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 10
                     }}
                 >
-                    <MessageSquare size={20} color="#000" />
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000', textTransform: 'uppercase' }}>
+                    <MessageSquare size={20} color="#000" strokeWidth={2.5} />
+                    <Text style={{ 
+                        fontFamily: 'SpaceGrotesk_700Bold', 
+                        fontSize: 15, 
+                        color: '#000', 
+                        textTransform: 'uppercase' 
+                    }}>
                         Xem lại tư vấn & Đơn thuốc
                     </Text>
                 </Pressable>

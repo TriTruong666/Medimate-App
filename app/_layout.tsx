@@ -27,6 +27,7 @@ SplashScreen.preventAutoHideAsync();
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PopupContainer } from "../components/popup/PopupContainer";
 import { ToastContainer } from "../components/toast/ToastContainer";
+import FloatingVideoCall from "../components/video/FloatingVideoCall";
 
 import { authSessionAtom, initAuthAtom } from '../stores/authStore';
 import { useAtom, useSetAtom } from 'jotai';
@@ -66,6 +67,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }} />
         <ToastContainer />
         <PopupContainer />
+        <FloatingVideoCall />
       </QueryClientProvider>
     </GestureHandlerRootView>
   );

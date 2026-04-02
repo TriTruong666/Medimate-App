@@ -1,82 +1,72 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, Mic, MicOff, PhoneOff, SwitchCamera, MessageSquare, X, Send } from 'lucide-react-native';
+import { Camera, Mic, MicOff, Minimize2, PhoneOff, SwitchCamera } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Dimensions, PermissionsAndroid, Platform, Pressable, Text, View, ActivityIndicator, KeyboardAvoidingView, ScrollView, TextInput, Keyboard } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, Dimensions, PermissionsAndroid, Platform, Pressable, Text, View } from 'react-native';
 import {
     ChannelProfileType,
     ClientRoleType,
     createAgoraRtcEngine,
     IRtcEngine,
-    RtcSurfaceView,
-    RtcConnection
+    RtcConnection,
+    RtcSurfaceView
 } from 'react-native-agora';
-import { useToast } from '../../../stores/toastStore';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { endSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';
-import { getMessages, sendMessage } from '../../../apis/chat.api';
-import { MessageDto } from '../../../types/Chat';
+import { useToast } from '../../../stores/toastStore';
+import {
+    getGlobalAgoraEngine,
+    setGlobalAgoraEngine,
+    useVideoCallActions,
+} from '../../../stores/videoCallStore';
 
 const { width, height } = Dimensions.get('window');
 
-const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'dummy_app_id'; // Fallback for dev
+const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'dummy_app_id';
 
 export default function VideoCallScreen() {
     const router = useRouter();
     const toast = useToast();
     const { sessionId, appointmentId } = useLocalSearchParams();
+    const { state: callState, startCall, minimize, updateCallState, endCall } = useVideoCallActions();
 
-    const [hasJoined, setHasJoined] = useState(false);
-    const [remoteUid, setRemoteUid] = useState<number | null>(null);
-    const [isMuted, setIsMuted] = useState(false);
-    const [isCameraOff, setIsCameraOff] = useState(false);
-    
-    // Chat States
-    const [isChatOpen, setIsChatOpen] = useState(false);
-    const [chatText, setChatText] = useState('');
-    const [messages, setMessages] = useState<MessageDto[]>([]);
-    const scrollViewRef = useRef<ScrollView>(null);
+    const [hasJoined, setHasJoined] = useState(callState.isActive ? callState.hasJoined : false);
+    const [remoteUid, setRemoteUid] = useState<number | null>(callState.isActive ? callState.remoteUid : null);
+    const [isMuted, setIsMuted] = useState(callState.isActive ? callState.isMuted : false);
+    const [isCameraOff, setIsCameraOff] = useState(callState.isActive ? callState.isCameraOff : false);
 
-    // Agora Engine Reference
-    const agoraEngineRef = useRef<IRtcEngine | null>(null);
-    const isLocalCameraActive = !isCameraOff;
+    const agoraEngineRef = useRef<IRtcEngine | null>(getGlobalAgoraEngine());
     const sid = typeof sessionId === 'string' ? sessionId : (sessionId?.[0] || '');
 
-    // Chat Polling
+    // Mark call as active in the global store when entering this screen
     useEffect(() => {
-        if (!sid) return;
-        const fetchMsg = async () => {
-            try {
-                const res = await getMessages(sid);
-                if (res.success && res.data) setMessages(res.data);
-            } catch (e) {}
-        };
-        fetchMsg();
-        const interval = setInterval(fetchMsg, 3000);
-        return () => clearInterval(interval);
+        if (sid) {
+            const aid = typeof appointmentId === 'string' ? appointmentId : (appointmentId?.[0] || '');
+            // If returning from minimized state, just un-minimize
+            if (callState.isMinimized && callState.sessionId === sid) {
+                updateCallState({ isMinimized: false });
+                // Restore state from global store
+                setHasJoined(callState.hasJoined);
+                setRemoteUid(callState.remoteUid);
+                setIsMuted(callState.isMuted);
+                setIsCameraOff(callState.isCameraOff);
+                agoraEngineRef.current = getGlobalAgoraEngine();
+            } else if (!callState.isActive) {
+                startCall(sid, aid);
+            }
+        }
     }, [sid]);
 
-    const handleSendChat = async () => {
-        if (!chatText.trim() || !sid) return;
-        const text = chatText.trim();
-        setChatText('');
-        try {
-            const res = await sendMessage(sid, text);
-            if (res.success && res.data) {
-                setMessages(prev => {
-                    if (prev.find(m => m.messageId === res.data!.messageId)) return prev;
-                    return [...prev, res.data!];
-                });
-                setTimeout(() => scrollViewRef.current?.scrollToEnd({ animated: true }), 100);
-            }
-        } catch (e) {
-            toast.error("Lỗi", "Không thể gửi tin nhắn");
+    // Sync local state to global store
+    useEffect(() => {
+        if (callState.isActive) {
+            updateCallState({ hasJoined, remoteUid, isMuted, isCameraOff });
         }
-    };
+    }, [hasJoined, remoteUid, isMuted, isCameraOff]);
 
     useEffect(() => {
         let isMounted = true;
-        
+
         const initAgora = async () => {
             if (Platform.OS === 'android') {
                 const granted = await PermissionsAndroid.requestMultiple([
@@ -94,73 +84,79 @@ export default function VideoCallScreen() {
             }
 
             try {
-                if (!agoraEngineRef.current) {
-                    agoraEngineRef.current = createAgoraRtcEngine();
-                    agoraEngineRef.current.initialize({ appId: AGORA_APP_ID });
-                    
-                    agoraEngineRef.current.registerEventHandler({
-                        onJoinChannelSuccess: () => {
-                            console.log('Successfully joined the channel');
-                            if (isMounted) setHasJoined(true);
-                        },
-                        onUserJoined: (_connection: RtcConnection, uid: number) => {
-                            console.log('Remote user joined', uid);
-                            if (isMounted) setRemoteUid(uid);
-                        },
-                        onUserOffline: (_connection: RtcConnection, uid: number) => {
-                            console.log('Remote user left', uid);
-                            if (isMounted && remoteUid === uid) {
-                                setRemoteUid(null);
-                            }
-                        },
-                        onError: (err, msg) => {
-                            console.error('Agora Error', err, msg);
-                        }
-                    });
-
-                    agoraEngineRef.current.enableVideo();
-                    agoraEngineRef.current.startPreview();
-
-                    // Fetch Token from API
-                    let rtcToken = '';
-                    try {
-                        const tokenRes = await getVideoCallToken(sid, "publisher");
-                        if (tokenRes.success && tokenRes.data) {
-                            rtcToken = tokenRes.data;
-                        }
-                    } catch (e) {
-                        console.log('Error fetching Agora Token:', e);
-                    }
-
-                    // Join Channel (ChannelName = sessionId)
-                    agoraEngineRef.current.joinChannel(rtcToken, sid, 0, {
-                        clientRoleType: ClientRoleType.ClientRoleBroadcaster,
-                        channelProfile: ChannelProfileType.ChannelProfileCommunication,
-                    });
+                // Reuse existing engine if returning from minimized
+                const existingEngine = getGlobalAgoraEngine();
+                if (existingEngine) {
+                    agoraEngineRef.current = existingEngine;
+                    return; // Already initialized and connected
                 }
+
+                const engine = createAgoraRtcEngine();
+                engine.initialize({ appId: AGORA_APP_ID });
+
+                engine.registerEventHandler({
+                    onJoinChannelSuccess: () => {
+                        console.log('Successfully joined the channel');
+                        if (isMounted) setHasJoined(true);
+                    },
+                    onUserJoined: (_connection: RtcConnection, uid: number) => {
+                        console.log('Remote user joined', uid);
+                        if (isMounted) setRemoteUid(uid);
+                    },
+                    onUserOffline: (_connection: RtcConnection, uid: number) => {
+                        console.log('Remote user left', uid);
+                        if (isMounted) setRemoteUid(null);
+                    },
+                    onError: (err, msg) => {
+                        console.error('Agora Error', err, msg);
+                    }
+                });
+
+                engine.enableVideo();
+                engine.startPreview();
+
+                // Fetch Token from API
+                let rtcToken = '';
+                try {
+                    const tokenRes = await getVideoCallToken(sid, "publisher");
+                    if (tokenRes.success && tokenRes.data) {
+                        rtcToken = tokenRes.data;
+                    }
+                } catch (e) {
+                    console.log('Error fetching Agora Token:', e);
+                }
+
+                // Join Channel
+                engine.joinChannel(rtcToken, sid, 0, {
+                    clientRoleType: ClientRoleType.ClientRoleBroadcaster,
+                    channelProfile: ChannelProfileType.ChannelProfileCommunication,
+                });
+
+                agoraEngineRef.current = engine;
+                setGlobalAgoraEngine(engine); // Store globally for PiP
             } catch (error) {
                 console.error('Error initializing Agora:', error);
             }
         };
 
-        if (AGORA_APP_ID !== 'dummy_app_id') {
-           initAgora();
-        } else {
-           console.warn("Agora App ID is missing. Video call will not function correctly.");
-           // We'll still simulate UI logic for demonstration
-           setTimeout(() => {
-               if (isMounted) setHasJoined(true);
-           }, 1000);
+        // Don't re-init if returning from minimized with existing engine
+        if (getGlobalAgoraEngine()) {
+            agoraEngineRef.current = getGlobalAgoraEngine();
+            return;
         }
 
+        if (AGORA_APP_ID !== 'dummy_app_id') {
+            initAgora();
+        } else {
+            console.warn("Agora App ID is missing. Video call will not function correctly.");
+            setTimeout(() => {
+                if (isMounted) setHasJoined(true);
+            }, 1000);
+        }
+
+        // NOTE: We do NOT clean up Agora here — cleanup happens in endCall() from the store.
         return () => {
             isMounted = false;
-            if (agoraEngineRef.current) {
-                agoraEngineRef.current.leaveChannel();
-                agoraEngineRef.current.unregisterEventHandler({});
-                agoraEngineRef.current.release();
-                agoraEngineRef.current = null;
-            }
         };
     }, []);
 
@@ -184,162 +180,194 @@ export default function VideoCallScreen() {
         setIsCameraOff(!isCameraOff);
     };
 
+    const handleMinimize = () => {
+        // Save current state to global store and go back
+        updateCallState({ hasJoined, remoteUid, isMuted, isCameraOff });
+        minimize();
+        router.back();
+    };
+
     const handleEndCall = async () => {
         try {
-            if (typeof sessionId === 'string') {
-               // We end the session formally on backend
-               await endSession(sessionId);
+            if (sid) {
+                await endSession(sid);
             }
         } catch (e) {
             console.error(e);
         }
+        endCall(); // This cleans up Agora engine via the store
         toast.info("Cuộc gọi đã kết thúc", "Trở về trang lịch khám");
         router.back();
     };
 
-    // Mocking remote UI for development if no token
     const isMocking = AGORA_APP_ID === 'dummy_app_id';
 
     return (
-        <SafeAreaView className="flex-1 bg-black" edges={['top', 'bottom']}>
-            <View className="flex-1 rounded-[40px] overflow-hidden m-2 bg-[#1C1C1E] border border-white/10 relative">
-                
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
+            <View style={{ flex: 1, backgroundColor: '#000', position: 'relative' }}>
+
                 {/* Remote Video Stream (Main Background) */}
                 {hasJoined ? (
                     (remoteUid || isMocking) ? (
-                        <View className="flex-1 bg-[#1C1C1E]">
-                            {/* In a real app, render RtcSurfaceView for remote */}
+                        <View style={{ flex: 1, backgroundColor: '#1C1C1E' }}>
                             {remoteUid && agoraEngineRef.current ? (
                                 <RtcSurfaceView canvas={{ uid: remoteUid }} style={{ flex: 1 }} />
                             ) : (
-                                <View className="flex-1 items-center justify-center">
-                                    <Text className="text-white/50 font-space-medium text-lg">Bác sĩ chưa tham gia...</Text>
-                                    <ActivityIndicator size="large" color="#FFD700" className="mt-4" />
+                                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
+                                        Bác sĩ chưa tham gia...
+                                    </Text>
+                                    <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 16 }} />
                                 </View>
                             )}
                         </View>
                     ) : (
-                        <View className="flex-1 items-center justify-center">
-                            <Text className="text-white/50 font-space-medium text-lg">Đang chờ bác sĩ tham gia...</Text>
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
+                                Đang chờ bác sĩ tham gia...
+                            </Text>
                         </View>
                     )
                 ) : (
-                    <View className="flex-1 items-center justify-center">
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                         <ActivityIndicator color="white" size="large" />
-                        <Text className="font-space-bold text-white mt-4 tracking-widest uppercase">Đang kết nối...</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#fff', marginTop: 16, letterSpacing: 2, textTransform: 'uppercase' }}>
+                            Đang kết nối...
+                        </Text>
                     </View>
                 )}
 
                 {/* Local Video Stream (Picture-in-Picture) */}
-                <View className="absolute top-6 right-6 w-28 h-40 rounded-3xl bg-[#2C2C2E] border-2 border-white/20 overflow-hidden shadow-2xl">
+                <View style={{
+                    position: 'absolute', top: 24, right: 24,
+                    width: 112, height: 160,
+                    borderRadius: 24, backgroundColor: '#2C2C2E',
+                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
+                    overflow: 'hidden',
+                }}>
                     {!isCameraOff ? (
                         agoraEngineRef.current ? (
                             <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
                         ) : (
-                            <View className="flex-1 bg-black/50 items-center justify-center rounded-3xl">
-                                <Text className="font-space-bold text-white text-[10px]">Bạn</Text>
+                            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#fff', fontSize: 10 }}>Bạn</Text>
                             </View>
                         )
                     ) : (
-                        <View className="flex-1 bg-black/80 items-center justify-center">
+                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
                             <Camera size={24} color="#666" />
                         </View>
                     )}
                 </View>
 
                 {/* Top Left info overlay */}
-                <View className="absolute top-6 left-6 px-4 py-2 bg-black/40 rounded-full backdrop-blur-md border border-white/10">
-                    <Text className="text-white font-space-bold tracking-widest text-[10px] uppercase">
+                <View style={{
+                    position: 'absolute', top: 24, left: 24,
+                    paddingHorizontal: 16, paddingVertical: 8,
+                    backgroundColor: 'rgba(0,0,0,0.4)',
+                    borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+                }}>
+                    <Text style={{
+                        color: '#fff', fontFamily: 'SpaceGrotesk_700Bold',
+                        letterSpacing: 2, fontSize: 10, textTransform: 'uppercase',
+                    }}>
                         {remoteUid ? '🟢 Đang tư vấn' : '🔴 Đang chờ'}
                     </Text>
                 </View>
 
-                {/* Controls Overlay */}
-                <View className="absolute bottom-10 left-0 right-0 items-center">
-                    <View className="flex-row items-center gap-x-4 px-6 py-4 bg-black/60 rounded-[32px] backdrop-blur-xl border border-white/10 shadow-2xl">
-                        
-                        {/* Chat Toggle */}
-                        <Pressable 
-                            onPress={() => setIsChatOpen(!isChatOpen)}
-                            className={`w-12 h-12 rounded-full items-center justify-center active:scale-90 ${isChatOpen ? 'bg-[#FFD700]' : 'bg-white/20'}`}
+                {/* Compact Floating Dock Controls */}
+                <View style={{
+                    position: 'absolute', bottom: 48, left: 0, right: 0,
+                    alignItems: 'center',
+                }}>
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 18,
+                        paddingHorizontal: 18, paddingVertical: 12,
+                        backgroundColor: 'rgba(28, 28, 30, 0.85)',
+                        borderRadius: 36,
+                        borderWidth: 1.5,
+                        borderColor: 'rgba(255,255,255,0.15)',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.5,
+                        shadowRadius: 20,
+                        elevation: 12,
+                    }}>
+
+                        {/* Minimize */}
+                        <Pressable
+                            onPress={handleMinimize}
+                            style={({ pressed }) => ({
+                                width: 50, height: 50, borderRadius: 25,
+                                alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: 'rgba(255,255,255,0.12)',
+                                transform: [{ scale: pressed ? 0.92 : 1 }],
+                            })}
                         >
-                            <MessageSquare size={20} color={isChatOpen ? "black" : "white"} />
+                            <Minimize2 size={24} color="white" />
                         </Pressable>
 
-                        {/* Mic Toggle */}
-                        <Pressable 
+                        {/* Mic */}
+                        <Pressable
                             onPress={toggleMute}
-                            className={`w-12 h-12 rounded-full items-center justify-center active:scale-90 ${isMuted ? 'bg-[#FF4A4A]' : 'bg-white/20'}`}
+                            style={({ pressed }) => ({
+                                width: 50, height: 50, borderRadius: 25,
+                                alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: isMuted ? '#FF453A' : 'rgba(255,255,255,0.12)',
+                                transform: [{ scale: pressed ? 0.92 : 1 }],
+                            })}
                         >
-                            {isMuted ? <MicOff size={20} color="white" /> : <Mic size={20} color="white" />}
+                            {isMuted ? <MicOff size={24} color="white" /> : <Mic size={24} color="white" />}
                         </Pressable>
 
-                        {/* Camera Toggle */}
-                        <Pressable 
-                            onPress={toggleCamera}
-                            className={`w-12 h-12 rounded-full items-center justify-center active:scale-90 ${isCameraOff ? 'bg-[#FF4A4A]' : 'bg-white/20'}`}
-                        >
-                            <Camera size={20} color="white" />
-                        </Pressable>
-
-                        {/* End Call */}
-                        <Pressable 
+                        {/* End Call (Main Action) */}
+                        <Pressable
                             onPress={handleEndCall}
-                            className="w-14 h-14 rounded-full items-center justify-center bg-[#FF4A4A] shadow-[0_0_20px_rgba(255,74,74,0.5)] active:scale-90 border-2 border-[#FF4A4A]"
+                            style={({ pressed }) => ({
+                                width: 64, height: 64, borderRadius: 32,
+                                alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: '#FF3B30',
+                                shadowColor: '#FF3B30',
+                                shadowOffset: { width: 0, height: 6 },
+                                shadowOpacity: 0.6,
+                                shadowRadius: 15,
+                                transform: [{ scale: pressed ? 0.9 : 1 }],
+                                borderWidth: 3.5,
+                                borderColor: 'rgba(255,255,255,0.2)',
+                                elevation: 8,
+                            })}
                         >
                             <PhoneOff size={24} color="white" strokeWidth={2.5} />
                         </Pressable>
-                        
+
+                        {/* Camera */}
+                        <Pressable
+                            onPress={toggleCamera}
+                            style={({ pressed }) => ({
+                                width: 50, height: 50, borderRadius: 25,
+                                alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: isCameraOff ? '#FF453A' : 'rgba(255,255,255,0.12)',
+                                transform: [{ scale: pressed ? 0.92 : 1 }],
+                            })}
+                        >
+                            <Camera size={24} color="white" />
+                        </Pressable>
+
+                        {/* Switch Camera */}
+                        <Pressable
+                            onPress={switchCamera}
+                            style={({ pressed }) => ({
+                                width: 50, height: 50, borderRadius: 25,
+                                alignItems: 'center', justifyContent: 'center',
+                                backgroundColor: 'rgba(255,255,255,0.12)',
+                                transform: [{ scale: pressed ? 0.92 : 1 }],
+                            })}
+                        >
+                            <SwitchCamera size={24} color="white" />
+                        </Pressable>
+
                     </View>
                 </View>
-
-                {/* Sliding Chat Panel */}
-                {isChatOpen && (
-                    <KeyboardAvoidingView 
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-                        className="absolute bottom-32 left-4 right-4 h-96 bg-[#1C1C1E]/95 backdrop-blur-3xl border border-white/20 rounded-3xl p-4 shadow-2xl"
-                    >
-                        <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-white/10">
-                            <Text className="text-white font-space-bold text-lg">Chat tư vấn</Text>
-                            <Pressable onPress={() => { setIsChatOpen(false); Keyboard.dismiss(); }} className="w-8 h-8 bg-white/10 rounded-full items-center justify-center">
-                                <X size={18} color="white"/>
-                            </Pressable>
-                        </View>
-                        
-                        <ScrollView 
-                            ref={scrollViewRef}
-                            className="flex-1 mb-2"
-                            showsVerticalScrollIndicator={false}
-                            contentContainerStyle={{ gap: 12, paddingBottom: 10 }}
-                            onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
-                        >
-                            {messages.map((msg) => {
-                                const isMe = msg.senderType === 1; // 1 is Doctor, 0 is User
-                                return (
-                                    <View key={msg.messageId} className={`flex-row ${isMe ? 'justify-end' : 'justify-start'}`}>
-                                        <View className={`max-w-[80%] rounded-2xl px-4 py-3 ${isMe ? 'bg-[#FFD700] rounded-tr-sm' : 'bg-white/10 rounded-tl-sm'}`}>
-                                            <Text className={`font-space-medium ${isMe ? 'text-black' : 'text-white'}`}>{msg.content}</Text>
-                                        </View>
-                                    </View>
-                                );
-                            })}
-                        </ScrollView>
-
-                        <View className="flex-row items-center gap-3 mt-2">
-                            <TextInput 
-                                className="flex-1 h-12 bg-black/50 text-white rounded-2xl px-4 font-space-medium border border-white/10" 
-                                placeholder="Nhập tin nhắn..." 
-                                placeholderTextColor="#888" 
-                                value={chatText} 
-                                onChangeText={setChatText}
-                                onSubmitEditing={handleSendChat}
-                            />
-                            <Pressable onPress={handleSendChat} className="w-12 h-12 bg-[#FFD700] rounded-2xl items-center justify-center active:scale-95 shadow-lg">
-                                <Send size={20} color="black"/>
-                            </Pressable>
-                        </View>
-                    </KeyboardAvoidingView>
-                )}
 
             </View>
         </SafeAreaView>
