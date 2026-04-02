@@ -17,7 +17,7 @@ const FILTERS = ['Tất cả', 'Sắp tới', 'Đã khám', 'Đã hủy'];
 const STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
     Pending: { label: 'Chờ xác nhận', bg: '#FFF4D1' },
     Approved: { label: 'Sắp tới', bg: '#A3E6A1' },
-    Completed: { label: 'Đã khám', bg: '#E2E8F0' },
+    Completed: { label: 'Đã hoàn thành', bg: '#E2E8F0' },
     Cancelled: { label: 'Đã hủy', bg: '#FFD1D1' },
 };
 
@@ -164,68 +164,85 @@ function AppointmentCard({
                 </View>
             </View>
 
-            {/* --- CTA button --- */}
-            {/* --- Nút bấm thay đổi theo trạng thái --- */}
-            {isUpcoming ? (
-                <Pressable
-                    onPress={() => onJoin(merged)}
-                    disabled={isJoining}
-                    style={{
-                        width: '100%',
-                        height: 56,
-                        backgroundColor: isJoining ? '#F1F5F9' : '#fff',
-                        borderWidth: 2,
-                        borderColor: '#000',
-                        borderRadius: 18,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'row',
-                        gap: 10,
-                    }}
-                >
-                    {isJoining ? (
-                        <ActivityIndicator color="#000" />
-                    ) : (
-                        <>
-                            <ArrowRight size={20} color="#000" strokeWidth={2.5} />
-                            <Text style={{ 
-                                fontFamily: 'SpaceGrotesk_700Bold', 
-                                fontSize: 15, 
-                                color: '#000', 
-                                textTransform: 'uppercase' 
-                            }}>
-                                Tham gia phòng khám
-                            </Text>
-                        </>
-                    )}
-                </Pressable>
-            ) : isCompleted ? (
-                <Pressable
-                    onPress={() => onViewHistory(merged)}
-                    style={{
-                        width: '100%',
-                        height: 56,
-                        backgroundColor: '#fff',
-                        borderWidth: 2,
-                        borderColor: '#000',
-                        borderRadius: 18,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'row',
-                        gap: 10
-                    }}
-                >
-                    <MessageSquare size={20} color="#000" strokeWidth={2.5} />
-                    <Text style={{ 
-                        fontFamily: 'SpaceGrotesk_700Bold', 
-                        fontSize: 15, 
-                        color: '#000', 
-                        textTransform: 'uppercase' 
-                    }}>
-                        Xem lại tư vấn & Đơn thuốc
-                    </Text>
-                </Pressable>
-            ) : null}
+            {/* --- CTA logic --- */}
+            {(() => {
+                const buttonBase: any = {
+                    flex: 1,
+                    height: 52,
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: '#000',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexDirection: 'row',
+                    gap: 8,
+                    backgroundColor: '#fff',
+                };
+                const textBase: any = {
+                    fontFamily: 'SpaceGrotesk_700Bold',
+                    fontSize: 13,
+                    color: '#000',
+                    textTransform: 'uppercase'
+                };
+
+                // Logic enable video call: trước 5 phút
+                const canJoinVideo = () => {
+                    if (merged.status !== 'Approved') return false;
+                    if (!merged.appointmentDate || !merged.appointmentTime) return false;
+                    try {
+                        const startTimeStr = merged.appointmentTime.split(' - ')[0];
+                        const normalizedTime = startTimeStr.replace('h', ':');
+                        const [h, m] = normalizedTime.split(':').map(Number);
+                        const start = dayjs(merged.appointmentDate).hour(h).minute(m || 0).second(0);
+                        return dayjs().isAfter(start.subtract(5, 'minute'));
+                    } catch (e) { return false; }
+                };
+                const isVideoEnabled = canJoinVideo();
+
+                if (merged.status === 'Pending') {
+                    return (
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <Pressable style={buttonBase} onPress={() => {}}>
+                                <MessageSquare size={18} color="#000" strokeWidth={2.5} />
+                                <Text style={textBase}>Chat</Text>
+                            </Pressable>
+                            <Pressable style={buttonBase} onPress={() => {}}>
+                                <Text style={textBase}>Thông tin BS</Text>
+                            </Pressable>
+                        </View>
+                    );
+                }
+
+                if (merged.status === 'Approved') {
+                    return (
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            <Pressable style={buttonBase} onPress={() => {}}>
+                                <MessageSquare size={18} color="#000" strokeWidth={2.5} />
+                                <Text style={textBase}>Chat</Text>
+                            </Pressable>
+                            <Pressable 
+                                style={[buttonBase, !isVideoEnabled && { backgroundColor: '#F1F5F9', opacity: 0.6 }]} 
+                                disabled={!isVideoEnabled}
+                                onPress={() => {}}
+                            >
+                                <Text style={[textBase, !isVideoEnabled && { color: '#94A3B8' }]}>Video Call</Text>
+                            </Pressable>
+                        </View>
+                    );
+                }
+
+                if (merged.status === 'Completed') {
+                    return (
+                        <Pressable style={[buttonBase, { flex: 0, width: '100%' }]} onPress={() => {}}>
+                            <MessageSquare size={20} color="#000" strokeWidth={2.5} />
+                            <Text style={textBase}>Xem lịch sử chat</Text>
+                        </Pressable>
+                    );
+                }
+
+                return null;
+            })()}
+
         </View>
     );
 }
