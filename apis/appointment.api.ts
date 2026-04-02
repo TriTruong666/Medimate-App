@@ -1,5 +1,6 @@
-import { BasePaginatedResponse, BaseResponse } from "@/types/APIResponse";
+import { BaseResponse } from "@/types/APIResponse";
 import {
+    AppointmentDetailResponse,
     AppointmentFilterRequest,
     AppointmentResponse,
     AvailableSlotResponse,
@@ -38,12 +39,12 @@ export async function createAppointment(
     }
 }
 
-// ─── Lấy danh sách lịch hẹn của member hiện tại ───────────────
+// ─── Lấy danh sách lịch hẹn của member hiện tại ─────────────────
 export async function getMyAppointments(
     filter?: AppointmentFilterRequest
-): Promise<BasePaginatedResponse<AppointmentResponse[]>> {
+): Promise<BaseResponse<AppointmentResponse[]>> {
     try {
-        const res = await axiosClient.get("/api/v1/appointments/me", { params: filter });
+        const res = await axiosClient.get("/api/v1/appointments", { params: filter });
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
@@ -51,8 +52,7 @@ export async function getMyAppointments(
     }
 }
 
-// ─── Lấy chi tiết một lịch hẹn ────────────────────────────────
-export async function getAppointmentDetail(
+export async function getAppointmentById(
     appointmentId: string
 ): Promise<BaseResponse<AppointmentResponse>> {
     try {
@@ -63,7 +63,6 @@ export async function getAppointmentDetail(
         throw error;
     }
 }
-
 // ─── Đổi lịch hẹn sang khung giờ khác ────────────────────────
 export async function rescheduleAppointment(
     appointmentId: string,
@@ -98,6 +97,15 @@ export async function confirmAppointment(
 ): Promise<BaseResponse<AppointmentResponse>> {
     try {
         const res = await axiosClient.put(`/api/v1/appointments/${appointmentId}/status`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+export async function getAppointmentDetail(appointmentId: string): Promise<BaseResponse<AppointmentDetailResponse>> {
+    try {
+        const res = await axiosClient.get(`/api/v1/appointments/detail/${appointmentId}`);
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;

@@ -74,3 +74,25 @@ export type TransactionDetailResponse = {
     paymentMethod: string;
     paymentStatus: string;
 };
+export type UpdateStatusRequest = {
+    status: string; // "SUCCESS" | "FAILED" | "CANCELLED" | "PENDING"
+};
+
+export type TransactionFilterRequest = {
+    SearchTerm?: string;
+    Type?: string;
+    Status?: string;
+    SortBy?: string;
+    IsDescending?: boolean;
+    PageNumber?: number;
+    PageSize?: number;
+};
+
+export type TransactionItemResponse = {
+    transactionId: string;
+    transactionCode: string;
+    transactionDate: string;
+    transactionType: string;
+    totalAmount: number;
+    status: string;
+};

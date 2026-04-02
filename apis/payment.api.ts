@@ -6,7 +6,8 @@ import {
     PaymentFilterRequest,
     PaymentInfoResponse,
     PaymentItemResponse,
-    TransactionDetailResponse
+    TransactionDetailResponse,
+    UpdateStatusRequest
 } from "@/types/Payment";
 import { axiosClient } from "./client";
 
@@ -61,6 +62,16 @@ export async function getMyPayments(filter: PaymentFilterRequest): Promise<BaseP
 export async function getTransactionByPaymentId(paymentId: string): Promise<BaseResponse<TransactionDetailResponse>> {
     try {
         const res = await axiosClient.get(`/api/v1/transactions/payment/${paymentId}`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+export async function updatePaymentStatus(orderCode: number, data: UpdateStatusRequest): Promise<BaseResponse<boolean>> {
+    try {
+        const res = await axiosClient.put(`/api/v1/payment/status/${orderCode}`, data);
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;

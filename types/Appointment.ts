@@ -48,3 +48,24 @@ export type AppointmentFilterRequest = {
     pageNumber?: number;
     pageSize?: number;
 };
+export type AppointmentDetailResponse = {
+    appointmentId: string;
+    appointmentDate: string;
+    appointmentTime: string;
+    status: string;
+    cancelReason: string | null;
+    createdAt: string;
+
+    // Thông tin Bác sĩ
+    doctorId: string;
+    doctorName: string;
+    doctorAvatar: string | null;
+    specialty: string | null;
+
+    // Thông tin Bệnh nhân
+    memberId: string;
+    memberName: string;
+    memberAvatar: string | null;
+    memberGender: string | null;
+    memberDateOfBirth: string | null;
+};

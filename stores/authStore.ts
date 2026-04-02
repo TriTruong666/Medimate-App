@@ -30,17 +30,40 @@ export const initAuthAtom = atom(
             }
 
             const decoded = await getDecodedToken();
+            
+            // Validate token format and expiration
+            if (!decoded) {
+                await SecureStore.deleteItemAsync('accessToken');
+                set(authSessionAtom, undefined);
+                set(accessTokenAtom, null);
+                return;
+            }
+
+            // check if token is expired
+            if (decoded.exp && (Date.now() / 1000) >= decoded.exp) {
+                console.log('Token is expired during startup');
+                await SecureStore.deleteItemAsync('accessToken');
+                set(authSessionAtom, undefined);
+                set(accessTokenAtom, null);
+                return;
+            }
+
             if (decoded?.MemberId) {
                 set(authSessionAtom, { memberId: decoded.MemberId, role: 'member' });
+                set(accessTokenAtom, token);
             } else if (decoded?.Id) {
                 set(authSessionAtom, { id: decoded.Id, role: 'manager' });
+                set(accessTokenAtom, token);
             } else {
+                await SecureStore.deleteItemAsync('accessToken');
                 set(authSessionAtom, undefined);
+                set(accessTokenAtom, null);
             }
-            set(accessTokenAtom, token);
         } catch (e) {
             console.error('Failed to initialize auth', e);
+            await SecureStore.deleteItemAsync('accessToken');
             set(authSessionAtom, undefined);
+            set(accessTokenAtom, null);
         }
     }
 );

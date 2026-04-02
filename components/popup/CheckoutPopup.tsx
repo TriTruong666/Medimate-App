@@ -69,7 +69,7 @@ export const CheckoutPopup: React.FC<CheckoutPopupProps> = ({ plan, onClose, onC
         if (res.success && res.data?.paymentUrl) {
             onClose();
             router.push({
-                pathname: '/(manager)/(subscription)/payment-webview',
+                pathname: '/payment-webview',
                 params: {
                     url: res.data.paymentUrl,
                     qrCode: res.data.qrCode ?? '',
