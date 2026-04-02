@@ -2,7 +2,7 @@ import { getFamilies, getSubscription } from "@/apis/family.api";
 import { getMembershipPackages } from "@/apis/package.api";
 import { FamilyData, SubscriptionData } from "@/types/Family";
 import { MembershipPackage } from "@/types/Package";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
     ArrowLeft,
     Check,
@@ -16,7 +16,7 @@ import {
     Users,
     Zap,
 } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
     ActivityIndicator,
     Dimensions,
@@ -29,14 +29,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { usePopup } from "../../../stores/popupStore";
 
+// <-- Đổi useEffect thành useCallback (có thể xóa useEffect)
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const PILL_IMAGES = {
-    green:  require("../../../assets/images/pills/pill-green.png"),
+    green: require("../../../assets/images/pills/pill-green.png"),
     purple: require("../../../assets/images/pills/pill-purple.png"),
     yellow: require("../../../assets/images/pills/pill-yellow.png"),
     orange: require("../../../assets/images/pills/pill-orange.png"),
-    blue:   require("../../../assets/images/pills/pill-blue.png"),
+    blue: require("../../../assets/images/pills/pill-blue.png"),
 };
 
 const PLAN_COLORS = ["#A3E6A1", "#FFD700", "#A8D8EA", "#FFB3BA"];
@@ -48,13 +50,13 @@ function formatPrice(price: number, currency: string): string {
 
 function buildFeatures(pkg: MembershipPackage) {
     return [
-        { icon: Users,    text: `Tối đa ${pkg.memberLimit === 0 ? "không giới hạn" : pkg.memberLimit} thành viên`, included: true },
-        { icon: Clock,    text: "Nhắc nhở uống thuốc", included: true },
-        { icon: Heart,    text: "Theo dõi lịch sử chi tiết", included: true },
-        { icon: Shield,   text: `${pkg.ocrLimit === 0 ? "Không giới hạn" : pkg.ocrLimit + " lượt"} quét đơn thuốc`, included: true },
+        { icon: Users, text: `Tối đa ${pkg.memberLimit === 0 ? "không giới hạn" : pkg.memberLimit} thành viên`, included: true },
+        { icon: Clock, text: "Nhắc nhở uống thuốc", included: true },
+        { icon: Heart, text: "Theo dõi lịch sử chi tiết", included: true },
+        { icon: Shield, text: `${pkg.ocrLimit === 0 ? "Không giới hạn" : pkg.ocrLimit + " lượt"} quét đơn thuốc`, included: true },
         { icon: Sparkles, text: `${pkg.consultantLimit === 0 ? "Không giới hạn" : pkg.consultantLimit + " lượt"} tư vấn cùng Bác sĩ`, included: true },
-        { icon: Zap,      text: "Báo cáo sức khỏe nâng cao", included: pkg.memberLimit === 0 || pkg.memberLimit > 5 },
-        { icon: Star,     text: "Hỗ trợ ưu tiên 24/7", included: pkg.memberLimit === 0 },
+        { icon: Zap, text: "Báo cáo sức khỏe nâng cao", included: pkg.memberLimit === 0 || pkg.memberLimit > 5 },
+        { icon: Star, text: "Hỗ trợ ưu tiên 24/7", included: pkg.memberLimit === 0 },
     ];
 }
 
@@ -67,52 +69,66 @@ function isPkgCurrent(pkg: MembershipPackage, sub: SubscriptionData | null): boo
 
 export default function SubscriptionScreen() {
     const router = useRouter();
-    const popup  = usePopup();
+    const popup = usePopup();
 
-    const [packages, setPackages]         = useState<MembershipPackage[]>([]);
-    const [family, setFamily]             = useState<FamilyData | null>(null);
+    const [packages, setPackages] = useState<MembershipPackage[]>([]);
+    const [family, setFamily] = useState<FamilyData | null>(null);
     const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
-    const [loading, setLoading]           = useState(true);
+    const [loading, setLoading] = useState(true);
     const [selectedIndex, setSelectedIndex] = useState(0);
 
-    useEffect(() => {
-        (async () => {
-            // Tải song song: danh sách gói + gia đình
-            const [pkgRes, famRes] = await Promise.all([
-                getMembershipPackages(),
-                getFamilies(),
-            ]);
+    useFocusEffect(
+        useCallback(() => {
+            let isActive = true; // Biến cờ để tránh lỗi "memory leak" khi unmount
 
-            let activePkgs: MembershipPackage[] = [];
-            if (pkgRes.success && pkgRes.data) {
-                activePkgs = pkgRes.data.filter(p => p.isActive);
-                setPackages(activePkgs);
-            }
+            const loadData = async () => {
+                // Tải song song: danh sách gói + gia đình
+                const [pkgRes, famRes] = await Promise.all([
+                    getMembershipPackages(),
+                    getFamilies(),
+                ]);
 
-            // Lấy gia đình Shared đầu tiên
-            let sharedFamily: FamilyData | null = null;
-            if (famRes.success && famRes.data) {
-                sharedFamily = famRes.data.find(f => f.type === "Shared") ?? null;
-                setFamily(sharedFamily);
-            }
+                if (!isActive) return;
 
-            // Lấy subscription của gia đình
-            if (sharedFamily) {
-                const subRes = await getSubscription(sharedFamily.familyId);
-                if (subRes.success && subRes.data) {
-                    const sub = subRes.data;
-                    setSubscription(sub);
-                    // Tự động chọn tab của gói hiện tại
-                    const currentIdx = activePkgs.findIndex(p => isPkgCurrent(p, sub));
-                    if (currentIdx >= 0) setSelectedIndex(currentIdx);
+                let activePkgs: MembershipPackage[] = [];
+                if (pkgRes.success && pkgRes.data) {
+                    activePkgs = pkgRes.data.filter(p => p.isActive);
+                    setPackages(activePkgs);
                 }
-            }
 
-            setLoading(false);
-        })();
-    }, []);
+                // Lấy gia đình Shared đầu tiên
+                let sharedFamily: FamilyData | null = null;
+                if (famRes.success && famRes.data) {
+                    sharedFamily = famRes.data.find(f => f.type === "Shared") ?? null;
+                    setFamily(sharedFamily);
+                }
 
-    const currentPkg   = packages[selectedIndex];
+                // Lấy subscription của gia đình
+                if (sharedFamily) {
+                    const subRes = await getSubscription(sharedFamily.familyId);
+                    if (isActive && subRes.success && subRes.data) {
+                        const sub = subRes.data;
+                        setSubscription(sub);
+
+                        // Tự động chọn tab của gói hiện tại
+                        const currentIdx = activePkgs.findIndex(p => isPkgCurrent(p, sub));
+                        if (currentIdx >= 0) setSelectedIndex(currentIdx);
+                    }
+                }
+
+                if (isActive) setLoading(false);
+            };
+
+            loadData();
+
+            // Cleanup function chạy khi màn hình bị ẩn đi
+            return () => {
+                isActive = false;
+            };
+        }, [])
+    );
+
+    const currentPkg = packages[selectedIndex];
     const currentColor = PLAN_COLORS[selectedIndex % PLAN_COLORS.length];
 
     // Gói đang dùng có khớp với tab đang xem?
@@ -137,10 +153,10 @@ export default function SubscriptionScreen() {
                     </View>
 
                     <Image source={PILL_IMAGES.purple} style={{ width: 90, height: 90, position: "absolute", top: 20, left: SCREEN_WIDTH / 2 - 20, transform: [{ rotate: "-15deg" }] }} resizeMode="contain" />
-                    <Image source={PILL_IMAGES.green}  style={{ width: 75, height: 75, position: "absolute", top: 80, left: 20, transform: [{ rotate: "25deg" }] }} resizeMode="contain" />
+                    <Image source={PILL_IMAGES.green} style={{ width: 75, height: 75, position: "absolute", top: 80, left: 20, transform: [{ rotate: "25deg" }] }} resizeMode="contain" />
                     <Image source={PILL_IMAGES.yellow} style={{ width: 70, height: 70, position: "absolute", top: 60, right: 30, transform: [{ rotate: "-30deg" }] }} resizeMode="contain" />
                     <Image source={PILL_IMAGES.orange} style={{ width: 65, height: 65, position: "absolute", top: 200, left: 40, transform: [{ rotate: "45deg" }] }} resizeMode="contain" />
-                    <Image source={PILL_IMAGES.blue}   style={{ width: 80, height: 80, position: "absolute", top: 220, right: 25, transform: [{ rotate: "-20deg" }] }} resizeMode="contain" />
+                    <Image source={PILL_IMAGES.blue} style={{ width: 80, height: 80, position: "absolute", top: 220, right: 25, transform: [{ rotate: "-20deg" }] }} resizeMode="contain" />
 
                     <View className="absolute items-center" style={{ top: 130, left: 0, right: 0 }}>
                         <Text className="text-4xl font-space-bold text-black tracking-tighter text-center">MEDIMATE</Text>
@@ -221,11 +237,11 @@ export default function SubscriptionScreen() {
                         <View className="px-5 mb-6">
                             <View className="flex-row bg-white border-2 border-black rounded-[20px] p-1.5 shadow-sm">
                                 {packages.map((pkg, idx) => {
-                                    const isSelected   = selectedIndex === idx;
-                                    const color        = PLAN_COLORS[idx % PLAN_COLORS.length];
-                                    const isCurrent    = isPkgCurrent(pkg, subscription);
-                                    const isUpgrade    = !isCurrent && activePlanIndex >= 0 && idx > activePlanIndex;
-                                    const isFirstPaid  = !isCurrent && idx === (activePlanIndex >= 0 ? activePlanIndex + 1 : 1);
+                                    const isSelected = selectedIndex === idx;
+                                    const color = PLAN_COLORS[idx % PLAN_COLORS.length];
+                                    const isCurrent = isPkgCurrent(pkg, subscription);
+                                    const isUpgrade = !isCurrent && activePlanIndex >= 0 && idx > activePlanIndex;
+                                    const isFirstPaid = !isCurrent && idx === (activePlanIndex >= 0 ? activePlanIndex + 1 : 1);
 
                                     return (
                                         <Pressable key={pkg.packageId} onPress={() => setSelectedIndex(idx)} className="flex-1 relative">
@@ -359,14 +375,14 @@ export default function SubscriptionScreen() {
                                         popup.open({
                                             type: "checkout",
                                             data: {
-                                                packageId:  currentPkg.packageId,
-                                                name:       currentPkg.packageName,
-                                                price:      formatPrice(currentPkg.price, currentPkg.currency),
-                                                priceNote:  `/ ${currentPkg.durationDays} ngày`,
-                                                color:      currentColor,
-                                                badge:      "CAO CẤP",
+                                                packageId: currentPkg.packageId,
+                                                name: currentPkg.packageName,
+                                                price: formatPrice(currentPkg.price, currentPkg.currency),
+                                                priceNote: `/ ${currentPkg.durationDays} ngày`,
+                                                color: currentColor,
+                                                badge: "CAO CẤP",
                                             },
-                                            onConfirm: () => {},
+                                            onConfirm: () => { },
                                         });
                                     }}
                                 >

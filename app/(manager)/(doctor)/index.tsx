@@ -1,19 +1,19 @@
+import dayjs from "dayjs";
 import { useRouter } from "expo-router";
 import {
     Calendar,
     Clock,
-    Mic,
+    Eye,
     Search,
     Star,
-    Video
+    User
 } from "lucide-react-native";
-import React, { useState, useCallback, useMemo } from "react";
-import { Dimensions, Image, Pressable, ScrollView, Text, TextInput, View, ActivityIndicator, RefreshControl } from "react-native";
+import React, { useCallback, useMemo, useState } from "react";
+import { ActivityIndicator, Dimensions, Image, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
+import { useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
 import { useGetDoctors } from "../../../hooks/useDoctor";
-import { useGetMyAppointments } from "../../../hooks/useAppointment";
-import dayjs from "dayjs";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -57,7 +57,7 @@ export default function DoctorScreen() {
     const [selectedSpecialty, setSelectedSpecialty] = useState<string | null>(null);
 
     const { data: doctorsData, isLoading: isDoctorsLoading, refetch: refetchDoctors } = useGetDoctors();
-    const { data: appointmentsData, isLoading: isAppointmentsLoading, refetch: refetchAppointments } = useGetMyAppointments({ status: "Confirmed" });
+    const { data: appointmentsData, isLoading: isAppointmentsLoading, refetch: refetchAppointments } = useGetMyAppointments();
     const [refreshing, setRefreshing] = useState(false);
 
     const onRefresh = useCallback(async () => {
@@ -88,8 +88,12 @@ export default function DoctorScreen() {
         });
     }, [doctors, search, selectedSpecialty]);
 
-    const ongoingAppt = appointments[0];
-    const upcomingAppt = appointments.length > 1 ? appointments[1] : null;
+    const upcomingAppointments = appointments.filter(a => a.status === 'Approved' || a.status === 'Pending');
+    const ongoingApptRaw = upcomingAppointments[0];
+    const upcomingAppt = upcomingAppointments.length > 1 ? upcomingAppointments[1] : null;
+
+    const { data: ongoingDetail } = useGetAppointmentDetail(ongoingApptRaw?.appointmentId, { pollingInterval: 15000 });
+    const ongoingAppt = ongoingApptRaw ? { ...ongoingApptRaw, ...ongoingDetail } : null;
 
     return (
         <SafeAreaView className="flex-1 bg-[#F9F6FC]" edges={["top"]}>
@@ -182,7 +186,7 @@ export default function DoctorScreen() {
                 {/* 3. Ongoing & Upcoming Schedule */}
                 <View className="px-5 mb-8">
                     <View className="flex-row items-center justify-between mb-4">
-                        <Text className="text-xl font-space-bold text-black">Lịch hẹn của bạn ({appointments.length})</Text>
+                        <Text className="text-xl font-space-bold text-black">Lịch hẹn của bạn ({upcomingAppointments.length})</Text>
                         <Pressable onPress={() => router.push("/(manager)/(doctor)/appointments")}>
                             <Text className="text-sm font-space-bold text-[#B3354B]">Xem lịch</Text>
                         </Pressable>
@@ -190,40 +194,46 @@ export default function DoctorScreen() {
 
                     {isAppointmentsLoading ? (
                         <ActivityIndicator size="small" color="#000" />
-                    ) : appointments.length === 0 ? (
+                    ) : upcomingAppointments.length === 0 ? (
                         <View className="bg-white border-2 border-black/10 border-dashed rounded-[24px] p-5 items-center">
                             <Text className="text-sm font-space-medium text-black/40">Chưa có lịch hẹn nào</Text>
                         </View>
                     ) : (
                         <>
-                            {/* Ongoing Card (Latest) */}
                             {ongoingAppt && (
                                 <View className="bg-[#A3E6A1] border-2 border-black rounded-[28px] p-5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mb-4">
                                     <View className="flex-row items-center justify-between mb-3">
                                         <View className="bg-black/10 px-3 py-1 rounded-full border border-black/10">
                                             <Text className="text-[10px] font-space-bold uppercase text-black/60">
-                                                {dayjs(ongoingAppt.appointmentDate).format("DD/MM/YYYY")}
+                                                {dayjs(ongoingAppt.appointmentDate).format("DD/MM/YYYY")} • {ongoingAppt.appointmentTime}
                                             </Text>
-                                        </View>
-                                        <View className="flex-row items-center gap-x-1">
-                                            <View className="w-2 h-2 rounded-full bg-red-500" />
-                                            <Text className="text-[10px] font-space-bold text-red-500 uppercase">Trực tuyến</Text>
                                         </View>
                                     </View>
 
-                                    <View className="flex-row items-center justify-between">
+                                    <View className="flex-row items-center justify-between mb-3">
                                         <View className="flex-1">
-                                            <Text className="text-lg font-space-bold text-black uppercase" numberOfLines={1}>{ongoingAppt.doctorName}</Text>
-                                            <Text className="text-xs font-space-medium text-black/50 mt-1 uppercase tracking-tight">{ongoingAppt.doctorSpecialty || "Bác sĩ tư vấn"}</Text>
-                                            <Text className="text-[11px] font-space-bold text-black/80 mt-1">Video Call: {ongoingAppt.appointmentTime}</Text>
+                                            <Text className="text-xs font-space-bold text-black/50 uppercase tracking-tight mb-1">Bác sĩ</Text>
+                                            <Text className="text-lg font-space-bold text-black uppercase" numberOfLines={1}>{ongoingAppt.doctorName || "Bác sĩ chưa xác định"}</Text>
+                                            <Text className="text-xs font-space-medium text-black/60 mt-1">{ongoingAppt.doctorSpecialty || "Chuyên khoa tư vấn"}</Text>
                                         </View>
-
                                         <Pressable
                                             onPress={() => router.push(`/(manager)/(doctor)/appointments` as any)}
                                             className="bg-black w-14 h-14 rounded-2xl items-center justify-center border-2 border-black shadow-[2px_2px_0px_0px_rgba(255,255,255,1)] active:translate-y-0.5"
                                         >
-                                            <Video size={24} color="#A3E6A1" strokeWidth={2.5} />
+                                            <Eye size={24} color="#A3E6A1" strokeWidth={2.5} />
                                         </Pressable>
+                                    </View>
+
+                                    <View className="h-[2px] bg-black/10 w-full rounded-full mb-3" />
+
+                                    <View className="flex-row items-center gap-x-2">
+                                        <View className="w-8 h-8 rounded-full bg-white border-2 border-black/20 items-center justify-center">
+                                            <User size={16} color="#000" />
+                                        </View>
+                                        <View>
+                                            <Text className="text-[10px] font-space-bold text-black/50 uppercase tracking-tight">Bệnh nhân</Text>
+                                            <Text className="text-sm font-space-bold text-black">{ongoingAppt.memberName || "Đang tải"}</Text>
+                                        </View>
                                     </View>
                                 </View>
                             )}

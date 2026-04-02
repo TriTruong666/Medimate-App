@@ -13,7 +13,7 @@ import {
     QrCode,
     XCircle,
 } from "lucide-react-native";
-import React, { useRef, useState, useCallback } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -85,6 +85,31 @@ export default function PaymentWebViewScreen() {
             setPayResult(result);
         }
     }, [orderCode, updatePaymentStatus, updateTransactionStatus]);
+
+    // ─── Tự động kiểm tra trạng thái thanh toán liên tục (Polling) ───
+    useEffect(() => {
+        if (payResult || updatingStatus) return;
+        const orderCodeNum = Number(orderCode);
+        if (!orderCodeNum) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const infoRes = await getPaymentInfo(orderCodeNum);
+                if (infoRes.success && infoRes.data) {
+                    const st = infoRes.data.status;
+                    if (st === "PAID" || st === "SUCCESS") {
+                        setPayResult("success");
+                    } else if (st === "CANCELLED") {
+                        setPayResult("cancelled");
+                    }
+                }
+            } catch (error) {
+                // Ignore polling errors
+            }
+        }, 5000);
+
+        return () => clearInterval(interval);
+    }, [orderCode, payResult, updatingStatus]);
 
     // ─── WebView: intercept custom scheme redirection ──────────
     // cancelUrl = 'medimate://payment/cancel'
@@ -197,7 +222,10 @@ export default function PaymentWebViewScreen() {
                     Hóa đơn sẽ được gửi qua email sớm.
                 </Text>
                 <Pressable
-                    onPress={() => router.back()}
+                    onPress={() => {
+                        router.dismissAll();
+                        router.push("/(manager)/(home)");
+                    }}
                     style={{ backgroundColor: "#000", borderRadius: 20, paddingHorizontal: 48, paddingVertical: 16, shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}
                 >
                     <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#fff", textTransform: "uppercase", letterSpacing: 1 }}>Hoàn tất</Text>
@@ -220,10 +248,13 @@ export default function PaymentWebViewScreen() {
                     Đơn hàng #{orderCode} đã bị hủy.{"\n"}Bạn có thể thử lại bất cứ lúc nào.
                 </Text>
                 <Pressable
-                    onPress={() => router.back()}
+                    onPress={() => {
+                        router.dismissAll();
+                        router.push("/(manager)/(home)");
+                    }}
                     style={{ borderWidth: 2, borderColor: "#000", borderRadius: 20, paddingHorizontal: 48, paddingVertical: 16, backgroundColor: "#fff", shadowColor: "#000", shadowOffset: { width: 3, height: 3 }, shadowOpacity: 1, shadowRadius: 0, elevation: 3 }}
                 >
-                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>Quay lại</Text>
+                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: "#000", textTransform: "uppercase", letterSpacing: 1 }}>Quay lại Trang Chủ</Text>
                 </Pressable>
             </SafeAreaView>
         );

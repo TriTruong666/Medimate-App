@@ -1,12 +1,12 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { ArrowLeft, Calendar, Clock, Filter, RefreshCw, ArrowRight, User } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Calendar, Clock, Filter, RefreshCw } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useGetMyAppointments, useGetAppointmentDetail } from "../../../hooks/useAppointment";
 import { getSessionByAppointmentId } from "../../../apis/session.api";
+import { useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
 import { useToast } from "../../../stores/toastStore";
 import { AppointmentDetailResponse, AppointmentResponse } from "../../../types/Appointment";
 
@@ -15,10 +15,10 @@ dayjs.locale('vi');
 const FILTERS = ['Tất cả', 'Sắp tới', 'Đã khám', 'Đã hủy'];
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
-    Pending:   { label: 'Chờ xác nhận', bg: '#FFF4D1' },
-    Confirmed: { label: 'Sắp tới',      bg: '#A3E6A1' },
-    Completed: { label: 'Đã khám',      bg: '#E2E8F0' },
-    Cancelled: { label: 'Đã hủy',       bg: '#FFD1D1' },
+    Pending: { label: 'Chờ xác nhận', bg: '#FFF4D1' },
+    Approved: { label: 'Sắp tới', bg: '#A3E6A1' },
+    Completed: { label: 'Đã khám', bg: '#E2E8F0' },
+    Cancelled: { label: 'Đã hủy', bg: '#FFD1D1' },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -44,9 +44,9 @@ function AppointmentCard({
         ...detail,
     };
 
-    const isUpcoming = merged.status === 'Confirmed' || merged.status === 'Pending';
-    const isJoining  = joiningState[appt.appointmentId];
-    const statusCfg  = STATUS_CONFIG[merged.status] ?? { label: merged.status, bg: '#E2E8F0' };
+    const isUpcoming = merged.status === 'Approved' || merged.status === 'Pending';
+    const isJoining = joiningState[appt.appointmentId];
+    const statusCfg = STATUS_CONFIG[merged.status] ?? { label: merged.status, bg: '#E2E8F0' };
 
     // Bác sĩ
     const doctorDisplay = merged.doctorName || `Bác sĩ #${merged.doctorId?.slice(0, 8)}`;
@@ -188,7 +188,7 @@ function AppointmentCard({
                         <ActivityIndicator color="white" size="small" />
                     ) : (
                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                            Chi tiết phòng khám
+                            Tham gia phòng khám
                         </Text>
                     )}
                     {!isJoining && <ArrowRight size={20} color="#fff" strokeWidth={2.5} />}
@@ -203,7 +203,7 @@ function AppointmentCard({
 // ─────────────────────────────────────────────────────────────────
 export default function AppointmentsScreen() {
     const router = useRouter();
-    const toast  = useToast();
+    const toast = useToast();
 
     const [filter, setFilter] = useState('Sắp tới');
     const [joiningState, setJoiningState] = useState<Record<string, boolean>>({});
@@ -231,9 +231,9 @@ export default function AppointmentsScreen() {
     };
 
     const filteredAppointments = appointments.filter(appt => {
-        if (filter === 'Sắp tới') return appt.status === 'Confirmed' || appt.status === 'Pending';
+        if (filter === 'Sắp tới') return appt.status === 'Approved' || appt.status === 'Pending';
         if (filter === 'Đã khám') return appt.status === 'Completed';
-        if (filter === 'Đã hủy')  return appt.status === 'Cancelled';
+        if (filter === 'Đã hủy') return appt.status === 'Cancelled';
         return true;
     });
 
@@ -274,9 +274,9 @@ export default function AppointmentsScreen() {
                         const count = f === 'Tất cả'
                             ? appointments.length
                             : appointments.filter(a =>
-                                f === 'Sắp tới' ? (a.status === 'Confirmed' || a.status === 'Pending') :
-                                f === 'Đã khám' ? a.status === 'Completed' :
-                                a.status === 'Cancelled'
+                                f === 'Sắp tới' ? (a.status === 'Approved' || a.status === 'Pending') :
+                                    f === 'Đã khám' ? a.status === 'Completed' :
+                                        a.status === 'Cancelled'
                             ).length;
                         return (
                             <Pressable
