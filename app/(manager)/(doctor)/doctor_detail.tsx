@@ -1,39 +1,35 @@
+import dayjs from "dayjs";
+import 'dayjs/locale/vi';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
     ArrowLeft,
     Calendar,
     ChevronLeft,
     ChevronRight,
-    Clock,
     Heart,
-    MessageCircle,
     Share2,
     Star,
-    Video,
     X
 } from "lucide-react-native";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
+    ActivityIndicator,
     Dimensions,
     Image,
     Modal,
     Pressable,
+    RefreshControl,
     ScrollView,
     Text,
-    View,
-    ActivityIndicator,
-    RefreshControl
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { usePopup } from "../../../stores/popupStore";
-import { useGetDoctorDetail, useGetDoctorAvailabilities, useGetDoctorReviews } from "../../../hooks/useDoctor";
 import { useGetDoctorAvailableSlots } from "../../../hooks/useAppointment";
-import { DoctorDetailResponse, DoctorAvailabilityResponse, DoctorReviewResponse } from "../../../types/Doctor";
+import { useGetDoctorAvailabilities, useGetDoctorDetail, useGetDoctorReviews } from "../../../hooks/useDoctor";
+import { usePopup } from "../../../stores/popupStore";
 import { AvailableSlotResponse } from "../../../types/Appointment";
-import dayjs from "dayjs";
-import 'dayjs/locale/vi';
-import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
-import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
@@ -582,7 +578,7 @@ export default function DoctorDetailScreen() {
 
             {/* 5. Footer CTA */}
             <View className="absolute bottom-6 left-6 right-6 flex-row items-center gap-x-4">
-                <Pressable
+                {/* <Pressable
                     onPress={() => open({
                         type: 'chat_detail',
                         data: {
@@ -596,7 +592,7 @@ export default function DoctorDetailScreen() {
                     className="w-16 h-16 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm active:translate-y-1 active:shadow-none"
                 >
                     <MessageCircle size={24} color="#000" strokeWidth={2.5} />
-                </Pressable>
+                </Pressable> */}
 
                 <Pressable
                     onPress={handleBooking}

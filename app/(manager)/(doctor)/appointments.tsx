@@ -3,10 +3,10 @@ import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, Calendar, Clock, Filter, MessageSquare, RefreshCw } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getSessionByAppointmentId } from "../../../apis/session.api";
-import { useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
+import { useCancelAppointment, useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
 import { useToast } from "../../../stores/toastStore";
 import { AppointmentDetailResponse, AppointmentResponse } from "../../../types/Appointment";
 
@@ -28,12 +28,18 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
 function AppointmentCard({
     appt,
     onJoin,
+    onChat,
+    onVideo,
     onViewHistory,
+    onCancel,
     joiningState,
 }: {
     appt: AppointmentResponse;
     onJoin: (a: AppointmentResponse) => void;
+    onChat: (a: AppointmentResponse) => void;
+    onVideo: (a: AppointmentResponse) => void;
     onViewHistory: (a: AppointmentResponse) => void;
+    onCancel: (a: AppointmentResponse) => void;
     joiningState: Record<string, boolean>;
 }) {
     // Fetch chi tiết từ API mới cập nhật
@@ -46,8 +52,6 @@ function AppointmentCard({
         ...detail,
     };
 
-    const isUpcoming = merged.status === 'Approved' || merged.status === 'Pending';
-    const isCompleted = merged.status === 'Completed';
     const isJoining = joiningState[appt.appointmentId];
     const statusCfg = STATUS_CONFIG[merged.status] ?? { label: merged.status, bg: '#E2E8F0' };
 
@@ -64,6 +68,19 @@ function AppointmentCard({
 
     // Thời gian
     const timeDisplay = merged.appointmentTime || 'Chờ xác nhận';
+
+    // Logic enable video call: cho phép 5 phút trước giờ bắt đầu
+    const canJoinVideo = (() => {
+        if (merged.status !== 'Approved') return false;
+        if (!merged.appointmentDate || !merged.appointmentTime) return false;
+        try {
+            const startTimeStr = merged.appointmentTime.split(' - ')[0];
+            const normalizedTime = startTimeStr.replace('h', ':');
+            const [h, m] = normalizedTime.split(':').map(Number);
+            const start = dayjs(merged.appointmentDate).hour(h).minute(m || 0).second(0);
+            return dayjs().isAfter(start.subtract(5, 'minute'));
+        } catch (e) { return false; }
+    })();
 
     return (
         <View style={{
@@ -164,50 +181,33 @@ function AppointmentCard({
                 </View>
             </View>
 
-            {/* --- CTA logic --- */}
+            {/* --- CTA buttons --- */}
             {(() => {
-                const buttonBase: any = {
-                    flex: 1,
-                    height: 52,
-                    borderRadius: 16,
-                    borderWidth: 2,
-                    borderColor: '#000',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexDirection: 'row',
-                    gap: 8,
-                    backgroundColor: '#fff',
+                const btnBase: any = {
+                    flex: 1, height: 52, borderRadius: 16, borderWidth: 2, borderColor: '#000',
+                    alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, backgroundColor: '#fff',
                 };
-                const textBase: any = {
-                    fontFamily: 'SpaceGrotesk_700Bold',
-                    fontSize: 13,
-                    color: '#000',
-                    textTransform: 'uppercase'
-                };
-
-                // Logic enable video call: trước 5 phút
-                const canJoinVideo = () => {
-                    if (merged.status !== 'Approved') return false;
-                    if (!merged.appointmentDate || !merged.appointmentTime) return false;
-                    try {
-                        const startTimeStr = merged.appointmentTime.split(' - ')[0];
-                        const normalizedTime = startTimeStr.replace('h', ':');
-                        const [h, m] = normalizedTime.split(':').map(Number);
-                        const start = dayjs(merged.appointmentDate).hour(h).minute(m || 0).second(0);
-                        return dayjs().isAfter(start.subtract(5, 'minute'));
-                    } catch (e) { return false; }
-                };
-                const isVideoEnabled = canJoinVideo();
+                const txtBase: any = { fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', textTransform: 'uppercase' };
 
                 if (merged.status === 'Pending') {
                     return (
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <Pressable style={buttonBase} onPress={() => {}}>
-                                <MessageSquare size={18} color="#000" strokeWidth={2.5} />
-                                <Text style={textBase}>Chat</Text>
-                            </Pressable>
-                            <Pressable style={buttonBase} onPress={() => {}}>
-                                <Text style={textBase}>Thông tin BS</Text>
+                        <View style={{ gap: 12 }}>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                {/* Chat — disabled (chưa có session) */}
+                                <Pressable style={[btnBase, { backgroundColor: '#F1F5F9', opacity: 0.55 }]} disabled>
+                                    <MessageSquare size={18} color="#94A3B8" strokeWidth={2.5} />
+                                    <Text style={[txtBase, { color: '#94A3B8' }]}>Chat</Text>
+                                </Pressable>
+                                {/* Thông tin bác sĩ */}
+                                <Pressable style={btnBase} onPress={() => onJoin(merged)}>
+                                    <Text style={txtBase}>Thông tin BS</Text>
+                                </Pressable>
+                            </View>
+                            <Pressable 
+                                style={[btnBase, { height: 44, borderRadius: 12, backgroundColor: '#FFF5F5', borderColor: '#FFB8B8', borderWidth: 1 }]} 
+                                onPress={() => onCancel(merged)}
+                            >
+                                <Text style={[txtBase, { color: '#DC2626', fontSize: 12 }]}>Hủy lịch hẹn</Text>
                             </Pressable>
                         </View>
                     );
@@ -215,17 +215,37 @@ function AppointmentCard({
 
                 if (merged.status === 'Approved') {
                     return (
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            <Pressable style={buttonBase} onPress={() => {}}>
-                                <MessageSquare size={18} color="#000" strokeWidth={2.5} />
-                                <Text style={textBase}>Chat</Text>
-                            </Pressable>
+                        <View style={{ gap: 12 }}>
+                            <View style={{ flexDirection: 'row', gap: 12 }}>
+                                {/* Chat */}
+                                <Pressable
+                                    style={[btnBase, isJoining && { opacity: 0.6 }]}
+                                    disabled={isJoining}
+                                    onPress={() => onChat(merged)}
+                                >
+                                    {isJoining
+                                        ? <ActivityIndicator size="small" color="#000" />
+                                        : <MessageSquare size={18} color="#000" strokeWidth={2.5} />
+                                    }
+                                    <Text style={txtBase}>Chat</Text>
+                                </Pressable>
+
+                                {/* Video Call — gate: 5 phút trước giờ */}
+                                <Pressable
+                                    style={[btnBase,
+                                        { backgroundColor: canJoinVideo ? '#B3354B' : '#F1F5F9' },
+                                        !canJoinVideo && { opacity: 0.55 }
+                                    ]}
+                                    onPress={() => onVideo(merged)}
+                                >
+                                    <Text style={[txtBase, { color: canJoinVideo ? '#fff' : '#94A3B8' }]}>Video Call</Text>
+                                </Pressable>
+                            </View>
                             <Pressable 
-                                style={[buttonBase, !isVideoEnabled && { backgroundColor: '#F1F5F9', opacity: 0.6 }]} 
-                                disabled={!isVideoEnabled}
-                                onPress={() => {}}
+                                style={[btnBase, { height: 44, borderRadius: 12, backgroundColor: '#FFF5F5', borderColor: '#FFB8B8', borderWidth: 1 }]} 
+                                onPress={() => onCancel(merged)}
                             >
-                                <Text style={[textBase, !isVideoEnabled && { color: '#94A3B8' }]}>Video Call</Text>
+                                <Text style={[txtBase, { color: '#DC2626', fontSize: 12 }]}>Hủy lịch hẹn</Text>
                             </Pressable>
                         </View>
                     );
@@ -233,9 +253,12 @@ function AppointmentCard({
 
                 if (merged.status === 'Completed') {
                     return (
-                        <Pressable style={[buttonBase, { flex: 0, width: '100%' }]} onPress={() => {}}>
+                        <Pressable
+                            style={[btnBase, { flex: 0, width: '100%' }]}
+                            onPress={() => onViewHistory(merged)}
+                        >
                             <MessageSquare size={20} color="#000" strokeWidth={2.5} />
-                            <Text style={textBase}>Xem lịch sử chat</Text>
+                            <Text style={txtBase}>Xem lại tư vấn & Đơn thuốc</Text>
                         </Pressable>
                     );
                 }
@@ -257,8 +280,78 @@ export default function AppointmentsScreen() {
     const [filter, setFilter] = useState('Sắp tới');
     const [joiningState, setJoiningState] = useState<Record<string, boolean>>({});
 
+    const [cancelModalVisible, setCancelModalVisible] = useState(false);
+    const [cancelApptId, setCancelApptId] = useState<string | null>(null);
+    const [cancelReason, setCancelReason] = useState("");
+
     const { data: rawAppointments, isLoading: loading, isFetching, dataUpdatedAt } = useGetMyAppointments();
     const appointments = rawAppointments || [];
+    
+    const { mutate: cancelAppointmentMutation, isPending: isCanceling } = useCancelAppointment();
+
+    const handleChatSession = async (appt: AppointmentResponse & Partial<AppointmentDetailResponse>) => {
+        setJoiningState(prev => ({ ...prev, [appt.appointmentId]: true }));
+        try {
+            const res = await getSessionByAppointmentId(appt.appointmentId);
+            if (res.success && res.data) {
+                router.push({
+                    pathname: "/(manager)/(doctor)/video_call",
+                    params: {
+                        sessionId: res.data.consultanSessionId,
+                        appointmentId: appt.appointmentId,
+                        openChat: '1',           // hint to video_call screen to open chat panel
+                    }
+                } as any);
+            } else {
+                toast.info("Chưa thể chat", "Phòng khám chưa mở. Vui lòng quay lại gần đến giờ hẹn!");
+            }
+        } catch {
+            toast.error("Lỗi", "Không thể mở chat. Vui lòng thử lại!");
+        } finally {
+            setJoiningState(prev => ({ ...prev, [appt.appointmentId]: false }));
+        }
+    };
+
+    const handleVideoSession = async (appt: AppointmentResponse & Partial<AppointmentDetailResponse>) => {
+        // Kiểm tra thời gian trước khi gọi API
+        const canJoin = (() => {
+            if (!appt.appointmentDate || !appt.appointmentTime) return false;
+            try {
+                const startTimeStr = appt.appointmentTime.split(' - ')[0];
+                const normalizedTime = startTimeStr.replace('h', ':');
+                const [h, m] = normalizedTime.split(':').map(Number);
+                const start = dayjs(appt.appointmentDate).hour(h).minute(m || 0).second(0);
+                return dayjs().isAfter(start.subtract(5, 'minute'));
+            } catch { return false; }
+        })();
+
+        if (!canJoin) {
+            const timeStr = appt.appointmentTime || 'giờ hẹn';
+            const dateStr = appt.appointmentDate ? dayjs(appt.appointmentDate).format('DD/MM/YYYY') : '';
+            toast.info(
+                "Chưa đến giờ",
+                `Phòng khám mở 5 phút trước giờ hẹn (${timeStr}${dateStr ? ` ngày ${dateStr}` : ''}).`
+            );
+            return;
+        }
+
+        setJoiningState(prev => ({ ...prev, [appt.appointmentId]: true }));
+        try {
+            const res = await getSessionByAppointmentId(appt.appointmentId);
+            if (res.success && res.data) {
+                router.push({
+                    pathname: "/(manager)/(doctor)/video_call",
+                    params: { sessionId: res.data.consultanSessionId, appointmentId: appt.appointmentId }
+                } as any);
+            } else {
+                toast.error("Chưa có phòng", res.message || "Phòng khám chưa được mở. Vui lòng đợi đến giờ!");
+            }
+        } catch {
+            toast.error("Lỗi", "Lỗi lấy thông tin session phòng chờ!");
+        } finally {
+            setJoiningState(prev => ({ ...prev, [appt.appointmentId]: false }));
+        }
+    };
 
     const handleJoinSession = async (appt: AppointmentResponse) => {
         setJoiningState(prev => ({ ...prev, [appt.appointmentId]: true }));
@@ -277,6 +370,25 @@ export default function AppointmentsScreen() {
         } finally {
             setJoiningState(prev => ({ ...prev, [appt.appointmentId]: false }));
         }
+    };
+
+    const handleOpenCancelModal = (appt: AppointmentResponse) => {
+        setCancelApptId(appt.appointmentId);
+        setCancelReason("");
+        setCancelModalVisible(true);
+    };
+
+    const handleSubmitCancel = () => {
+        if (!cancelApptId) return;
+        const finalReason = cancelReason.trim() ? cancelReason : "Người dùng yêu cầu hủy";
+        cancelAppointmentMutation(
+            { id: cancelApptId, data: { reason: finalReason } },
+            {
+                onSuccess: () => {
+                    setCancelModalVisible(false);
+                }
+            }
+        );
     };
 
     const filteredAppointments = appointments.filter(appt => {
@@ -382,12 +494,62 @@ export default function AppointmentsScreen() {
                             key={appt.appointmentId}
                             appt={appt}
                             onJoin={handleJoinSession}
+                            onChat={handleChatSession as any}
+                            onVideo={handleVideoSession as any}
                             onViewHistory={handleJoinSession}
+                            onCancel={handleOpenCancelModal}
                             joiningState={joiningState}
                         />
                     ))
                 )}
             </ScrollView>
+
+            {/* Cancel Modal */}
+            <Modal visible={cancelModalVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <View style={{ backgroundColor: "#fff", width: "100%", borderRadius: 24, padding: 24, borderWidth: 2, borderColor: "#000" }}>
+                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 20, marginBottom: 12, color: "#000" }}>
+                            Bạn muốn hủy lịch?
+                        </Text>
+                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#64748B", marginBottom: 16 }}>
+                            Vui lòng cho chúng tôi biết lý do (tùy chọn) để cải thiện dịch vụ tốt hơn.
+                        </Text>
+                        <TextInput
+                            style={{
+                                fontFamily: "SpaceGrotesk_500Medium", fontSize: 14, color: "#000",
+                                borderWidth: 2, borderColor: "rgba(0,0,0,0.1)", borderRadius: 12,
+                                padding: 16, height: 100, textAlignVertical: 'top', backgroundColor: '#F8FAFC',
+                                marginBottom: 24
+                            }}
+                            placeholder="Lý do hủy lịch..."
+                            placeholderTextColor="#94A3B8"
+                            multiline
+                            value={cancelReason}
+                            onChangeText={setCancelReason}
+                        />
+                        <View style={{ flexDirection: "row", gap: 12 }}>
+                            <Pressable 
+                                onPress={() => setCancelModalVisible(false)}
+                                style={{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: 'rgba(0,0,0,0.1)', alignItems: 'center' }}
+                            >
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#64748B" }}>Đóng</Text>
+                            </Pressable>
+                            <Pressable 
+                                onPress={handleSubmitCancel}
+                                disabled={isCanceling}
+                                style={{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#DC2626', alignItems: 'center', opacity: isCanceling ? 0.6 : 1 }}
+                            >
+                                {isCanceling ? (
+                                    <ActivityIndicator size="small" color="#fff" />
+                                ) : (
+                                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#fff" }}>Xác nhận Hủy</Text>
+                                )}
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
         </SafeAreaView>
     );
 }

@@ -4,6 +4,7 @@ import { usePopup } from "@/stores/popupStore";
 import { useRouter } from "expo-router";
 import {
   AlertCircle,
+  ArrowLeft,
   ChevronRight,
   Edit3,
   Plus,
@@ -15,14 +16,13 @@ import {
 import React from "react";
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   Text,
   View,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import ManagerHeader from "../../../components/ManagerHeader";
 
 export default function FamilyListScreen() {
   const router = useRouter();
@@ -52,13 +52,19 @@ export default function FamilyListScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      <ManagerHeader subtitle="Cài đặt gia đình" />
+      {/* <ManagerHeader subtitle="Cài đặt gia đình" /> */}
 
       <ScrollView
         className="flex-1 px-6 pt-6"
         contentContainerStyle={{ paddingBottom: 150 }}
         showsVerticalScrollIndicator={false}
       >
+        <Pressable
+          onPress={() => router.back()}
+          className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center mb-8 shadow-sm active:opacity-80"
+        >
+          <ArrowLeft color="black" size={24} />
+        </Pressable>
         <View className="mb-8">
           <Text className="text-4xl text-black font-space-bold tracking-tighter">
             Gia đình

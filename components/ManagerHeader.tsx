@@ -1,20 +1,19 @@
 import { SkeletonPulsar } from "@/components/skeleton/SkeletonPulsar";
 import { useGetMemberById } from "@/hooks/useMember";
+import { useGetUserNotifications } from "@/hooks/useNotification";
 import { useGetMe } from "@/hooks/useUser";
 import { getDecodedToken } from "@/utils/token";
+import { useRouter } from "expo-router";
 import { Bell, MoreHorizontal } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
-
-
 
 interface ManagerHeaderProps {
     subtitle?: string;
 }
 
-export default function ManagerHeader({
-    // subtitle = "Quản lý thuốc",
-}: ManagerHeaderProps) {
+export default function ManagerHeader(_props: ManagerHeaderProps) {
+    const router = useRouter();
     const [userId, setUserId] = useState<string | undefined>(undefined);
     const [memberId, setMemberId] = useState<string | undefined>(undefined);
 
@@ -33,11 +32,14 @@ export default function ManagerHeader({
     const { data: userProfile, isLoading: isUserLoading } = useGetMe(!!userId);
 
     // 2. Gọi hook lấy thông tin Member (Chỉ chạy nếu KHÔNG có userId NHƯNG có memberId)
-    // Thủ thuật: Nếu có userId, ta truyền id là undefined để ngăn hook member chạy
     const effectiveMemberId = (!userId && memberId) ? memberId : undefined;
     const { data: memberProfile, isLoading: isMemberLoading } = useGetMemberById(effectiveMemberId);
 
-    // Dữ liệu cuối cùng để hiển thị (Ưu tiên User, nếu không có thì lấy Member)
+    // 3. Lấy số thông báo chưa đọc
+    const { data: notifications } = useGetUserNotifications();
+    const unreadCount = (notifications || []).filter(n => !n.isRead).length;
+
+    // Dữ liệu cuối cùng để hiển thị
     const displayData = userId ? userProfile : memberProfile;
     const isLoading = userId ? isUserLoading : isMemberLoading;
 
@@ -70,9 +72,40 @@ export default function ManagerHeader({
 
             {/* Right: Action Buttons */}
             <View className="flex-row items-center gap-x-3">
-                <Pressable className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5">
+                {/* Bell button with unread badge */}
+                <Pressable
+                    onPress={() => router.push("/(manager)/(settings)/notifications" as any)}
+                    className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5"
+                    style={{ position: "relative" }}
+                >
                     <Bell size={22} color="#000" strokeWidth={2} />
+                    {unreadCount > 0 && (
+                        <View style={{
+                            position: "absolute",
+                            top: -4,
+                            right: -4,
+                            minWidth: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            backgroundColor: "#6366F1",
+                            borderWidth: 2,
+                            borderColor: "#F9F6FC",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            paddingHorizontal: 3,
+                        }}>
+                            <Text style={{
+                                fontFamily: "SpaceGrotesk_700Bold",
+                                fontSize: 9,
+                                color: "#FFF",
+                                lineHeight: 12,
+                            }}>
+                                {unreadCount > 99 ? "99+" : unreadCount}
+                            </Text>
+                        </View>
+                    )}
                 </Pressable>
+
                 <Pressable className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5">
                     <MoreHorizontal size={22} color="#000" strokeWidth={2} />
                 </Pressable>
