@@ -108,8 +108,14 @@ const BottomTabComponent = ({
             canPreventDefault: true,
           });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(tab.name, state.routes[routeIndex].params);
+          if (!event.defaultPrevented) {
+            if (isFocused) {
+              // Already on this tab → pop to top (go back to index)
+              navigation.dispatch({ type: "POP_TO_TOP", target: state.routes[routeIndex].key });
+            } else {
+              // Switch to another tab → also reset its stack to index
+              navigation.navigate(tab.name, { screen: "index" } as any);
+            }
           }
         };
 

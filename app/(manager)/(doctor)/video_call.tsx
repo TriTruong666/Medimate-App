@@ -11,7 +11,7 @@ import {
     RtcSurfaceView
 } from 'react-native-agora';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { endSession } from '../../../apis/session.api';
+import { endSession, joinSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';
 import { useToast } from '../../../stores/toastStore';
 import {
@@ -124,6 +124,13 @@ export default function VideoCallScreen() {
                     }
                 } catch (e) {
                     console.log('Error fetching Agora Token:', e);
+                }
+
+                // Call Backend Session Join
+                try {
+                    await joinSession(sid, { role: "Member" });
+                } catch (e) {
+                    console.log('Error joining session backend:', e);
                 }
 
                 // Join Channel

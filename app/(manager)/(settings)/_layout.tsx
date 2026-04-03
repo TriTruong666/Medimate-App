@@ -6,6 +6,8 @@ export default function SettingsLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="profile" />
             <Stack.Screen name="change-password" />
+            <Stack.Screen name="transaction_history" />
+            <Stack.Screen name="notifications" />
         </Stack>
     );
 }
