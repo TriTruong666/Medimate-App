@@ -10,7 +10,8 @@ import {
   Info,
   LogOut,
   Shield,
-  Users
+  Users,
+  FileText
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -44,6 +45,14 @@ const MENU_ITEMS = [
     subtitle: "Thay đổi mật khẩu",
     color: "#D9AEF6",
     route: "/(manager)/(settings)/change-password" as const,
+    onlyUser: true,
+  },
+  {
+    icon: FileText,
+    label: "Lịch sử giao dịch",
+    subtitle: "Gói cước & Thanh toán",
+    color: "#FFD700",
+    route: "/(manager)/(settings)/transaction_history" as const,
     onlyUser: true,
   },
   {
