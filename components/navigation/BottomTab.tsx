@@ -30,6 +30,9 @@ const BottomTabComponent = ({
   const midIndex = centerButton ? Math.floor(tabs.length / 2) : -1;
   const segments = useSegments() as string[];
 
+  // Full screen screens - Hide the entire bottom bar
+  if (segments.includes("video_call")) return null;
+
   // Hide the center button (Plus) if we are in the prescription flow
   const hideCenterButton = segments.includes("(prescription)");
 

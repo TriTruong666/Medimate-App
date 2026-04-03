@@ -1,10 +1,9 @@
-import { useSetAtom } from "jotai";
+import { useRouter } from "expo-router";
 import {
     Paperclip,
     Phone,
     Send,
-    Video,
-    X,
+    X
 } from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
@@ -15,10 +14,8 @@ import {
     Pressable,
     Text,
     TextInput,
-    View,
-    ActivityIndicator,
+    View
 } from "react-native";
-import { popupAtom } from "../../stores/popupStore";
 import { getMessages, sendMessage } from "../../apis/chat.api";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -34,6 +31,7 @@ interface ChatDetailPopupProps {
     avatar?: string;
     specialty?: string;
     sessionId?: string;
+    appointmentId?: string;
     isCompleted?: boolean;
     onClose: () => void;
 }
@@ -56,9 +54,11 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     avatar = "https://cdn-icons-png.flaticon.com/512/3845/3842326.png",
     specialty = "Nha khoa",
     sessionId,
+    appointmentId,
     isCompleted = false,
     onClose,
 }) => {
+    const router = useRouter();
     const [messages, setMessages] = useState<ChatMessage[]>(MOCK_MESSAGES);
     const [inputText, setInputText] = useState("");
     const [isLoading, setIsLoading] = useState(false);
@@ -71,7 +71,7 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
             try {
                 const res = await getMessages(sessionId);
                 if (res.success && res.data) {
-                    const sorted = res.data.sort((a,b) => new Date(a.sendAt).getTime() - new Date(b.sendAt).getTime());
+                    const sorted = res.data.sort((a, b) => new Date(a.sendAt).getTime() - new Date(b.sendAt).getTime());
                     const mapped: ChatMessage[] = sorted.map(m => ({
                         id: m.messageId,
                         text: m.content || "",
@@ -86,7 +86,7 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
             }
         };
         fetchMsgs();
-        
+
         let interval: any;
         if (!isCompleted) {
             interval = setInterval(fetchMsgs, 3000);
@@ -153,20 +153,20 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     return (
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
             {/* Backdrop */}
-            <Pressable 
+            <Pressable
                 style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.45)" }}
                 onPress={onClose}
             />
 
             {/* Main Chat Sheet */}
-            <View style={{ 
-                height: "90%", 
-                backgroundColor: "#F9F6FC", 
-                borderTopLeftRadius: 32, 
-                borderTopRightRadius: 32, 
-                borderTopWidth: 4, 
-                borderColor: "#000", 
-                overflow: "hidden" 
+            <View style={{
+                height: "90%",
+                backgroundColor: "#F9F6FC",
+                borderTopLeftRadius: 32,
+                borderTopRightRadius: 32,
+                borderTopWidth: 4,
+                borderColor: "#000",
+                overflow: "hidden"
             }}>
                 {/* 1. Header Area */}
                 <View style={{
@@ -194,9 +194,20 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                     </View>
 
                     <View style={{ flexDirection: "row", gap: 8 }}>
-                        <Pressable style={{ width: 36, height: 36, borderRadius: 10, borderWidth: 2, borderColor: "#000", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
-                            <Phone size={16} color="#000" strokeWidth={2.5} />
-                        </Pressable>
+                        {!isCompleted && (
+                            <Pressable 
+                                onPress={() => {
+                                    onClose();
+                                    router.push({
+                                        pathname: "/(manager)/(doctor)/video_call",
+                                        params: { sessionId, appointmentId }
+                                    } as any);
+                                }}
+                                style={{ width: 36, height: 36, borderRadius: 10, borderWidth: 2, borderColor: "#000", backgroundColor: "#34D399", alignItems: "center", justifyContent: "center" }}
+                            >
+                                <Phone size={16} color="#000" strokeWidth={2.5} />
+                            </Pressable>
+                        )}
                         <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: "#000", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
                             <X size={16} color="#000" strokeWidth={2.5} />
                         </Pressable>
