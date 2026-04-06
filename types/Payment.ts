@@ -50,12 +50,15 @@ export type PaymentItemResponse = {
     paymentId: string;
     userId: string;
     userName: string;
+    orderCode: number; // Đảm bảo có orderCode
+    packageName: string; // Tên gói hội viên
+    familyName: string;  // Tên gia đình thụ hưởng
+    familyId: string;    // ID gia đình
     amount: number;
     paymentContent: string;
     status: string;
     createdAt: string;
 };
-
 // ========================
 // CHI TIẾT GIAO DỊCH (TRANSACTION)
 // ========================

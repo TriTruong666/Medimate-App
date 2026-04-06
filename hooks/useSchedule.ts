@@ -172,3 +172,22 @@ export function useUpdateReminderAction() {
         onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
     });
 }
+
+export function useSnoozeReminder() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ id, delayMinutes }: { id: string; delayMinutes: number }) =>
+            ScheduleApi.snoozeReminder(id, delayMinutes),
+        onSuccess: (res) => {
+            if (res.success) {
+                queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
+                Alert.alert("Thành công", "Đã hoãn báo thức!");
+            } else {
+                Alert.alert("Lỗi", res.message || "Không thể hoãn báo thức.");
+            }
+        },
+        onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
+    });
+}

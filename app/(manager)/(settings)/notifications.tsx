@@ -72,7 +72,7 @@ function NotificationDetailModal({
                 paddingBottom: 48,
             }}>
                 {/* Handle bar */}
-                <View style={{ width: 40, height: 4, backgroundColor: "#000", borderRadius: 2, alignSelf: "center", marginBottom: 24, opacity: 0.15 }} />
+                <View style={{ width: 40, height: 4, backgroundColor: "#000", borderRadius: 2, alignSelf: "center", opacity: 0.15 }} />
 
                 {/* Icon + Type badge */}
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 20 }}>
@@ -106,7 +106,7 @@ function NotificationDetailModal({
                 </Text>
 
                 {/* Message */}
-                <View style={{ backgroundColor: "#FFF", borderWidth: 2, borderColor: "#000", borderRadius: 16, padding: 16, marginBottom: 20 }}>
+                <View style={{ backgroundColor: "#FFF", borderWidth: 2, borderColor: "#000", borderRadius: 16, padding: 16 }}>
                     <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 15, color: "#374151", lineHeight: 22 }}>
                         {notification.message}
                     </Text>
@@ -164,124 +164,105 @@ export default function NotificationsScreen() {
             <Pressable
                 onPress={() => handlePressNotification(item)}
                 style={({ pressed }) => ({
-                    backgroundColor: isRead ? "#FFF" : "#FFF",
+                    backgroundColor: "#FFF",
                     borderWidth: isRead ? 2 : 2.5,
-                    borderColor: isRead ? "rgba(0,0,0,0.18)" : "#000",
-                    borderRadius: 20,
+                    borderColor: isRead ? "rgba(0,0,0,0.15)" : "#000",
+                    borderRadius: 24,
                     padding: 16,
-                    marginBottom: 12,
-                    opacity: isRead ? 0.55 : 1,
+                    marginBottom: 16, // Tạo khoảng cách giữa các card thay vì dùng Divider
+                    opacity: isRead ? 0.7 : 1,
+
+                    // Shadow
                     shadowColor: "#000",
-                    shadowOffset: { width: pressed ? 0 : (isRead ? 1 : 3), height: pressed ? 0 : (isRead ? 1 : 4) },
-                    shadowOpacity: pressed ? 0 : (isRead ? 0.15 : 1),
+                    shadowOffset: {
+                        width: pressed ? 0 : (isRead ? 1 : 4),
+                        height: pressed ? 0 : (isRead ? 1 : 4)
+                    },
+                    shadowOpacity: 1,
                     shadowRadius: 0,
                     elevation: pressed ? 0 : (isRead ? 1 : 4),
                     transform: [{ translateY: pressed ? 2 : 0 }],
                 })}
             >
-                {/* Top row: Icon + Title + Unread dot */}
-                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12, marginBottom: 10, padding: 10 }}>
-                    {/* Type Icon */}
-                    <View style={{
-                        width: 42, height: 42, borderRadius: 13,
-                        backgroundColor: isRead ? "#F1F5F9" : cfg.bg,
-                        borderWidth: 2, borderColor: isRead ? "rgba(0,0,0,0.12)" : "#000",
-                        alignItems: "center", justifyContent: "center", flexShrink: 0
-                    }}>
-                        <IconComp size={19} color={isRead ? "#94A3B8" : cfg.color} strokeWidth={2.5} />
-                    </View>
-
-                    {/* Title + message */}
-                    <View style={{ flex: 1 }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-                            <Text
-                                style={{
-                                    fontFamily: isRead ? "SpaceGrotesk_500Medium" : "SpaceGrotesk_700Bold",
-                                    fontSize: 14,
-                                    color: isRead ? "#64748B" : "#000",
-                                    flex: 1,
-                                    marginRight: 8,
-                                }}
-                                numberOfLines={1}
-                            >
-                                {item.title}
-                            </Text>
-                            {/* Unread dot */}
-                            {!isRead && (
-                                <View style={{
-                                    width: 9, height: 9, borderRadius: 5,
-                                    backgroundColor: "#6366F1",
-                                    borderWidth: 1.5, borderColor: "#000",
-                                    flexShrink: 0,
-                                }} />
-                            )}
-                        </View>
-                        <Text
-                            style={{
-                                fontFamily: "SpaceGrotesk_500Medium",
-                                fontSize: 13,
-                                color: isRead ? "#94A3B8" : "#374151",
-                                lineHeight: 18,
-                            }}
-                            numberOfLines={2}
-                        >
-                            {item.message}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Divider */}
-                <View style={{ height: 1, backgroundColor: isRead ? "rgba(0,0,0,0.05)" : "rgba(0,0,0,0.08)", marginBottom: 10 }} />
-
-                {/* Bottom row: type badge / read status / time */}
-                <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    {/* Type + Read status */}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                {/* 1. HÀNG ĐẦU TIÊN: METADATA (Đã đọc/Chưa đọc & Thời gian) */}
+                <View style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 12
+                }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        {/* Badge Loại */}
                         <View style={{
                             backgroundColor: isRead ? "#F1F5F9" : cfg.bg,
                             paddingHorizontal: 8, paddingVertical: 3,
-                            borderRadius: 7,
-                            borderWidth: 1,
-                            borderColor: isRead ? "rgba(0,0,0,0.1)" : cfg.color,
+                            borderRadius: 8, borderWidth: 1.5, borderColor: isRead ? "rgba(0,0,0,0.1)" : "#000",
                         }}>
                             <Text style={{
-                                fontFamily: "SpaceGrotesk_600SemiBold",
-                                fontSize: 10,
-                                color: isRead ? "#94A3B8" : cfg.color,
-                                textTransform: "uppercase",
+                                fontFamily: "SpaceGrotesk_700Bold", fontSize: 10,
+                                color: isRead ? "#94A3B8" : cfg.color, textTransform: "uppercase"
                             }}>
                                 {cfg.label}
                             </Text>
                         </View>
 
-                        {/* Read/Unread pill */}
+                        {/* Badge Trạng thái Đọc */}
                         <View style={{
-                            backgroundColor: isRead ? "#F1F5F9" : "#EDE9FE",
+                            backgroundColor: isRead ? "transparent" : "#6366F1",
                             paddingHorizontal: 8, paddingVertical: 3,
-                            borderRadius: 7,
-                            borderWidth: 1,
-                            borderColor: isRead ? "rgba(0,0,0,0.08)" : "#6366F1",
+                            borderRadius: 8, borderWidth: 1.5,
+                            borderColor: isRead ? "rgba(0,0,0,0.1)" : "#000",
                         }}>
                             <Text style={{
-                                fontFamily: "SpaceGrotesk_600SemiBold",
-                                fontSize: 10,
-                                color: isRead ? "#94A3B8" : "#6366F1",
-                                textTransform: "uppercase",
+                                fontFamily: "SpaceGrotesk_700Bold", fontSize: 10,
+                                color: isRead ? "#94A3B8" : "#FFF"
                             }}>
-                                {isRead ? "Đã đọc" : "Chưa đọc"}
+                                {isRead ? "ĐÃ ĐỌC" : "MỚI"}
                             </Text>
                         </View>
                     </View>
 
-                    {/* Timestamp */}
+                    {/* Thời gian đặt ở góc trên bên phải */}
                     <Text style={{
-                        fontFamily: "SpaceGrotesk_500Medium",
-                        fontSize: 11,
-                        color: isRead ? "#CBD5E1" : "#64748B",
+                        fontFamily: "SpaceGrotesk_500Medium", fontSize: 11,
+                        color: isRead ? "#94A3B8" : "#64748B"
                     }}>
                         {dayjs(item.createdAt).format("HH:mm · DD/MM")}
                     </Text>
                 </View>
+
+                {/* 2. HÀNG NỘI DUNG CHÍNH */}
+                <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 14 }}>
+                    {/* Box Icon bên trái */}
+                    <View style={{
+                        width: 46, height: 46, borderRadius: 14,
+                        backgroundColor: isRead ? "#F8FAFC" : cfg.bg,
+                        borderWidth: 2, borderColor: isRead ? "rgba(0,0,0,0.12)" : "#000",
+                        alignItems: "center", justifyContent: "center",
+                    }}>
+                        <IconComp size={20} color={isRead ? "#CBD5E1" : cfg.color} strokeWidth={2.5} />
+                    </View>
+
+                    {/* Tiêu đề và Nội dung */}
+                    <View style={{ flex: 1 }}>
+                        <Text style={{
+                            fontFamily: isRead ? "SpaceGrotesk_600SemiBold" : "SpaceGrotesk_700Bold",
+                            fontSize: 15, color: isRead ? "#64748B" : "#000",
+                            marginBottom: 4, lineHeight: 20
+                        }} numberOfLines={1}>
+                            {item.title}
+                        </Text>
+                        <Text style={{
+                            fontFamily: "SpaceGrotesk_500Medium",
+                            fontSize: 13, color: isRead ? "#94A3B8" : "#475569",
+                            lineHeight: 18,
+                        }} numberOfLines={2}>
+                            {item.message}
+                        </Text>
+                    </View>
+                </View>
+                {/* Divider */}
+                <View style={{ height: 1, backgroundColor: isRead ? "rgba(0,0,0,0.05)" : "rgba(0,0,0,0.08)", marginBottom: 10 }} />
             </Pressable>
         );
     };

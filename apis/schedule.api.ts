@@ -119,3 +119,17 @@ export async function updateReminderAction(reminderId: string, data: UpdateRemin
         throw error;
     }
 }
+
+export async function snoozeReminder(reminderId: string, delayMinutes: number): Promise<BaseResponse<any>> {
+    try {
+        const res = await axiosClient.post(`/api/v1/reminders/${reminderId}/snooze`, delayMinutes, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}

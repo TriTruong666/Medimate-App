@@ -14,6 +14,7 @@ import BookingConfirmPopup from "./BookingConfirmPopup";
 import { ChatDetailPopup } from './ChatDetailPopup';
 import { CheckoutPopup } from './CheckoutPopup';
 import { SuccessPaymentPopup } from './SuccessPaymentPopup';
+import { ReminderAlertPopup } from './ReminderAlertPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -131,6 +132,13 @@ export const PopupContainer: React.FC = () => {
                     specialty={activePopup.data?.specialty}
                     sessionId={activePopup.data?.sessionId}
                     isCompleted={activePopup.data?.isCompleted}
+                    onClose={handleClose}
+                />
+            )}
+
+            {activePopup.type === 'reminder_alert' && (
+                <ReminderAlertPopup
+                    data={activePopup.data}
                     onClose={handleClose}
                 />
             )}

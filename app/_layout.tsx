@@ -20,6 +20,8 @@ import { Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from "react";
 import "../global.css";
+import { SignalRInjector } from "../hooks/useSignalR";
+import { ReminderNotificationInjector } from "../hooks/useReminderNotification";
 
 // Giữ splash screen hiển thị cho đến khi font load xong
 SplashScreen.preventAutoHideAsync();
@@ -64,6 +66,8 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <QueryClientProvider client={queryClient}>
+        <SignalRInjector />
+        <ReminderNotificationInjector />
         <Stack screenOptions={{ headerShown: false }} />
         <ToastContainer />
         <PopupContainer />
