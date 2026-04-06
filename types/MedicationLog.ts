@@ -16,6 +16,7 @@ export type MedicationLogResponse = {
     reminderId: string;
     medicineName: string;
     memberName: string;
+    memberAvatarUrl?: string | null; // Avatar thành viên (nếu API trả về)
     logDate: string; // Ngày ghi nhận
     scheduledTime: string; // Giờ hẹn gốc
     actualTime?: string | null; // Giờ uống thực tế

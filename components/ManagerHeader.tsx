@@ -87,7 +87,7 @@ export default function ManagerHeader(_props: ManagerHeaderProps) {
                             minWidth: 18,
                             height: 18,
                             borderRadius: 9,
-                            backgroundColor: "#6366F1",
+                            backgroundColor: "#EF4444", // Chấm đỏ
                             borderWidth: 2,
                             borderColor: "#F9F6FC",
                             alignItems: "center",

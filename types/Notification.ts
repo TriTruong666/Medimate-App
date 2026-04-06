@@ -10,6 +10,9 @@ export type NotificationSettingResponse = {
     reminderAdvanceMinutes: number;
     enableFamilyAlert: boolean;
     customSetting: string | null;
+    minimumHoursGap: number;
+    maxDosesPerDay: number;
+    missedDosesThreshold: number;
     updateAt: string;
 };
 
@@ -20,6 +23,9 @@ export type UpdateNotificationSettingRequest = {
     reminderAdvanceMinutes?: number;
     enableFamilyAlert?: boolean;
     customSetting?: string | null;
+    minimumHoursGap?: number;
+    maxDosesPerDay?: number;
+    missedDosesThreshold?: number;
 };
 
 // ========================

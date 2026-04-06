@@ -15,6 +15,7 @@ export type PopupType =
     | 'chat_detail'
     | 'message'
     | 'loading'
+    | 'reminder_alert'
     | null;
 
 export type PopupConfirmData = {

@@ -110,10 +110,11 @@ export default function DoctorScreen() {
                 <View className="px-5 mb-6">
                     <View className="flex-row items-center gap-x-3">
                         <View className="flex-1 flex-row items-center bg-white border-2 border-black rounded-[20px] px-4 py-1 shadow-sm">
-                            <Search size={20} color="#A0A0A0" strokeWidth={2.5} />
-                            <TextInput
+                            <Search size={20} color="#070101ff" strokeWidth={2.5} />
+                            <TextInput style={{ color: '#1b0f0fff' }}
                                 className="flex-1 h-12 ml-3 font-space-bold text-black"
                                 placeholder="Tìm bác sĩ, chuyên khoa..."
+                                placeholderTextColor="#747171ff"
                                 value={search}
                                 onChangeText={setSearch}
                             />

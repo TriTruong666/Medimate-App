@@ -25,9 +25,6 @@ export function useGetMyAppointments(filter?: any) {
             // API trả BaseResponse<AppointmentResponse[]> — data là array trực tiếp
             return Array.isArray(res.data) ? res.data : [];
         },
-        // Refetch mỗi 15 giây để bắt kịp thông tin status mới
-        refetchInterval: 15000,
-        refetchIntervalInBackground: false,
     });
 }
 
@@ -43,7 +40,6 @@ export function useGetAppointmentDetail(appointmentId: string | undefined, optio
             return res.data;
         },
         enabled: !!appointmentId, // Chỉ gọi API khi ID đã có sẵn (không bị undefined)
-        refetchInterval: options?.pollingInterval,
     });
 }
 

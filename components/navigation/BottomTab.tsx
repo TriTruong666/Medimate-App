@@ -1,4 +1,5 @@
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { CommonActions } from "@react-navigation/native";
 import { useSegments } from "expo-router";
 import { LucideIcon } from "lucide-react-native";
 import { MotiView } from "moti";
@@ -110,10 +111,15 @@ const BottomTabComponent = ({
 
           if (!event.defaultPrevented) {
             if (isFocused) {
-              // Already on this tab → pop to top (go back to index)
-              navigation.dispatch({ type: "POP_TO_TOP", target: state.routes[routeIndex].key });
+              // Đang ở tab này → reset stack về màn hình index (tránh warning POP_TO_TOP)
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: state.routes[routeIndex].name }],
+                })
+              );
             } else {
-              // Switch to another tab → also reset its stack to index
+              // Chuyển sang tab khác → navigate và reset stack về index
               navigation.navigate(tab.name, { screen: "index" } as any);
             }
           }
