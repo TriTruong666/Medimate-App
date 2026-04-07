@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, ActivityIndicator, Pressable, RefreshControl } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, RefreshCcw, FileText } from "lucide-react-native";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
+import { useRouter } from "expo-router";
+import { ArrowDownRight, ArrowLeft, ArrowUpRight, FileText, RefreshCcw } from "lucide-react-native";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useGetTransactionsByUserId } from "@/hooks/useTransaction";
+import { useGetTransactionDetail, useGetTransactionsByUserId } from "@/hooks/useTransaction";
 import { getDecodedToken } from "@/utils/token";
 
 dayjs.locale('vi');
@@ -21,7 +21,7 @@ const STATUS_MAP: Record<string, { label: string; color: string; bg: string }> =
 export default function TransactionHistoryScreen() {
     const router = useRouter();
     const [userId, setUserId] = useState<string | undefined>(undefined);
-    
+
     // Simple pagination
     const [pageNumber, setPageNumber] = useState(1);
     const pageSize = 20;
@@ -45,29 +45,31 @@ export default function TransactionHistoryScreen() {
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
     };
 
-    const handleRefresh = () => {
-        setPageNumber(1);
-        refetch();
-    };
-
-    const renderItem = ({ item }: { item: any }) => {
-        const isIncome = item.transactionType === "INCOME"; // Adjust if Types are different
+    const TransactionCard = ({ item }: { item: any }) => {
+        const [isExpanded, setIsExpanded] = useState(false);
+        const isIncome = item.transactionType === "INCOME";
         const statusConfig = STATUS_MAP[item.status.toUpperCase()] || { label: item.status, color: "#000", bg: "#E2E8F0" };
 
+        const { data: detailData, isLoading: detailLoading } = useGetTransactionDetail(item.transactionId, {
+            enabled: isExpanded,
+        });
+
         return (
-            <View style={{
-                backgroundColor: '#fff',
-                borderWidth: 2,
-                borderColor: '#000',
-                borderRadius: 20,
-                padding: 16,
-                marginBottom: 16,
-                shadowColor: '#000',
-                shadowOffset: { width: 3, height: 4 },
-                shadowOpacity: 1,
-                shadowRadius: 0,
-                elevation: 4,
-            }}>
+            <Pressable
+                onPress={() => setIsExpanded(!isExpanded)}
+                style={{
+                    backgroundColor: '#fff',
+                    borderWidth: 2,
+                    borderColor: '#000',
+                    borderRadius: 20,
+                    padding: 16,
+                    marginBottom: 16,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 3, height: 4 },
+                    shadowOpacity: 1,
+                    shadowRadius: 0,
+                    elevation: 4,
+                }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <View style={{ flex: 1, paddingRight: 10 }}>
                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#64748B' }}>MÃ GIAO DỊCH</Text>
@@ -95,8 +97,46 @@ export default function TransactionHistoryScreen() {
                         </View>
                     </View>
                 </View>
-            </View>
+
+                {isExpanded && (
+                    <View style={{ marginTop: 16, borderTopWidth: 1.5, borderTopColor: 'rgba(0,0,0,0.05)', paddingTop: 16 }}>
+                        {detailLoading ? (
+                            <ActivityIndicator size="small" color="#000" />
+                        ) : detailData ? (
+                            <View style={{ gap: 12 }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B' }}>Người gửi:</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#000' }}>{detailData.senderName || '---'}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B' }}>Người nhận:</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#000' }}>{detailData.receiverName || '---'}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B' }}>Nội dung:</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#000', flex: 1, textAlign: 'right', marginLeft: 20 }}>{detailData.content || '---'}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B' }}>Phí giao dịch:</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#000' }}>{formatCurrency(detailData.transactionFee || 0)}</Text>
+                                </View>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B' }}>Phương thức:</Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#000' }}>{detailData.paymentMethod || 'PayOS'}</Text>
+                                </View>
+                            </View>
+                        ) : (
+                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#EF4444', textAlign: 'center' }}>Không tải được chi tiết giao dịch.</Text>
+                        )}
+                    </View>
+                )}
+            </Pressable>
         );
+    };
+
+    const handleRefresh = () => {
+        setPageNumber(1);
+        refetch();
     };
 
     return (
@@ -137,7 +177,7 @@ export default function TransactionHistoryScreen() {
                     <FlatList
                         data={transactions}
                         keyExtractor={(item) => item.transactionId || item.transactionCode}
-                        renderItem={renderItem}
+                        renderItem={({ item }) => <TransactionCard item={item} />}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 40, paddingTop: 10 }}
                         refreshControl={

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import * as SecureStore from "expo-secure-store";
 import { useQueryClient } from "@tanstack/react-query";
-import { Platform } from "react-native";
+import { Platform, AppState, AppStateStatus } from "react-native";
 import { useAtomValue } from "jotai";
 import { authSessionAtom } from "@/stores/authStore";
 import { useToast } from "@/stores/toastStore";
@@ -169,8 +169,19 @@ export function useAppSignalR() {
         // Try to connect when the hook is mounted
         startConnection();
 
+        // ── Lắng nghe sự kiện thoát mở App (Background / Foreground) ──
+        const appStateSubscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
+            if (nextAppState === "active") {
+                console.log("📱 [SignalR] App trở lại Foreground, kiểm tra kết nối...");
+                if (!connection || connection.state === signalR.HubConnectionState.Disconnected) {
+                    startConnection();
+                }
+            }
+        });
+
         return () => {
             isMounted = false;
+            appStateSubscription.remove();
             // Dọn dẹp connection khi authSessionAtom đổi (thoát app/logout)
             if (connection && !session) {
                 if (connection.state !== signalR.HubConnectionState.Disconnected) {
