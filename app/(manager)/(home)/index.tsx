@@ -56,12 +56,24 @@ function getTimeOfDayBg(timeStr?: string): string {
 function ReminderCard({ item }: { item: any }) {
     const [expanded, setExpanded] = useState(false);
 
-    const reminderDateTimeStr = item.reminderTime
-        ? item.reminderTime
-        : undefined;
-    const reminderDateTime = reminderDateTimeStr ? dayjs(reminderDateTimeStr) : null;
+    const reminderDateTimeStr = item.reminderTime || undefined;
+    
+    // Nếu reminderTime có dạng "08:00:00" thì ta parse cẩn thận
+    let reminderDateTime = null;
+    let timeDisplay = '--:--';
+    if (reminderDateTimeStr) {
+        if (reminderDateTimeStr.includes('T')) {
+            reminderDateTime = dayjs(reminderDateTimeStr);
+            timeDisplay = reminderDateTime.format('HH:mm');
+        } else {
+            // Dạng "08:00:00"
+            const [h, m] = reminderDateTimeStr.split(':');
+            reminderDateTime = dayjs().hour(Number(h)).minute(Number(m)).second(0);
+            timeDisplay = `${h}:${m}`;
+        }
+    }
+
     const now = dayjs();
-    const timeDisplay = reminderDateTime ? reminderDateTime.format('HH:mm') : '--:--';
     const isPast = reminderDateTime ? reminderDateTime.isBefore(now) : false;
     const isFuture = reminderDateTime ? reminderDateTime.isAfter(now) : false;
     const isTaken = item.status === "Taken" || item.status === "Done";
@@ -83,7 +95,11 @@ function ReminderCard({ item }: { item: any }) {
         statusColor = '#EFF6FF'; statusText = 'Sắp tới'; statusTextColor = '#1D4ED8'; dotColor = '#3B82F6';
     }
 
-    const medicines: any[] = item.medicines || [];
+    const rawMedicines: any[] = item.medicines || [];
+    const medicines = rawMedicines.filter(m => {
+        const d = m.dosage?.toLowerCase().trim() || "";
+        return !d.startsWith("0") && !d.includes("0 viên");
+    });
     const timeOfDayBg = getTimeOfDayBg(item.reminderTime);
 
     return (
@@ -196,7 +212,7 @@ function ReminderCard({ item }: { item: any }) {
                                 </Text>
                                 {med.dosage ? (
                                     <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#6B7280', marginBottom: 1 }}>
-                                        💊 Liều: {med.dosage}
+                                        💊 Liều: {med.dosage.split('.')[0].trim()}
                                     </Text>
                                 ) : null}
                                 {med.instructions ? (
