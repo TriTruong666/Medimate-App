@@ -15,6 +15,7 @@ import { ChatDetailPopup } from './ChatDetailPopup';
 import { CheckoutPopup } from './CheckoutPopup';
 import { SuccessPaymentPopup } from './SuccessPaymentPopup';
 import { ReminderAlertPopup } from './ReminderAlertPopup';
+import { GuardianInvitePopup } from './GuardianInvitePopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -138,6 +139,13 @@ export const PopupContainer: React.FC = () => {
 
             {activePopup.type === 'reminder_alert' && (
                 <ReminderAlertPopup
+                    data={activePopup.data}
+                    onClose={handleClose}
+                />
+            )}
+
+            {activePopup.type === 'guardian_invite' && (
+                <GuardianInvitePopup
                     data={activePopup.data}
                     onClose={handleClose}
                 />

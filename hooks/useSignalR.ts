@@ -6,6 +6,7 @@ import { Platform } from "react-native";
 import { useAtomValue } from "jotai";
 import { authSessionAtom } from "@/stores/authStore";
 import { useToast } from "@/stores/toastStore";
+import { usePopup } from "@/stores/popupStore";
 
 let connection: signalR.HubConnection | null = null;
 const base_net_url = process.env.EXPO_PUBLIC_NET_API_URL;
@@ -15,6 +16,7 @@ export function useAppSignalR() {
     const session = useAtomValue(authSessionAtom);
     const [isConnected, setIsConnected] = useState(false);
     const toast = useToast();
+    const { open } = usePopup();
 
     useEffect(() => {
         let isMounted = true;
@@ -104,10 +106,48 @@ export function useAppSignalR() {
                 queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
             });
 
+            // ── Cuộc gọi 3 bên: Mời Guardian tham gia ─────────────────────────────
+            connection.on("GuardianSessionInvite", (data: {
+                sessionId: string;
+                memberName: string;
+                memberAvatarUrl?: string;
+                doctorName: string;
+                scheduledTime: string;
+            }) => {
+                console.log("👨‍👩‍👦 [SignalR] GuardianSessionInvite:", data);
+                // Hiện popup mời ngay lập tức trong app
+                open({
+                    type: 'guardian_invite',
+                    data: {
+                        sessionId: data.sessionId,
+                        memberName: data.memberName,
+                        memberAvatarUrl: data.memberAvatarUrl,
+                        doctorName: data.doctorName,
+                        scheduledTime: data.scheduledTime,
+                    },
+                });
+            });
+
+            // ── Thông báo cho Bác sĩ khi Guardian vào ─────────────────────────────
+            connection.on("GuardianJoined", (data: {
+                sessionId: string;
+                guardianName: string;
+                memberName: string;
+            }) => {
+                console.log("👤 [SignalR] GuardianJoined:", data);
+                toast.success(
+                    `${data.guardianName} đã tham gia`,
+                    `Người giám hộ của ${data.memberName} vừa vào phòng khám.`
+                );
+                queryClient.invalidateQueries({ queryKey: ["session", data.sessionId] });
+            });
+
             try {
-                await connection.start();
-                if (isMounted) setIsConnected(true);
-                console.log("🟢 [SignalR] Connected successfully.");
+                if (connection.state === signalR.HubConnectionState.Disconnected) {
+                    await connection.start();
+                    if (isMounted) setIsConnected(true);
+                    console.log("🟢 [SignalR] Connected successfully.");
+                }
 
                 // Đăng ký sự kiện mất kết nối để debug
                 connection.onreconnecting((err) => console.log("🟡 [SignalR] Reconnecting...", err));
@@ -133,10 +173,14 @@ export function useAppSignalR() {
             isMounted = false;
             // Dọn dẹp connection khi authSessionAtom đổi (thoát app/logout)
             if (connection && !session) {
-                connection.stop().then(() => {
-                     connection = null;
-                     if (isMounted) setIsConnected(false);
-                });
+                if (connection.state !== signalR.HubConnectionState.Disconnected) {
+                    connection.stop().then(() => {
+                         connection = null;
+                         if (isMounted) setIsConnected(false);
+                    }).catch(err => console.log("🔴 [SignalR] Stop Error: ", err));
+                } else {
+                    connection = null;
+                }
             }
         };
     }, [queryClient, session]);

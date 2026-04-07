@@ -155,7 +155,7 @@ export default function FloatingVideoCall() {
                             width: 6,
                             height: 6,
                             borderRadius: 3,
-                            backgroundColor: state.remoteUid ? '#22C55E' : '#F59E0B',
+                            backgroundColor: state.remoteUids.length > 0 ? '#22C55E' : '#F59E0B',
                         }} />
                         <Text style={{
                             fontFamily: 'SpaceGrotesk_700Bold',
@@ -164,7 +164,7 @@ export default function FloatingVideoCall() {
                             textTransform: 'uppercase',
                             letterSpacing: 0.5,
                         }}>
-                            {state.remoteUid ? 'Đang gọi' : 'Chờ...'}
+                            {state.remoteUids.length > 0 ? (state.remoteUids.length > 1 ? '3 Người' : 'Đang hẹn') : 'Chờ...'}
                         </Text>
                     </View>
 
