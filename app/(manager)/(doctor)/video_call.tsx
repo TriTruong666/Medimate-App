@@ -31,7 +31,7 @@ export default function VideoCallScreen() {
     const { state: callState, startCall, minimize, updateCallState, endCall } = useVideoCallActions();
 
     const [hasJoined, setHasJoined] = useState(callState.isActive ? callState.hasJoined : false);
-    const [remoteUid, setRemoteUid] = useState<number | null>(callState.isActive ? callState.remoteUid : null);
+    const [remoteUids, setRemoteUids] = useState<number[]>(callState.isActive ? callState.remoteUids : []);
     const [isMuted, setIsMuted] = useState(callState.isActive ? callState.isMuted : false);
     const [isCameraOff, setIsCameraOff] = useState(callState.isActive ? callState.isCameraOff : false);
 
@@ -47,7 +47,7 @@ export default function VideoCallScreen() {
                 updateCallState({ isMinimized: false });
                 // Restore state from global store
                 setHasJoined(callState.hasJoined);
-                setRemoteUid(callState.remoteUid);
+                setRemoteUids(callState.remoteUids || []);
                 setIsMuted(callState.isMuted);
                 setIsCameraOff(callState.isCameraOff);
                 agoraEngineRef.current = getGlobalAgoraEngine();
@@ -60,9 +60,9 @@ export default function VideoCallScreen() {
     // Sync local state to global store
     useEffect(() => {
         if (callState.isActive) {
-            updateCallState({ hasJoined, remoteUid, isMuted, isCameraOff });
+            updateCallState({ hasJoined, remoteUids, isMuted, isCameraOff });
         }
-    }, [hasJoined, remoteUid, isMuted, isCameraOff]);
+    }, [hasJoined, remoteUids, isMuted, isCameraOff]);
 
     useEffect(() => {
         let isMounted = true;
@@ -101,11 +101,11 @@ export default function VideoCallScreen() {
                     },
                     onUserJoined: (_connection: RtcConnection, uid: number) => {
                         console.log('Remote user joined', uid);
-                        if (isMounted) setRemoteUid(uid);
+                        if (isMounted) setRemoteUids(prev => prev.includes(uid) ? prev : [...prev, uid]);
                     },
                     onUserOffline: (_connection: RtcConnection, uid: number) => {
                         console.log('Remote user left', uid);
-                        if (isMounted) setRemoteUid(null);
+                        if (isMounted) setRemoteUids(prev => prev.filter(u => u !== uid));
                     },
                     onError: (err, msg) => {
                         console.error('Agora Error', err, msg);
@@ -189,7 +189,7 @@ export default function VideoCallScreen() {
 
     const handleMinimize = () => {
         // Save current state to global store and go back
-        updateCallState({ hasJoined, remoteUid, isMuted, isCameraOff });
+        updateCallState({ hasJoined, remoteUids, isMuted, isCameraOff });
         minimize();
         router.back();
     };
@@ -215,14 +215,27 @@ export default function VideoCallScreen() {
 
                 {/* Remote Video Stream (Main Background) */}
                 {hasJoined ? (
-                    (remoteUid || isMocking) ? (
+                    (remoteUids.length > 0 || isMocking) ? (
                         <View style={{ flex: 1, backgroundColor: '#1C1C1E' }}>
-                            {remoteUid && agoraEngineRef.current ? (
-                                <RtcSurfaceView canvas={{ uid: remoteUid }} style={{ flex: 1 }} />
+                            {remoteUids.length > 0 && agoraEngineRef.current ? (
+                                remoteUids.length === 1 ? (
+                                    // 1 Remote User -> Full Screen
+                                    <RtcSurfaceView canvas={{ uid: remoteUids[0] }} style={{ flex: 1 }} />
+                                ) : (
+                                    // 2+ Remote Users -> Split Screen
+                                    <View style={{ flex: 1 }}>
+                                        <View style={{ flex: 1, borderBottomWidth: 2, borderColor: '#000' }}>
+                                            <RtcSurfaceView canvas={{ uid: remoteUids[0] }} style={{ flex: 1 }} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <RtcSurfaceView canvas={{ uid: remoteUids[1] }} style={{ flex: 1 }} />
+                                        </View>
+                                    </View>
+                                )
                             ) : (
                                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                                     <Text style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
-                                        Bác sĩ chưa tham gia...
+                                        Bác sĩ đang vào...
                                     </Text>
                                     <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 16 }} />
                                 </View>
@@ -278,7 +291,7 @@ export default function VideoCallScreen() {
                         color: '#fff', fontFamily: 'SpaceGrotesk_700Bold',
                         letterSpacing: 2, fontSize: 10, textTransform: 'uppercase',
                     }}>
-                        {remoteUid ? '🟢 Đang tư vấn' : '🔴 Đang chờ'}
+                        {remoteUids.length > 0 ? (remoteUids.length > 1 ? '👥 Phòng 3 người' : '🟢 Đang tư vấn') : '🔴 Đang chờ'}
                     </Text>
                 </View>
 

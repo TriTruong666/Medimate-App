@@ -7,15 +7,30 @@ import { IRtcEngine } from 'react-native-agora';
 // while the user navigates to other screens.
 // ─────────────────────────────────────────────────────────
 
+export type VideoCallRole = 'member' | 'guardian' | 'doctor';
+
 export interface VideoCallState {
-    isActive: boolean;         // Is a call currently in progress?
-    isMinimized: boolean;      // Is the call currently minimized (PiP)?
+    isActive: boolean;
+    isMinimized: boolean;
     sessionId: string;
     appointmentId: string;
     hasJoined: boolean;
-    remoteUid: number | null;
+    remoteUids: number[];        // Multiple remote participants (3-way call)
     isMuted: boolean;
     isCameraOff: boolean;
+    role: VideoCallRole;         // Who am I in this call?
+    localUid: number | null;     // My Agora UID (set after joining)
+    memberName?: string;         // For guardian: name of the patient
+    doctorName?: string;         // For info display
+}
+
+// Guardian invite state (popup)
+export interface GuardianInvitePayload {
+    sessionId: string;
+    memberName: string;
+    memberAvatarUrl?: string;
+    doctorName: string;
+    scheduledTime: string;
 }
 
 const DEFAULT_STATE: VideoCallState = {
@@ -24,9 +39,11 @@ const DEFAULT_STATE: VideoCallState = {
     sessionId: '',
     appointmentId: '',
     hasJoined: false,
-    remoteUid: null,
+    remoteUids: [],
     isMuted: false,
     isCameraOff: false,
+    role: 'member',
+    localUid: null,
 };
 
 // Main state atom
@@ -46,22 +63,44 @@ export const setGlobalAgoraEngine = (engine: IRtcEngine | null) => {
 export const useVideoCallActions = () => {
     const [state, setState] = useAtom(videoCallStateAtom);
 
-    const startCall = (sessionId: string, appointmentId: string) => {
+    const startCall = (
+        sessionId: string,
+        appointmentId: string,
+        role: VideoCallRole = 'member',
+        options?: { memberName?: string; doctorName?: string; localUid?: number }
+    ) => {
         setState({
             ...DEFAULT_STATE,
             isActive: true,
             isMinimized: false,
             sessionId,
             appointmentId,
+            role,
+            localUid: options?.localUid ?? null,
+            memberName: options?.memberName,
+            doctorName: options?.doctorName,
         });
     };
 
-    const minimize = () => {
-        setState(prev => ({ ...prev, isMinimized: true }));
+    const minimize = () => setState(prev => ({ ...prev, isMinimized: true }));
+    const maximize = () => setState(prev => ({ ...prev, isMinimized: false }));
+
+    // Add a new remote participant UID (3-way call support)
+    const addRemoteUid = (uid: number) => {
+        setState(prev => ({
+            ...prev,
+            remoteUids: prev.remoteUids.includes(uid)
+                ? prev.remoteUids
+                : [...prev.remoteUids, uid],
+        }));
     };
 
-    const maximize = () => {
-        setState(prev => ({ ...prev, isMinimized: false }));
+    // Remove a remote UID when they leave
+    const removeRemoteUid = (uid: number) => {
+        setState(prev => ({
+            ...prev,
+            remoteUids: prev.remoteUids.filter(u => u !== uid),
+        }));
     };
 
     const updateCallState = (partial: Partial<VideoCallState>) => {
@@ -69,7 +108,6 @@ export const useVideoCallActions = () => {
     };
 
     const endCall = () => {
-        // Clean up Agora engine
         const engine = getGlobalAgoraEngine();
         if (engine) {
             try {
@@ -89,7 +127,13 @@ export const useVideoCallActions = () => {
         startCall,
         minimize,
         maximize,
+        addRemoteUid,
+        removeRemoteUid,
         updateCallState,
         endCall,
     };
 };
+
+// Backward compat: remoteUid (single) → first remote UID
+export const selectRemoteUid = (state: VideoCallState): number | null =>
+    state.remoteUids.length > 0 ? state.remoteUids[0] : null;

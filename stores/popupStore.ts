@@ -16,6 +16,7 @@ export type PopupType =
     | 'message'
     | 'loading'
     | 'reminder_alert'
+    | 'guardian_invite'
     | null;
 
 export type PopupConfirmData = {
