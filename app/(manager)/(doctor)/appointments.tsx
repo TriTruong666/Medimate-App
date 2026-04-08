@@ -1,12 +1,14 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { ArrowLeft, ArrowRight, Calendar, Clock, Filter, MessageSquare, RefreshCw } from "lucide-react-native";
+import { ArrowLeft, Calendar, Clock, Filter, MessageSquare, RefreshCw } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getSessionByAppointmentId } from "../../../apis/session.api";
 import { useCancelAppointment, useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
+import { useGetRatingBySession } from "../../../hooks/useRating";
+import { usePopup } from "../../../stores/popupStore";
 import { useToast } from "../../../stores/toastStore";
 import { AppointmentDetailResponse, AppointmentResponse } from "../../../types/Appointment";
 
@@ -32,6 +34,7 @@ function AppointmentCard({
     onVideo,
     onViewHistory,
     onCancel,
+    onRateDoctor,
     joiningState,
 }: {
     appt: AppointmentResponse;
@@ -40,6 +43,7 @@ function AppointmentCard({
     onVideo: (a: AppointmentResponse) => void;
     onViewHistory: (a: AppointmentResponse) => void;
     onCancel: (a: AppointmentResponse) => void;
+    onRateDoctor: (a: AppointmentResponse & Partial<AppointmentDetailResponse>, sessionId: string | undefined) => void;
     joiningState: Record<string, boolean>;
 }) {
     // Fetch chi tiết từ API mới cập nhật
@@ -51,6 +55,31 @@ function AppointmentCard({
         ...appt,
         ...detail,
     };
+
+    // Khi Completed, fetch session 1 lần để biết sessionId → check rating
+    const [sessionId, setSessionId] = React.useState<string | undefined>(undefined);
+    const [isSessionLoading, setIsSessionLoading] = React.useState(false);
+    React.useEffect(() => {
+        if (merged.status !== 'Completed') return;
+        let cancelled = false;
+        setIsSessionLoading(true);
+        import('../../../apis/session.api').then(({ getSessionByAppointmentId }) => {
+            getSessionByAppointmentId(appt.appointmentId).then(res => {
+                if (!cancelled && res.success && res.data) {
+                    setSessionId(res.data.consultanSessionId);
+                }
+            }).catch(() => { }).finally(() => {
+                if (!cancelled) setIsSessionLoading(false);
+            });
+        });
+        return () => { cancelled = true; };
+    }, [appt.appointmentId, merged.status]);
+
+    // Query rating status từ API thật (null = chưa đánh giá)
+    const { data: existingRating } = useGetRatingBySession(
+        merged.status === 'Completed' ? sessionId : undefined
+    );
+    const isRated = !!existingRating;
 
     const isJoining = joiningState[appt.appointmentId];
     const statusCfg = STATUS_CONFIG[merged.status] ?? { label: merged.status, bg: '#E2E8F0' };
@@ -203,8 +232,8 @@ function AppointmentCard({
                                     <Text style={txtBase}>Thông tin BS</Text>
                                 </Pressable>
                             </View>
-                            <Pressable 
-                                style={[btnBase, { height: 44, borderRadius: 12, backgroundColor: '#FFF5F5', borderColor: '#FFB8B8', borderWidth: 1 }]} 
+                            <Pressable
+                                style={[btnBase, { height: 44, borderRadius: 12, backgroundColor: '#FFF5F5', borderColor: '#FFB8B8', borderWidth: 1 }]}
                                 onPress={() => onCancel(merged)}
                             >
                                 <Text style={[txtBase, { color: '#DC2626', fontSize: 12 }]}>Hủy lịch hẹn</Text>
@@ -241,8 +270,8 @@ function AppointmentCard({
                                     <Text style={[txtBase, { color: canJoinVideo ? '#fff' : '#94A3B8' }]}>Video Call</Text>
                                 </Pressable>
                             </View>
-                            <Pressable 
-                                style={[btnBase, { height: 44, borderRadius: 12, backgroundColor: '#FFF5F5', borderColor: '#FFB8B8', borderWidth: 1 }]} 
+                            <Pressable
+                                style={[btnBase, { height: 44, borderRadius: 12, backgroundColor: '#FFF5F5', borderColor: '#FFB8B8', borderWidth: 1 }]}
                                 onPress={() => onCancel(merged)}
                             >
                                 <Text style={[txtBase, { color: '#DC2626', fontSize: 12 }]}>Hủy lịch hẹn</Text>
@@ -253,13 +282,58 @@ function AppointmentCard({
 
                 if (merged.status === 'Completed') {
                     return (
-                        <Pressable
-                            style={[btnBase, { flex: 0, width: '100%' }]}
-                            onPress={() => onViewHistory(merged)}
-                        >
-                            <MessageSquare size={20} color="#000" strokeWidth={2.5} />
-                            <Text style={txtBase}>Xem lại tư vấn & Đơn thuốc</Text>
-                        </Pressable>
+                        <View style={{ gap: 10 }}>
+                            {/* Xem lại tư vấn */}
+                            <Pressable
+                                style={({ pressed }) => ([
+                                    btnBase,
+                                    { flex: 0, width: '100%', borderColor: '#9370DB', backgroundColor: pressed ? '#F5F0FF' : '#fff' }
+                                ])}
+                                onPress={() => onViewHistory(merged)}
+                            >
+                                <MessageSquare size={18} color="#9370DB" strokeWidth={2.5} />
+                                <Text style={[txtBase, { color: '#9370DB', fontSize: 12 }]}>Xem lại tư vấn & Đơn thuốc</Text>
+                            </Pressable>
+
+                            {/* Nút Đánh giá */}
+                            {isRated ? (
+                                <View style={{
+                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                    gap: 8, paddingVertical: 14, borderRadius: 16,
+                                    backgroundColor: '#F0FDF4', borderWidth: 2, borderColor: '#BBF7D0'
+                                }}>
+                                    <Text style={{ fontSize: 16 }}>⭐</Text>
+                                    <Text style={[txtBase, { color: '#16A34A', fontSize: 12 }]}>Đã đánh giá • Cảm ơn bạn!</Text>
+                                </View>
+                            ) : (
+                                <Pressable
+                                    style={({ pressed }) => ({
+                                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                                        gap: 8, paddingVertical: 15, borderRadius: 16,
+                                        borderWidth: 2, borderColor: '#7C3AED',
+                                        backgroundColor: pressed ? '#7C3AED' : '#9370DB',
+                                        shadowColor: '#7C3AED',
+                                        shadowOffset: { width: 0, height: pressed ? 2 : 4 },
+                                        shadowOpacity: pressed ? 0.2 : 0.4,
+                                        shadowRadius: 8,
+                                        elevation: pressed ? 2 : 5,
+                                        transform: [{ scale: pressed ? 0.97 : 1 }],
+                                        opacity: isSessionLoading ? 0.6 : 1,
+                                    })}
+                                    onPress={() => onRateDoctor(merged, sessionId)}
+                                    disabled={isSessionLoading}
+                                >
+                                    {isSessionLoading ? (
+                                        <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
+                                    ) : (
+                                        <Text style={{ fontSize: 18, lineHeight: 22 }}>⭐</Text>
+                                    )}
+                                    <Text style={[txtBase, { color: '#FFF', fontSize: 13 }]}>
+                                        {isSessionLoading ? 'Đang tải...' : 'Đánh giá Bác sĩ'}
+                                    </Text>
+                                </Pressable>
+                            )}
+                        </View>
                     );
                 }
 
@@ -284,9 +358,11 @@ export default function AppointmentsScreen() {
     const [cancelApptId, setCancelApptId] = useState<string | null>(null);
     const [cancelReason, setCancelReason] = useState("");
 
+    const popup = usePopup();
+
     const { data: rawAppointments, isLoading: loading, isFetching, dataUpdatedAt } = useGetMyAppointments();
     const appointments = rawAppointments || [];
-    
+
     const { mutate: cancelAppointmentMutation, isPending: isCanceling } = useCancelAppointment();
 
     const handleChatSession = async (appt: AppointmentResponse & Partial<AppointmentDetailResponse>) => {
@@ -351,6 +427,49 @@ export default function AppointmentsScreen() {
         } finally {
             setJoiningState(prev => ({ ...prev, [appt.appointmentId]: false }));
         }
+    };
+
+    const handleOpenChatPopup = async (appt: AppointmentResponse & Partial<AppointmentDetailResponse>) => {
+        setJoiningState(prev => ({ ...prev, [appt.appointmentId]: true }));
+        try {
+            const res = await getSessionByAppointmentId(appt.appointmentId);
+            if (res.success && res.data) {
+                popup.open({
+                    type: 'chat_detail',
+                    data: {
+                        name: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
+                        avatar: appt.doctorAvatar || appt.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
+                        specialty: appt.specialty || appt.doctorSpecialty || "Nha khoa",
+                        sessionId: res.data.consultanSessionId,
+                        isCompleted: appt.status === 'Completed'
+                    }
+                });
+            } else {
+                toast.error("Lỗi", "Không tìm thấy session cho lượt khám này.");
+            }
+        } catch {
+            toast.error("Lỗi", "Lỗi lấy thông tin session phòng chờ!");
+        } finally {
+            setJoiningState(prev => ({ ...prev, [appt.appointmentId]: false }));
+        }
+    };
+
+    const handleRateDoctor = (
+        appt: AppointmentResponse & Partial<AppointmentDetailResponse>,
+        sessionId: string | undefined
+    ) => {
+        if (!sessionId) {
+            toast.error('Lỗi', 'Thông tin phiên khám chưa sẵn sàng. Vui lòng thử lại sau giây lát.');
+            return;
+        }
+        popup.open({
+            type: 'rate_doctor',
+            data: {
+                sessionId,
+                doctorName: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
+                doctorSpecialty: appt.specialty || appt.doctorSpecialty || '',
+            }
+        });
     };
 
     const handleJoinSession = async (appt: AppointmentResponse) => {
@@ -496,8 +615,9 @@ export default function AppointmentsScreen() {
                             onJoin={handleJoinSession}
                             onChat={handleChatSession as any}
                             onVideo={handleVideoSession as any}
-                            onViewHistory={handleJoinSession}
+                            onViewHistory={handleOpenChatPopup as any}
                             onCancel={handleOpenCancelModal}
+                            onRateDoctor={handleRateDoctor as any}
                             joiningState={joiningState}
                         />
                     ))
@@ -528,13 +648,13 @@ export default function AppointmentsScreen() {
                             onChangeText={setCancelReason}
                         />
                         <View style={{ flexDirection: "row", gap: 12 }}>
-                            <Pressable 
+                            <Pressable
                                 onPress={() => setCancelModalVisible(false)}
                                 style={{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: 'rgba(0,0,0,0.1)', alignItems: 'center' }}
                             >
                                 <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#64748B" }}>Đóng</Text>
                             </Pressable>
-                            <Pressable 
+                            <Pressable
                                 onPress={handleSubmitCancel}
                                 disabled={isCanceling}
                                 style={{ flex: 1, paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#DC2626', alignItems: 'center', opacity: isCanceling ? 0.6 : 1 }}

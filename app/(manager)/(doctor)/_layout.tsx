@@ -6,7 +6,14 @@ export default function MessageLayout() {
             <Stack.Screen name="index" />
             <Stack.Screen name="appointments" />
             <Stack.Screen name="doctor_detail" />
-            <Stack.Screen name="video_call" />
+            <Stack.Screen
+                name="video_call"
+                options={{
+                    presentation: 'fullScreenModal',
+                    gestureEnabled: false,
+                    animation: 'slide_from_bottom',
+                }}
+            />
         </Stack>
     );
 }

@@ -59,6 +59,9 @@ export function useGetMemberDailyReminders(memberId: string | undefined, date: s
             return res.data;
         },
         enabled: !!memberId && !!date,
+        staleTime: 0,                    // Luôn coi là stale → refetch khi focus lại
+        refetchOnWindowFocus: true,       // Refetch khi user quay lại app/tab
+        refetchInterval: 60_000,          // Tự refresh mỗi 60 giây
     });
 }
 
@@ -88,7 +91,8 @@ export function useCreateBulkSchedules() {
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
-                Alert.alert("Thành công", "Đã tạo lịch uống thuốc thành công!");
+                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
+                Alert.alert("Đã tạo lịch", "Đã tạo lịch uống thuốc thành công!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể tạo lịch.");
             }
@@ -103,11 +107,13 @@ export function useUpdateSchedule() {
     return useMutation({
         mutationFn: ({ id, data }: { id: string; data: UpdateScheduleRequest }) =>
             ScheduleApi.updateSchedule(id, data),
-        onSuccess: (res) => {
+        onSuccess: (res, variables) => {
             if (res.success) {
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["schedule-detail", variables.id] });
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể cập nhật lịch.");
             }
@@ -122,11 +128,12 @@ export function useUpdateScheduleDetail() {
     return useMutation({
         mutationFn: ({ detailId, data }: { detailId: string; data: UpdateScheduleDetailRequest }) =>
             ScheduleApi.updateScheduleDetail(detailId, data),
-        onSuccess: (res) => {
+        onSuccess: (res, variables) => {
             if (res.success) {
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
                 queryClient.invalidateQueries({ queryKey: ["schedule-detail"] });
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể cập nhật thuốc.");
@@ -146,7 +153,9 @@ export function useDeleteSchedule() {
                 queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
-                Alert.alert("Thành công", "Đã xóa lịch uống thuốc!");
+                queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["schedule-detail"] });
+                Alert.alert("Đã xóa", "Đã xóa lịch uống thuốc!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể xóa lịch.");
             }

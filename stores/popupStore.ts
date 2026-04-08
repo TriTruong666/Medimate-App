@@ -17,6 +17,7 @@ export type PopupType =
     | 'loading'
     | 'reminder_alert'
     | 'guardian_invite'
+    | 'rate_doctor'
     | null;
 
 export type PopupConfirmData = {

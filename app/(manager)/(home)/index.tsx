@@ -1,21 +1,23 @@
+import { LogCard } from "@/components/MedicineCards";
+import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
+import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
+import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import {
+    Calendar,
+    ChevronRight as CardArrow,
+    ChevronDown, ChevronLeft, ChevronRight,
+    Moon, Pill, Sun, Sunrise, Users, X
+} from "lucide-react-native";
 import React, { useMemo, useState } from "react";
 import {
     ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
-import { LogCard } from "@/components/MedicineCards";
-import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
-import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
-import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
-import {
-    Calendar, ChevronDown, ChevronLeft, ChevronRight, ChevronRight as CardArrow,
-    Moon, Pill, Sun, Sunrise, Users, X
-} from "lucide-react-native";
 
 dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
@@ -57,7 +59,7 @@ function ReminderCard({ item }: { item: any }) {
     const [expanded, setExpanded] = useState(false);
 
     const reminderDateTimeStr = item.reminderTime || undefined;
-    
+
     // Nếu reminderTime có dạng "08:00:00" thì ta parse cẩn thận
     let reminderDateTime = null;
     let timeDisplay = '--:--';
@@ -80,6 +82,23 @@ function ReminderCard({ item }: { item: any }) {
     const isMissed = item.status === "Missed";
     const isSkipped = item.status === "Skipped";
 
+    // Parse endTime nếu có (cùng pattern với reminderTime)
+    let endDateTime: dayjs.Dayjs | null = null;
+    if (item.endTime) {
+        if (item.endTime.includes('T')) {
+            endDateTime = dayjs(item.endTime);
+        } else {
+            const [h, m] = item.endTime.split(':');
+            endDateTime = dayjs().hour(Number(h)).minute(Number(m)).second(0);
+        }
+    }
+    const isEndTimePast = endDateTime ? endDateTime.isBefore(now) : false;
+
+    // Trong cửa sổ nhắc nhở: sau reminderTime nhưng chưa qua endTime
+    const isWithinWindow = isPast && !isEndTimePast;
+    // Hết cửa sổ mà chưa được xác nhận (backend chưa kịp set Missed)
+    const isEffectivelyMissed = isPast && isEndTimePast && (item.status === 'Pending' || item.status === 'Snoozed');
+
     let statusColor = '#FFD700';
     let statusText = 'Sắp tới';
     let statusTextColor = '#854D0E';
@@ -87,15 +106,15 @@ function ReminderCard({ item }: { item: any }) {
 
     if (isTaken) {
         statusColor = '#DCFCE7'; statusText = 'Đã uống'; statusTextColor = '#166534'; dotColor = '#16A34A';
-    } else if (isMissed) {
-        statusColor = '#FEE2E2'; statusText = 'Đã qua'; statusTextColor = '#991B1B'; dotColor = '#DC2626';
+    } else if (isMissed || isEffectivelyMissed) {
+        // Backend đã set Missed HOẶC frontend tự tính (quá endTime mà chưa uống)
+        statusColor = '#FEE2E2'; statusText = 'Đã bỏ lỡ'; statusTextColor = '#991B1B'; dotColor = '#DC2626';
     } else if (isSkipped) {
         statusColor = '#F3F4F6'; statusText = 'Bỏ qua'; statusTextColor = '#374151'; dotColor = '#9CA3AF';
-    } else if (isPast && (item.status === 'Pending' || item.status === 'Snoozed')) {
+    } else if (isWithinWindow) {
+        // Đã qua giờ nhắc nhưng chưa qua endTime → đang trong cửa sổ uống
         statusColor = '#FEF9C3'; statusText = 'Hiện tại'; statusTextColor = '#854D0E'; dotColor = '#EAB308';
-    } else if (isPast) {
-        statusColor = '#FEE2E2'; statusText = 'Đã qua'; statusTextColor = '#991B1B'; dotColor = '#DC2626';
-    } else if (isFuture) {
+    } else if (isFuture || (!isPast && !isFuture)) {
         statusColor = '#EFF6FF'; statusText = 'Sắp tới'; statusTextColor = '#1D4ED8'; dotColor = '#3B82F6';
     }
 
@@ -114,7 +133,7 @@ function ReminderCard({ item }: { item: any }) {
             borderRadius: 20,
             marginBottom: 12,
             overflow: 'hidden',
-            opacity: isPast && !isTaken ? 0.85 : 1,
+            opacity: (isPast && !isTaken && !isWithinWindow) ? 0.75 : 1,
             ...SHADOW_MD,
         }}>
             {/* Header row */}
@@ -268,7 +287,7 @@ function MemberReminderRow({ member, date }: { member: any; date: string }) {
                         ? <Image source={{ uri: member.avatarUrl }} style={{ width: 36, height: 36, borderRadius: 18 }} />
                         : <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#7C3AED' }}>
                             {(member.fullName || '?')[0].toUpperCase()}
-                          </Text>
+                        </Text>
                     }
                 </View>
                 <Text style={{ flex: 1, fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#1F1F1F' }}>
