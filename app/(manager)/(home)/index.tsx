@@ -1,3 +1,4 @@
+import AIChatBubble from "@/components/AIChatBubble";
 import { LogCard } from "@/components/MedicineCards";
 import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
 import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
@@ -737,6 +738,9 @@ export default function ManagerHomeScreen() {
                     </Pressable>
                 </Pressable>
             </Modal>
+
+            {/* ── Floating AI Chat Bubble ── */}
+            <AIChatBubble />
         </SafeAreaView>
     );
 }

@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Calendar, Check, Clock, MessageSquare } from "lucide-react-native";
+import { useRouter } from "expo-router";
+import { ArrowLeft, Calendar, Clock, MessageSquare } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,9 +32,11 @@ function MemberAppointmentCard({
     onViewHistory,
     joiningState,
 }: any) {
+    const popup = usePopup();
     const { data: detail, isFetching } = useGetAppointmentDetail(appt.appointmentId, {
         pollingInterval: 15_000,
     });
+
 
     const merged = { ...appt, ...detail };
 
@@ -59,6 +61,7 @@ function MemberAppointmentCard({
     const doctorAva = merged.doctorAvatar || merged.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png';
     const doctorSpec = merged.specialty || merged.doctorSpecialty || 'Chuyên khoa tư vấn';
 
+
     // Bệnh nhân
     const memberDisplay = merged.memberName || `Bệnh nhân #${merged.memberId?.slice(0, 8)}`;
     const memberAva = merged.memberAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
@@ -79,6 +82,19 @@ function MemberAppointmentCard({
         } catch (e) { return false; }
     })();
 
+    const handleShowDoctorInfo = () => {
+        popup.open({
+            type: 'doctor_info',
+            data: {
+                doctorId: merged.doctorId,
+                name: doctorDisplay,
+                avatar: doctorAva,
+                specialty: doctorSpec
+            }
+        });
+    };
+
+
     return (
         <View style={{
             backgroundColor: '#fff',
@@ -94,15 +110,21 @@ function MemberAppointmentCard({
             elevation: 4,
         }}>
             {/* --- Header: Status --- */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-                <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 2, borderColor: '#000' }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#000', textTransform: 'uppercase' }}>
-                        {statusCfg.label}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                <Pressable onPress={handleShowDoctorInfo} style={{ width: 64, height: 64, backgroundColor: '#D9AEF6', borderRadius: 20, borderWidth: 2, borderColor: '#000', overflow: 'hidden' }}>
+                    <Image source={{ uri: doctorAva }} style={{ width: '100%', height: '100%' }} />
+                </Pressable>
+                <View style={{ flex: 1 }}>
+                    {/* Nhấn vào tên bác sĩ để xem popup */}
+                    <Pressable onPress={handleShowDoctorInfo}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#000', textTransform: 'uppercase', marginBottom: 4 }} numberOfLines={1}>
+                            {doctorDisplay}
+                        </Text>
+                    </Pressable>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: '#64748B' }}>
+                        {doctorSpec}
                     </Text>
                 </View>
-                <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 11, color: '#94A3B8' }}>
-                    ID: {merged.appointmentId?.slice(0, 8).toUpperCase()}
-                </Text>
             </View>
 
             {/* --- Doctor Info --- */}
@@ -183,20 +205,16 @@ function MemberAppointmentCard({
                     return (
                         <View style={{ gap: 12 }}>
                             <View style={{ flexDirection: 'row', gap: 12 }}>
-                                {/* Chat — disabled (chưa có session) */}
+                                {/* CHỈ CÒN NÚT CHAT (Disabled) - ĐÃ BỎ NÚT THÔNG TIN BS */}
                                 <Pressable style={[btnBase, { backgroundColor: '#F1F5F9', opacity: 0.55 }]} disabled>
                                     <MessageSquare size={18} color="#94A3B8" strokeWidth={2.5} />
-                                    <Text style={[txtBase, { color: '#94A3B8' }]}>Chat</Text>
-                                </Pressable>
-                                {/* Thông tin bác sĩ */}
-                                <Pressable style={btnBase} onPress={() => onJoin(merged)}>
-                                    <Text style={txtBase}>Thông tin BS</Text>
+                                    <Text style={[txtBase, { color: '#94A3B8' }]}>Đang chờ duyệt</Text>
                                 </Pressable>
                             </View>
+                            {/* Nút hủy (nếu có ở màn hình này) */}
                         </View>
                     );
                 }
-
                 if (merged.status === 'Approved') {
                     return (
                         <View style={{ gap: 12 }}>
@@ -293,7 +311,7 @@ export default function MemberAppointmentsScreen() {
     // Fetch đúng lịch hẹn của MemberId này
     const { data: rawAppointments, isLoading: isLoadingAppointments } = useGetMemberAppointments(memberId as string);
     const appointments = rawAppointments || [];
-    
+
     const isLoading = loadingToken || isLoadingAppointments;
 
     const filteredAppointments = appointments.filter(appt => {

@@ -1,3 +1,4 @@
+import AIChatBubble from "@/components/AIChatBubble";
 import { LogCard } from "@/components/MedicineCards";
 import { useGetMemberMedicationLogs } from "@/hooks/useMedicationLog";
 import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
@@ -512,6 +513,9 @@ export default function MemberHomeScreen() {
                     </View>
                 </Pressable>
             </Modal>
+
+            {/* ── Floating AI Chat Bubble ── */}
+            <AIChatBubble />
         </SafeAreaView>
     );
 }

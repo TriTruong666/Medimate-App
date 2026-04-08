@@ -18,6 +18,7 @@ import { ReminderAlertPopup } from './ReminderAlertPopup';
 import { GuardianInvitePopup } from './GuardianInvitePopup';
 import RatingPopup from './RatingPopup';
 import ViewRatingPopup from './ViewRatingPopup';
+import { DoctorInfoPopup } from './DoctorInfoPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -159,6 +160,16 @@ export const PopupContainer: React.FC = () => {
 
             {activePopup.type === 'view_rating' && (
                 <ViewRatingPopup />
+            )}
+
+            {activePopup.type === 'doctor_info' && (
+                <DoctorInfoPopup
+                    doctorId={activePopup.data?.doctorId}
+                    fallbackName={activePopup.data?.name}
+                    fallbackAvatar={activePopup.data?.avatar}
+                    fallbackSpecialty={activePopup.data?.specialty}
+                    onClose={handleClose}
+                />
             )}
         </Modal>
     );
