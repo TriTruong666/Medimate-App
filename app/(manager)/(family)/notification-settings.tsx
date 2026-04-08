@@ -16,6 +16,12 @@ export default function NotificationSettingsScreen() {
     const [emailEnabled, setEmailEnabled] = useState(false);
     const [familyAlertEnabled, setFamilyAlertEnabled] = useState(false);
     const [advanceMinutes, setAdvanceMinutes] = useState(15);
+    const [autoSnooze, setAutoSnooze] = useState(false);
+
+    // Advanced Safety Settings
+    const [minimumHoursGap, setMinimumHoursGap] = useState(4);
+    const [maxDosesPerDay, setMaxDosesPerDay] = useState(6);
+    const [missedDosesThreshold, setMissedDosesThreshold] = useState(3);
 
     useEffect(() => {
         if (currentSettings) {
@@ -23,6 +29,16 @@ export default function NotificationSettingsScreen() {
             setEmailEnabled(currentSettings.enableEmailNotification);
             setFamilyAlertEnabled(currentSettings.enableFamilyAlert);
             setAdvanceMinutes(currentSettings.reminderAdvanceMinutes);
+            setMinimumHoursGap(currentSettings.minimumHoursGap || 4);
+            setMaxDosesPerDay(currentSettings.maxDosesPerDay || 6);
+            setMissedDosesThreshold(currentSettings.missedDosesThreshold || 3);
+            
+            try {
+                const custom = JSON.parse(currentSettings.customSetting || '{}');
+                setAutoSnooze(!!custom.autoSnooze);
+            } catch (e) {
+                setAutoSnooze(false);
+            }
         }
     }, [currentSettings]);
 
@@ -34,6 +50,10 @@ export default function NotificationSettingsScreen() {
                 enableEmailNotification: emailEnabled,
                 enableFamilyAlert: familyAlertEnabled,
                 reminderAdvanceMinutes: advanceMinutes,
+                minimumHoursGap: minimumHoursGap,
+                maxDosesPerDay: maxDosesPerDay,
+                missedDosesThreshold: missedDosesThreshold,
+                customSetting: JSON.stringify({ autoSnooze }),
             }
         }, {
             onSuccess: () => {
@@ -55,6 +75,32 @@ export default function NotificationSettingsScreen() {
             >
                 <View className={`w-6 h-6 rounded-full border-2 border-black bg-white transition-transform ${value ? 'translate-x-[20px]' : 'translate-x-0'}`} />
             </Pressable>
+        </View>
+    );
+
+    const NumberStepper = ({ title, description, value, onValueChange, min = 0, max = 24, suffix = '' }: any) => (
+        <View className="flex-row items-center justify-between bg-white border-2 border-black rounded-[24px] p-5 shadow-sm mb-4">
+            <View className="flex-1 pr-6">
+                <Text className="text-[16px] font-space-bold text-black mb-1">{title}</Text>
+                <Text className="text-[13px] font-space-medium text-gray-500 leading-snug">{description}</Text>
+            </View>
+            <View className="flex-row items-center bg-gray-100 rounded-xl border-2 border-black overflow-hidden">
+                <Pressable
+                    onPress={() => { if (value > min) onValueChange(value - 1) }}
+                    className="w-10 h-10 items-center justify-center border-r-2 border-black bg-white active:bg-gray-200"
+                >
+                    <Text className="font-space-bold text-xl text-black">-</Text>
+                </Pressable>
+                <View className="w-12 h-10 items-center justify-center bg-white">
+                    <Text className="font-space-bold text-sm text-black">{value}{suffix}</Text>
+                </View>
+                <Pressable
+                    onPress={() => { if (value < max) onValueChange(value + 1) }}
+                    className="w-10 h-10 items-center justify-center border-l-2 border-black bg-[#FFD700] active:bg-[#EAB308]"
+                >
+                    <Text className="font-space-bold text-xl text-black">+</Text>
+                </Pressable>
+            </View>
         </View>
     );
 
@@ -105,6 +151,13 @@ export default function NotificationSettingsScreen() {
                     />
 
                     <ToggleRow
+                        title="Tự động báo lại (Auto-Snooze)"
+                        description="Nếu thông báo hiển thị mà người dùng không tương tác, hệ thống sẽ mặc định hoãn và báo lại sau."
+                        value={autoSnooze}
+                        onToggle={setAutoSnooze}
+                    />
+
+                    <ToggleRow
                         title="Nhắc nhở qua Email"
                         description="Nhận báo cáo và nhắc nhở vào hòm thư Email cá nhân của bạn."
                         value={emailEnabled}
@@ -127,6 +180,35 @@ export default function NotificationSettingsScreen() {
                             <TimeOption minutes={30} label="30 phút" />
                         </View>
                     </View>
+
+                    <Text className="text-[22px] font-space-bold text-black mb-2 mt-2 tracking-tight">Cài đặt Cảnh báo An toàn</Text>
+                    <Text className="text-[14px] font-space-medium text-gray-500 mb-6 leading-relaxed">
+                        Hệ thống thông minh chống quá liều và theo dõi rủi ro tuân thủ thuốc.
+                    </Text>
+
+                    <NumberStepper
+                        title="Khoảng cách an toàn"
+                        description="Số giờ tối thiểu bắt buộc giữa 2 lần uống cùng một loại thuốc."
+                        value={minimumHoursGap}
+                        onValueChange={setMinimumHoursGap}
+                        min={1} max={24} suffix={'h'}
+                    />
+
+                    <NumberStepper
+                        title="Giới hạn tối đa/ngày"
+                        description="Tránh uống vượt liều quy định trong một ngày."
+                        value={maxDosesPerDay}
+                        onValueChange={setMaxDosesPerDay}
+                        min={1} max={20} suffix={' lần'}
+                    />
+
+                    <NumberStepper
+                        title="Ngưỡng bỏ lỡ cảnh báo"
+                        description="Số lần quên thuốc liên tiếp trước khi gọi cảnh báo khẩn cấp cho gia đình."
+                        value={missedDosesThreshold}
+                        onValueChange={setMissedDosesThreshold}
+                        min={1} max={10} suffix={' lần'}
+                    />
 
                     <Pressable
                         onPress={handleSave}

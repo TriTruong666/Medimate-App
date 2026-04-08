@@ -1,8 +1,9 @@
 import dayjs from "dayjs";
-import { Bell, Check, Clock, Moon, Pill, SkipForward, Sunrise, Sun, X } from "lucide-react-native";
+import { Bell, Check, Clock, Moon, Pill, SkipForward, Sunrise, Sun, X, Timer } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
 import { useLogMedicationAction } from "@/hooks/useMedicationLog";
+import { useSnoozeReminder } from "@/hooks/useSchedule";
 import { usePopup } from "@/stores/popupStore";
 
 const BORDER_COLOR = '#000';
@@ -30,12 +31,15 @@ interface ReminderAlertPopupProps {
             dosage?: string;
             instructions?: string;
         }>;
+        autoSnooze?: boolean;
+        endTime?: string;
     };
     onClose: () => void;
 }
 
 export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
     const { mutate: logAction, isPending } = useLogMedicationAction();
+    const { mutate: snoozeAction, isPending: isSnoozing } = useSnoozeReminder();
     const [done, setDone] = useState(false);
 
     // ─── Pulse animation cho icon chuông ───
@@ -58,13 +62,35 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                 Animated.timing(pulseAnim, { toValue: 1.0, duration: 400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
             ])
         ).start();
-    }, []);
+        
+        let timeout: ReturnType<typeof setTimeout>;
+        if (data.autoSnooze) {
+            // Tự động Snooze sau 60 giây nếu người dùng không tương tác (Và chưa qua EndTime)
+            const canSnoozeRightNow = data.endTime 
+                ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime)) 
+                : true;
+
+            if (canSnoozeRightNow) {
+                timeout = setTimeout(() => {
+                    if (!done && !isPending && !isSnoozing) {
+                        handleSnooze(15);
+                    }
+                }, 60000);
+            }
+        }
+
+        return () => {
+            if (timeout) clearTimeout(timeout);
+        };
+    }, [data.autoSnooze, data.endTime, done, isPending, isSnoozing]);
 
     const reminderDayjs = data.reminderTime ? dayjs(data.reminderTime) : dayjs();
     const hour = reminderDayjs.hour();
     const timeConfig = getTimeConfig(hour);
     const timeDisplay = reminderDayjs.format('HH:mm');
     const medicines = data.medicines || [];
+
+    const canSnoozeBtn = data.endTime ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime)) : true;
 
     const handleTaken = () => {
         logAction({
@@ -85,6 +111,14 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
             status: 'Skipped',
             actualTime: new Date().toISOString(),
         }, {
+            onSuccess: () => {
+                onClose();
+            }
+        });
+    };
+
+    const handleSnooze = (minutes: number = 15) => {
+        snoozeAction({ id: data.reminderId, delayMinutes: minutes }, {
             onSuccess: () => {
                 onClose();
             }
@@ -230,31 +264,13 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
 
                 {/* Action buttons */}
                 {!done && (
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 16 }}>
-                        {/* Skip */}
-                        <Pressable
-                            onPress={handleSkip}
-                            disabled={isPending}
-                            style={{
-                                flex: 1, height: 58,
-                                backgroundColor: '#F3F4F6',
-                                borderWidth: 2, borderColor: '#D1D5DB',
-                                borderRadius: 20,
-                                flexDirection: 'row',
-                                alignItems: 'center', justifyContent: 'center',
-                                gap: 8,
-                            }}
-                        >
-                            <SkipForward size={18} color="#6B7280" strokeWidth={2.5} />
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#6B7280' }}>Bỏ qua</Text>
-                        </Pressable>
-
-                        {/* Taken */}
+                    <View style={{ gap: 12, marginTop: 16 }}>
+                        {/* Taken (Full Width) */}
                         <Pressable
                             onPress={handleTaken}
-                            disabled={isPending}
+                            disabled={isPending || isSnoozing}
                             style={{
-                                flex: 2, height: 58,
+                                height: 58,
                                 backgroundColor: '#16A34A',
                                 borderWidth: 2, borderColor: BORDER_COLOR,
                                 borderRadius: 20,
@@ -270,9 +286,53 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                         >
                             <Check size={22} color="#fff" strokeWidth={3} />
                             <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: '#fff', letterSpacing: 0.5 }}>
-                                {isPending ? 'Đang lưu...' : 'Đã uống!'}
+                                {isPending ? 'Đang lưu...' : 'Vâng, đã uống xong!'}
                             </Text>
                         </Pressable>
+
+                        <View style={{ flexDirection: 'row', gap: 12 }}>
+                            {/* Snooze (Hide if past end time) */}
+                            {canSnoozeBtn && (
+                                <Pressable
+                                    onPress={() => handleSnooze(15)}
+                                    disabled={isPending || isSnoozing}
+                                    style={{
+                                        flex: 1, height: 50,
+                                        backgroundColor: '#FEF9C3',
+                                        borderWidth: 2, borderColor: '#CA8A04',
+                                        borderRadius: 16,
+                                        flexDirection: 'row',
+                                        alignItems: 'center', justifyContent: 'center',
+                                        gap: 6,
+                                    }}
+                                >
+                                    <Timer size={16} color="#A16207" strokeWidth={2.5} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#A16207' }}>
+                                        {isSnoozing ? 'Đang gửi...' : 'Báo lại 15p'}
+                                    </Text>
+                                </Pressable>
+                            )}
+
+                            {/* Skip */}
+                            <Pressable
+                                onPress={handleSkip}
+                                disabled={isPending || isSnoozing}
+                                style={{
+                                    flex: 1, height: 50,
+                                    backgroundColor: '#F3F4F6',
+                                    borderWidth: 2, borderColor: '#D1D5DB',
+                                    borderRadius: 16,
+                                    flexDirection: 'row',
+                                    alignItems: 'center', justifyContent: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <SkipForward size={16} color="#6B7280" strokeWidth={2.5} />
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#6B7280' }}>
+                                    Bỏ qua (Cancel)
+                                </Text>
+                            </Pressable>
+                        </View>
                     </View>
                 )}
             </Animated.View>
