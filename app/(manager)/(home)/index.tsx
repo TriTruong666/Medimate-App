@@ -87,10 +87,14 @@ function ReminderCard({ item }: { item: any }) {
 
     if (isTaken) {
         statusColor = '#DCFCE7'; statusText = 'Đã uống'; statusTextColor = '#166534'; dotColor = '#16A34A';
-    } else if (isMissed || (isPast && !isTaken && !isSkipped)) {
+    } else if (isMissed) {
         statusColor = '#FEE2E2'; statusText = 'Đã qua'; statusTextColor = '#991B1B'; dotColor = '#DC2626';
     } else if (isSkipped) {
         statusColor = '#F3F4F6'; statusText = 'Bỏ qua'; statusTextColor = '#374151'; dotColor = '#9CA3AF';
+    } else if (isPast && (item.status === 'Pending' || item.status === 'Snoozed')) {
+        statusColor = '#FEF9C3'; statusText = 'Hiện tại'; statusTextColor = '#854D0E'; dotColor = '#EAB308';
+    } else if (isPast) {
+        statusColor = '#FEE2E2'; statusText = 'Đã qua'; statusTextColor = '#991B1B'; dotColor = '#DC2626';
     } else if (isFuture) {
         statusColor = '#EFF6FF'; statusText = 'Sắp tới'; statusTextColor = '#1D4ED8'; dotColor = '#3B82F6';
     }

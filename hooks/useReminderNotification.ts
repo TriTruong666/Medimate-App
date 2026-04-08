@@ -60,6 +60,8 @@ export function useReminderNotification() {
                         scheduleName: data?.scheduleName || notification.request.content.title || 'Nhắc nhở uống thuốc',
                         memberName: data?.memberName,
                         reminderTime: data?.reminderTime || new Date().toISOString(),
+                        endTime: data?.endTime,
+                        autoSnooze: data?.autoSnooze === 'true',
                         medicines: data?.medicines ? (
                             typeof data.medicines === 'string'
                                 ? JSON.parse(data.medicines)
@@ -83,6 +85,8 @@ export function useReminderNotification() {
                         scheduleName: data?.scheduleName || response.notification.request.content.title || 'Nhắc nhở uống thuốc',
                         memberName: data?.memberName,
                         reminderTime: data?.reminderTime || new Date().toISOString(),
+                        endTime: data?.endTime,
+                        autoSnooze: data?.autoSnooze === 'true',
                         medicines: data?.medicines ? (
                             typeof data.medicines === 'string'
                                 ? JSON.parse(data.medicines)
