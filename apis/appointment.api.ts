@@ -112,3 +112,14 @@ export async function getAppointmentDetail(appointmentId: string): Promise<BaseR
         throw error;
     }
 }
+
+export async function getMyMemberAppointments(): Promise<BaseResponse<AppointmentResponse[]>> {
+    try {
+        // Đúng theo ảnh Swagger: /api/v1/appointments/members/me
+        const res = await axiosClient.get("/api/v1/appointments/members/me");
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}

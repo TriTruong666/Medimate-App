@@ -2,7 +2,7 @@
 import { useLoginUser } from "@/hooks/useAuth";
 import { usePushToken } from "@/hooks/usePushToken";
 import { AntDesign, Feather } from "@expo/vector-icons";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -60,7 +60,7 @@ export default function LoginScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          <Pressable 
+          <Pressable
             onPress={() => router.back()}
             className="w-12 h-12 rounded-2xl items-center justify-center shadow-sm bg-white border-2 border-black mb-8">
             <AntDesign name="arrow-left" size={24} color="black" />

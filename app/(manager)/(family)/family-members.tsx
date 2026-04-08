@@ -4,17 +4,15 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSetAtom } from "jotai";
 import {
   ArrowLeft,
+  BellRing,
   Edit3,
   Eye,
+  History,
   MoreHorizontal,
   QrCode,
   RefreshCw,
   Shield,
-  Trash2,
-  UserPlus,
-  BellRing,
-  BellOff,
-  History,
+  UserPlus
 } from "lucide-react-native";
 import { AnimatePresence, MotiView } from "moti";
 import React, { useEffect, useState } from "react";
@@ -185,15 +183,15 @@ export default function FamilyMembersScreen() {
                   params: { memberId },
                 } as any),
             },
-            {
-              label: "Xóa khỏi nhóm",
-              icon: Trash2 as any,
-              color: "#FFA07A",
-              isDestructive: true,
-              onPress: () => {
-                console.log("Xóa member:", memberId);
-              },
-            },
+            // {
+            //   label: "Xóa khỏi nhóm",
+            //   icon: Trash2 as any,
+            //   color: "#FFA07A",
+            //   isDestructive: true,
+            //   onPress: () => {
+            //     console.log("Xóa member:", memberId);
+            //   },
+            // },
           ],
         });
       }

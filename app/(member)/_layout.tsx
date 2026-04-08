@@ -14,6 +14,7 @@ export default function MemberLayout() {
             >
                 <Tabs.Screen name="(member-home)" />
                 <Tabs.Screen name="(member-calendar)" />
+                <Tabs.Screen name="(appointment)" />
                 <Tabs.Screen name="(member-settings)" />
             </Tabs>
         </AuthGuard>

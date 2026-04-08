@@ -1,14 +1,19 @@
+import { useAtomValue } from 'jotai';
+import { Star } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
-    View, Text, Pressable, TextInput, ActivityIndicator,
-    ScrollView, KeyboardAvoidingView, Platform
+    ActivityIndicator,
+    KeyboardAvoidingView, Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View
 } from 'react-native';
-import { BottomSheetBase } from './BottomSheetBase';
-import { activePopupAtom, usePopup } from '../../stores/popupStore';
-import { Star } from 'lucide-react-native';
-import { useToast } from '../../stores/toastStore';
-import { useAtomValue } from 'jotai';
 import { useCreateRating } from '../../hooks/useRating';
+import { activePopupAtom, usePopup } from '../../stores/popupStore';
+import { useToast } from '../../stores/toastStore';
+import { BottomSheetBase } from './BottomSheetBase';
 
 const RATING_LABELS: Record<number, { label: string; color: string }> = {
     1: { label: 'Rất tệ', color: '#EF4444' },
@@ -201,9 +206,9 @@ export default function RatingPopup() {
                             })}
                         >
                             {isPending ? (
-                                <ActivityIndicator size="small" color="#fff" />
+                                <ActivityIndicator size="small" color="#cc1a1a" />
                             ) : (
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#fff' }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#221919' }}>
                                     Gửi đánh giá ⭐
                                 </Text>
                             )}
