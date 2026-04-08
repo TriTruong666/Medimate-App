@@ -8,9 +8,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getSessionByAppointmentId } from "@/apis/session.api";
 import { useGetAppointmentDetail, useGetMemberAppointments } from "@/hooks/useAppointment";
-import { useGetRatingBySession } from "@/hooks/useRating";
+import { useGetMemberById } from "@/hooks/useMember";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
+import { getDecodedToken } from "@/utils/token";
 
 dayjs.locale('vi');
 
@@ -267,14 +268,33 @@ export default function MemberAppointmentsScreen() {
     const router = useRouter();
     const toast = useToast();
     const popup = usePopup();
-    const { memberId, memberName } = useLocalSearchParams<{ memberId: string, memberName: string }>();
+
+    const [memberId, setMemberId] = useState<string | undefined>(undefined);
+    const [loadingToken, setLoadingToken] = useState(true);
+
+    React.useEffect(() => {
+        const fetchToken = async () => {
+            try {
+                const decoded = await getDecodedToken();
+                if (decoded) setMemberId(decoded.MemberId);
+            } finally {
+                setLoadingToken(false);
+            }
+        };
+        fetchToken();
+    }, []);
+
+    const { data: memberProfile } = useGetMemberById(memberId);
+    const memberName = memberProfile?.fullName || "Thành viên";
 
     const [filter, setFilter] = useState('Sắp tới');
     const [joiningState, setJoiningState] = useState<Record<string, boolean>>({});
 
     // Fetch đúng lịch hẹn của MemberId này
-    const { data: rawAppointments, isLoading, isFetching, dataUpdatedAt } = useGetMemberAppointments(memberId);
+    const { data: rawAppointments, isLoading: isLoadingAppointments } = useGetMemberAppointments(memberId as string);
     const appointments = rawAppointments || [];
+    
+    const isLoading = loadingToken || isLoadingAppointments;
 
     const filteredAppointments = appointments.filter(appt => {
         if (filter === 'Sắp tới') return appt.status === 'Approved' || appt.status === 'Pending';

@@ -319,6 +319,21 @@ function TimelineItem({
   const isTaken = reminder.status === "Taken";
   const { mutate: updateStatus, isPending: updating } = useUpdateReminderAction();
 
+  // Xử lý an toàn chuỗi reminderTime (Có T hoặc không có T)
+  const extractTimeAndHourMinute = (timeStr: string) => {
+    if (!timeStr) return { display: "--:--", h: 0, m: 0 };
+    if (timeStr.includes("T")) {
+      const d = dayjs(timeStr);
+      return { display: d.format("HH:mm"), h: d.hour(), m: d.minute() };
+    }
+    // Dạng "08:00:00"
+    const display = timeStr.substring(0, 5);
+    const [h, m] = timeStr.split(':').map(Number);
+    return { display, h, m };
+  };
+
+  const timeInfo = extractTimeAndHourMinute(reminder.reminderTime);
+
   // LOGIC NHẮC NHỞ: 15 PHÚT TRƯỚC GIỜ UỐNG
   const showNotifyButton = useMemo(() => {
     if (isTaken) return false;
@@ -327,16 +342,15 @@ function TimelineItem({
     const isToday = dayjs(selectedDateStr).isSame(dayjs(), 'day');
     if (!isToday) return false;
 
-    // Parse giờ uống thuốc
-    const [h, m] = reminder.reminderTime.split(':').map(Number);
-    const reminderTimeToday = dayjs().hour(h).minute(m).second(0);
+    // Parse giờ uống thuốc bằng thông tin an toàn
+    const reminderTimeToday = dayjs().hour(timeInfo.h).minute(timeInfo.m).second(0);
 
     // Tính khoảng cách phút
     const diffMinutes = reminderTimeToday.diff(now, 'minute');
 
     // Hiển thị nếu trong khoảng 0 - 15 phút tới giờ uống
     return diffMinutes >= 0 && diffMinutes <= 15;
-  }, [reminder.reminderTime, reminder.status, selectedDateStr, now, isTaken]);
+  }, [timeInfo.h, timeInfo.m, reminder.status, selectedDateStr, now, isTaken]);
 
   return (
     <View style={{ flexDirection: "row" }}>
@@ -350,7 +364,9 @@ function TimelineItem({
       <View style={{ flex: 1, backgroundColor: "#fff", borderWidth: 2, borderColor: "#000", borderRadius: 24, padding: 18, marginBottom: 4, ...{ shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2 } }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
           <View style={{ flex: 1 }}>
-            <Text style={{ fontSize: 10, fontFamily: "SpaceGrotesk_700Bold", color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1 }}>Lúc {reminder.reminderTime}</Text>
+            <Text style={{ fontSize: 10, fontFamily: "SpaceGrotesk_700Bold", color: "#94A3B8", textTransform: "uppercase", letterSpacing: 1 }}>
+              Lúc {timeInfo.display} - {dayjs(selectedDateStr).format("DD/MM/YYYY")}
+            </Text>
             <Text style={{ fontSize: 19, fontFamily: "SpaceGrotesk_700Bold", color: "#000" }} numberOfLines={1}>{reminder.scheduleName}</Text>
           </View>
           <View style={{ backgroundColor: isTaken ? "#A3E6A1" : "transparent", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5, borderColor: isTaken ? "transparent" : "rgba(0,0,0,0.1)" }}>
@@ -359,17 +375,35 @@ function TimelineItem({
         </View>
 
         <View style={{ gap: 10 }}>
-          {reminder.medicines.map((med, idx) => (
-            <View key={idx} style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", borderRadius: 12, padding: 10, gap: 10 }}>
-              <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#fff", borderWidth: 1, borderColor: "rgba(0,0,0,0.08)", alignItems: "center", justifyContent: "center" }}>
-                <Activity size={16} color="#000" />
+          {reminder.medicines.filter(m => {
+            const d = m.dosage?.toLowerCase().trim() || "";
+            return !d.startsWith("0") && !d.includes("0 viên");
+          }).map((med, idx) => {
+            // Clean up dosage logic from Backend string
+            const cleanDose = med.dosage ? med.dosage.split('.')[0].trim() : "";
+            return (
+              <View key={idx} style={{ flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", borderWidth: 1, borderColor: "rgba(0,0,0,0.04)", borderRadius: 12, padding: 10, gap: 10 }}>
+                <View style={{ width: 32, height: 32, borderRadius: 8, backgroundColor: "#fff", borderWidth: 1, borderColor: "rgba(0,0,0,0.08)", alignItems: "center", justifyContent: "center" }}>
+                  <Activity size={16} color="#000" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontFamily: "SpaceGrotesk_700Bold", color: "#000", marginBottom: 4 }}>{med.medicineName}</Text>
+                  
+                  {cleanDose ? (
+                    <Text style={{ fontSize: 13, fontFamily: "SpaceGrotesk_600SemiBold", color: "#F59E0B", marginBottom: 2 }}>
+                      💊 Liều uống: <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#D97706" }}>{cleanDose}</Text>
+                    </Text>
+                  ) : null}
+
+                  {med.instructions ? (
+                    <Text style={{ fontSize: 12, fontFamily: "SpaceGrotesk_500Medium", color: "#64748B", lineHeight: 18 }}>
+                      📋 Cách dùng: {med.instructions}
+                    </Text>
+                  ) : null}
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 15, fontFamily: "SpaceGrotesk_700Bold", color: "#000" }}>{med.medicineName}</Text>
-                <Text style={{ fontSize: 12, fontFamily: "SpaceGrotesk_500Medium", color: "#64748B" }}>{med.dosage} • {med.instructions}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {/* ACTIONS AREA */}
