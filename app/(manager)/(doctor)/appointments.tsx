@@ -49,6 +49,7 @@ function AppointmentCard({
     joiningState: Record<string, boolean>;
 }) {
     // Fetch chi tiết từ API mới cập nhật
+    const popup = usePopup();
     const { data: detail, isFetching } = useGetAppointmentDetail(appt.appointmentId, {
         pollingInterval: 15_000,
     });
@@ -112,6 +113,17 @@ function AppointmentCard({
             return dayjs().isAfter(start.subtract(5, 'minute'));
         } catch (e) { return false; }
     })();
+    const handleShowDoctorInfo = () => {
+        popup.open({
+            type: 'doctor_info',
+            data: {
+                doctorId: merged.doctorId,
+                name: merged.doctorName || `Bác sĩ #${merged.doctorId?.slice(0, 8)}`,
+                avatar: merged.doctorAvatar || merged.doctorAvatarUrl,
+                specialty: merged.specialty || merged.doctorSpecialty
+            }
+        });
+    };
 
     return (
         <View style={{
@@ -148,15 +160,19 @@ function AppointmentCard({
 
             {/* --- Doctor Info --- */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                <View style={{ width: 64, height: 64, backgroundColor: '#D9AEF6', borderRadius: 20, borderWidth: 2, borderColor: '#000', overflow: 'hidden' }}>
-                    <Image source={{ uri: doctorAva }} style={{ width: '100%', height: '100%' }} />
-                </View>
+                <Pressable onPress={handleShowDoctorInfo}>
+                    <View style={{ width: 64, height: 64, backgroundColor: '#D9AEF6', borderRadius: 20, borderWidth: 2, borderColor: '#000', overflow: 'hidden' }}>
+                        <Image source={{ uri: merged.doctorAvatar || merged.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png' }} style={{ width: '100%', height: '100%' }} />
+                    </View>
+                </Pressable>
                 <View style={{ flex: 1 }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#000', textTransform: 'uppercase', marginBottom: 4 }} numberOfLines={1}>
-                        {doctorDisplay}
-                    </Text>
+                    <Pressable onPress={handleShowDoctorInfo}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#000', textTransform: 'uppercase', marginBottom: 4 }}>
+                            {merged.doctorName || "Bác sĩ"}
+                        </Text>
+                    </Pressable>
                     <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: '#64748B' }}>
-                        {doctorSpec}
+                        {merged.specialty || "Chuyên khoa"}
                     </Text>
                 </View>
             </View>
@@ -224,14 +240,10 @@ function AppointmentCard({
                     return (
                         <View style={{ gap: 12 }}>
                             <View style={{ flexDirection: 'row', gap: 12 }}>
-                                {/* Chat — disabled (chưa có session) */}
+                                {/* CHỈ GIỮ NÚT CHAT - ĐÃ BỎ NÚT THÔNG TIN BS THEO YÊU CẦU */}
                                 <Pressable style={[btnBase, { backgroundColor: '#F1F5F9', opacity: 0.55 }]} disabled>
                                     <MessageSquare size={18} color="#94A3B8" strokeWidth={2.5} />
                                     <Text style={[txtBase, { color: '#94A3B8' }]}>Chat</Text>
-                                </Pressable>
-                                {/* Thông tin bác sĩ */}
-                                <Pressable style={btnBase} onPress={() => onJoin(merged)}>
-                                    <Text style={txtBase}>Thông tin BS</Text>
                                 </Pressable>
                             </View>
                             <Pressable

@@ -19,6 +19,7 @@ export type PopupType =
     | 'guardian_invite'
     | 'rate_doctor'
     | 'view_rating'
+    | 'doctor_info'
     | null;
 
 export type PopupConfirmData = {
