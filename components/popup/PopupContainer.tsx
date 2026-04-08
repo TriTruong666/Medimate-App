@@ -17,6 +17,7 @@ import { SuccessPaymentPopup } from './SuccessPaymentPopup';
 import { ReminderAlertPopup } from './ReminderAlertPopup';
 import { GuardianInvitePopup } from './GuardianInvitePopup';
 import RatingPopup from './RatingPopup';
+import ViewRatingPopup from './ViewRatingPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -154,6 +155,10 @@ export const PopupContainer: React.FC = () => {
 
             {activePopup.type === 'rate_doctor' && (
                 <RatingPopup />
+            )}
+
+            {activePopup.type === 'view_rating' && (
+                <ViewRatingPopup />
             )}
         </Modal>
     );

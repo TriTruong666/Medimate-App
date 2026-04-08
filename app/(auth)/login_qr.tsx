@@ -1,11 +1,13 @@
 // app/login-qr.tsx
 import { useLoginDependent } from "@/hooks/useAuth";
 import { usePushToken } from "@/hooks/usePushToken";
+import { useToast } from "@/stores/toastStore";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
+import * as BarcodeScanner from "expo-barcode-scanner";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
-import { Link, router } from "expo-router";
+import { router } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -51,6 +53,7 @@ export default function LoginQRScreen() {
   const isFocused = useIsFocused();
   const [permission, requestPermission] = useCameraPermissions();
   const fcmToken = usePushToken();
+  const toast = useToast();
 
   const [hasScanned, setHasScanned] = useState(false);
   const { mutate: loginDependent, isPending } = useLoginDependent();
@@ -59,10 +62,29 @@ export default function LoginQRScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 1,
+      allowsEditing: false,
     });
 
-    if (!result.canceled) {
-      console.log("Image picked:", result.assets[0].uri);
+    if (!result.canceled && result.assets[0].uri) {
+      const imageUri = result.assets[0].uri;
+      console.log("Image picked:", imageUri);
+
+      try {
+        const scannedResults = await BarcodeScanner.scanFromURLAsync(imageUri, [
+          BarcodeScanner.Constants.BarCodeType.qr,
+        ]);
+
+        if (scannedResults.length > 0) {
+          const qrData = scannedResults[0].data;
+          console.log("QR decoded from image:", qrData);
+          handleBarcodeScanned({ data: qrData, type: 'qr' });
+        } else {
+          toast.error("Không tìm thấy mã QR", "Vui lòng chọn ảnh chứa mã QR rõ ràng hơn.");
+        }
+      } catch (error) {
+        console.error("Error scanning image:", error);
+        toast.error("Lỗi hệ thống", "Không thể phân tích hình ảnh này.");
+      }
     }
   };
 
@@ -100,7 +122,7 @@ export default function LoginQRScreen() {
     return (
       <SafeAreaView className="flex-1 bg-white px-8">
         <View className="pt-6">
-          <Pressable 
+          <Pressable
             onPress={() => router.back()}
             className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
             <AntDesign name="arrow-left" size={24} color="black" />
@@ -136,7 +158,7 @@ export default function LoginQRScreen() {
         {/* Header */}
         <View className="flex-row items-center justify-between mb-8">
           <View className="flex-row items-center flex-1">
-            <Pressable 
+            <Pressable
               onPress={() => router.back()}
               className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
               <AntDesign name="arrow-left" size={24} color="black" />

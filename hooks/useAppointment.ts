@@ -28,6 +28,20 @@ export function useGetMyAppointments(filter?: any) {
     });
 }
 
+export function useGetMemberAppointments(memberId: string) {
+    return useQuery({
+        queryKey: ["member-appointments", memberId],
+        queryFn: async () => {
+            const res = await AppointmentApi.getMyMemberAppointments();
+            if (!res.success) throw new Error(res.message);
+            const allAppointments = Array.isArray(res.data) ? res.data : [];
+            return allAppointments.filter(a => a.memberId === memberId);
+        },
+        enabled: !!memberId,
+    });
+}
+
+
 // Hook lấy chi tiết 1 appointment (có doctorName, appointmentTime, ...)
 export function useGetAppointmentDetail(appointmentId: string | undefined, options?: { pollingInterval?: number }) {
     return useQuery({
@@ -79,3 +93,4 @@ export function useCancelAppointment() {
         onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
     });
 }
+

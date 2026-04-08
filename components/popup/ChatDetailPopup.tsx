@@ -1,5 +1,8 @@
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library';
 import { useRouter } from "expo-router";
 import {
+    Download,
     Paperclip,
     Phone,
     Send,
@@ -17,6 +20,7 @@ import {
     View
 } from "react-native";
 import { getMessages, sendMessage } from "../../apis/chat.api";
+import { useToast } from "../../stores/toastStore";
 
 // ─── Types ───────────────────────────────────────────────────
 interface ChatMessage {
@@ -24,6 +28,7 @@ interface ChatMessage {
     text: string;
     sender: "me" | "other";
     time: string;
+    attachmentUrl?: string | null;
 }
 
 interface ChatDetailPopupProps {
@@ -62,7 +67,10 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     const [messages, setMessages] = useState<ChatMessage[]>(MOCK_MESSAGES);
     const [inputText, setInputText] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
+    const [isDownloading, setIsDownloading] = useState(false);
     const flatListRef = useRef<FlatList>(null);
+    const toast = useToast();
 
     React.useEffect(() => {
         if (!sessionId) return;
@@ -75,8 +83,9 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                     const mapped: ChatMessage[] = sorted.map(m => ({
                         id: m.messageId,
                         text: m.content || "",
-                        sender: m.senderType === 0 ? "me" : "other", // 0 is User, 1 is Doctor
+                        sender: m.senderType === 1 ? "me" : "other", // 1 is User, 2 is Doctor
                         time: new Date(m.sendAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
+                        attachmentUrl: m.attachmentUrl,
                     }));
                     setMessages(mapped);
                 }
@@ -121,6 +130,35 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
         }, 100);
     };
 
+    const handleDownloadImage = async (url: string) => {
+        try {
+            setIsDownloading(true);
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== 'granted') {
+                toast.error('Thiếu quyền', 'Vui lòng cấp quyền truy cập thư viện ảnh để lưu đơn thuốc.');
+                return;
+            }
+
+            toast.info('Đang tải xuống', 'Vui lòng đợi trong giây lát...');
+            const fileName = `medimate_prescription_${Date.now()}.jpg`;
+            const fileUri = `${FileSystem.documentDirectory}${fileName}`;
+
+            const downloadedFile = await FileSystem.downloadAsync(url, fileUri);
+
+            if (downloadedFile.status === 200) {
+                await MediaLibrary.saveToLibraryAsync(downloadedFile.uri);
+                toast.success('Thành công', 'Đã lưu ảnh vào thư viện của bạn!');
+            } else {
+                toast.error('Lỗi tải ảnh', 'Tải ảnh thất bại. Vui lòng thử lại.');
+            }
+        } catch (error) {
+            console.error('Download error:', error);
+            toast.error('Lỗi', 'Đã xảy ra lỗi khi lưu ảnh.');
+        } finally {
+            setIsDownloading(false);
+        }
+    };
+
     const renderMessage = ({ item }: { item: ChatMessage }) => {
         const isMe = item.sender === "me";
         return (
@@ -139,9 +177,29 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                     shadowOpacity: isMe ? 1 : 0,
                     shadowRadius: 0,
                 }}>
-                    <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: isMe ? "#FFF" : "#000", lineHeight: 18 }}>
-                        {item.text}
-                    </Text>
+                    {item.text ? (
+                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: isMe ? "#FFF" : "#000", lineHeight: 18 }}>
+                            {item.text}
+                        </Text>
+                    ) : null}
+
+                    {item.attachmentUrl ? (
+                        <Pressable onPress={() => setPreviewImage(item.attachmentUrl || null)}>
+                            <Image
+                                source={{ uri: item.attachmentUrl }}
+                                style={{
+                                    width: 220,
+                                    height: 220,
+                                    borderRadius: 12,
+                                    marginTop: item.text ? 10 : 0,
+                                    backgroundColor: isMe ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+                                    borderWidth: 1,
+                                    borderColor: isMe ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'
+                                }}
+                                resizeMode="cover"
+                            />
+                        </Pressable>
+                    ) : null}
                 </View>
                 <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 9, color: "rgba(0,0,0,0.25)", marginTop: 4, textAlign: isMe ? "right" : "left", paddingHorizontal: 4 }}>
                     {item.time}
@@ -195,7 +253,7 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
 
                     <View style={{ flexDirection: "row", gap: 8 }}>
                         {!isCompleted && (
-                            <Pressable 
+                            <Pressable
                                 onPress={() => {
                                     onClose();
                                     router.push({
@@ -291,6 +349,30 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                     </KeyboardAvoidingView>
                 )}
             </View>
+
+            {/* Image Preview Modal Overlay */}
+            {previewImage && (
+                <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.95)', zIndex: 9999 }}>
+                    <View style={{ position: 'absolute', top: 50, right: 20, zIndex: 10000, flexDirection: 'row', gap: 16 }}>
+                        <Pressable
+                            onPress={() => handleDownloadImage(previewImage)}
+                            disabled={isDownloading}
+                            style={{ width: 44, height: 44, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 22, alignItems: 'center', justifyContent: 'center', opacity: isDownloading ? 0.5 : 1 }}
+                        >
+                            <Download size={20} color="#FFF" />
+                        </Pressable>
+                        <Pressable
+                            onPress={() => setPreviewImage(null)}
+                            style={{ width: 44, height: 44, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 22, alignItems: 'center', justifyContent: 'center' }}
+                        >
+                            <X size={20} color="#FFF" />
+                        </Pressable>
+                    </View>
+                    <Pressable style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} onPress={() => setPreviewImage(null)}>
+                        <Image source={{ uri: previewImage }} style={{ width: '100%', height: '80%' }} resizeMode="contain" />
+                    </Pressable>
+                </View>
+            )}
         </View>
     );
 };

@@ -1,6 +1,8 @@
 import { PopupContainer } from "@/components/popup/PopupContainer";
+import { useCreatePrescription, useScanPrescription } from "@/hooks/usePrescription";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
+import { PrescriptionMedicine, UpsertPrescriptionRequest } from "@/types/Prescription";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import {
   CameraCapturedPicture,
@@ -22,8 +24,6 @@ import {
   X,
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { useCreatePrescription, useScanPrescription } from "@/hooks/usePrescription";
-import { UpsertPrescriptionRequest, PrescriptionMedicine } from "@/types/Prescription";
 import {
   ActivityIndicator,
   Animated,
@@ -31,6 +31,7 @@ import {
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -132,7 +133,7 @@ export default function ScanPrescriptionScreen() {
   const handleConfirmPhoto = async () => {
     if (!memberId) return;
     setStep("analyzing");
-    
+
     try {
       const res = await scanAsync({ memberId, file: photo });
       if (res.success && res.data?.extractedData) {
@@ -144,7 +145,11 @@ export default function ScanPrescriptionScreen() {
           hospitalName: extracted.hospitalName || "",
           prescriptionDate: extracted.prescriptionDate || prev.prescriptionDate,
           notes: extracted.notes || "",
-          medicines: extracted.medicines || []
+          // QUAN TRỌNG: Gán ID tạm thời cho từng loại thuốc bóc tách được
+          medicines: (extracted.medicines || []).map((m, index) => ({
+            ...m,
+            prescriptionMedicineId: `temp-${Date.now()}-${index}` // Gán ID để sửa được trong bộ nhớ đệm
+          }))
         }));
         setStep("result");
         toast.success("Thành công", "AI đã đọc xong đơn thuốc!");
@@ -160,47 +165,55 @@ export default function ScanPrescriptionScreen() {
 
   const handleSavePrescription = () => {
     if (!memberId) return;
-    
+
     const formatToISODate = (dateStr: string | undefined | null) => {
-        if (!dateStr) return new Date().toISOString();
-        const match = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
-        if (match) {
-            return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}T00:00:00.000Z`;
-        }
-        const isoMatch = dateStr.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
-        if (isoMatch) {
-             return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}T00:00:00.000Z`;
-        }
-        const parsed = new Date(dateStr);
-        if (!isNaN(parsed.getTime())) return parsed.toISOString();
-        return new Date().toISOString();
+      if (!dateStr) return new Date().toISOString();
+      const match = dateStr.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/);
+      if (match) {
+        return `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}T00:00:00.000Z`;
+      }
+      const isoMatch = dateStr.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
+      if (isoMatch) {
+        return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}T00:00:00.000Z`;
+      }
+      const parsed = new Date(dateStr);
+      if (!isNaN(parsed.getTime())) return parsed.toISOString();
+      return new Date().toISOString();
     };
 
     const requestData: UpsertPrescriptionRequest = {
-        prescriptionCode: prescriptionData.prescriptionCode,
-        hospitalName: prescriptionData.hospitalName,
-        doctorName: prescriptionData.doctorName,
-        prescriptionDate: formatToISODate(prescriptionData.prescriptionDate),
-        notes: prescriptionData.notes,
-        images: [],
-        medicines: prescriptionData.medicines.map(m => ({
-            medicineName: m.medicineName,
-            dosage: m.dosage,
-            unit: m.unit,
-            quantity: m.quantity,
-            instructions: m.instructions
-        }))
+      prescriptionCode: prescriptionData.prescriptionCode,
+      hospitalName: prescriptionData.hospitalName,
+      doctorName: prescriptionData.doctorName,
+      prescriptionDate: formatToISODate(prescriptionData.prescriptionDate),
+      notes: prescriptionData.notes,
+      images: [],
+      medicines: prescriptionData.medicines.map(m => ({
+        // Gửi null vì đây là tạo mới hoàn toàn, bỏ ID tạm "temp-..." đi
+        prescriptionMedicineId: null,
+        medicineName: m.medicineName,
+        dosage: m.dosage,
+        unit: m.unit,
+        quantity: Number(m.quantity) || 0,
+        instructions: m.instructions
+      }))
     };
-
     createPrescription(
-        { memberId, data: requestData },
-        {
-            onSuccess: (res) => {
-                if (res.success) {
-                    router.back();
-                }
-            }
+      { memberId, data: requestData },
+      {
+        onSuccess: (res) => {
+          if (res.success) {
+            toast.success("Thành công", "Đã lưu đơn thuốc từ ảnh quét.");
+            router.back();
+          } else {
+            toast.error("Lỗi lưu đơn", res.message || "Không thể lưu đơn thuốc.");
+          }
+        },
+        onError: (err: any) => {
+          console.error("Create Prescription Error:", err);
+          toast.error("Lỗi", err?.response?.data?.message || "Không thể lưu đơn thuốc. Có thể ngày tháng hoặc thông tin chưa hợp lệ.");
         }
+      }
     );
   };
 
@@ -209,9 +222,14 @@ export default function ScanPrescriptionScreen() {
     popup.open({
       type: "medicine_detail",
       onSave: (newMed) => {
+        // Gán ID tạm cho thuốc thêm mới
+        const medWithId = {
+          ...newMed,
+          prescriptionMedicineId: `temp-manual-${Date.now()}`
+        };
         setPrescriptionData((prev) => ({
           ...prev,
-          medicines: [...prev.medicines, newMed],
+          medicines: [...prev.medicines, medWithId],
         }));
         toast.success("Đã thêm", `Đã bổ sung ${newMed.medicineName}`);
       },
@@ -224,26 +242,25 @@ export default function ScanPrescriptionScreen() {
       data: {
         ...med,
         onDelete: (id: string) => {
+          // Xóa thuốc khỏi bộ nhớ đệm local
           setPrescriptionData((prev) => ({
             ...prev,
-            medicines: prev.medicines.filter(
-              (m) => m.prescriptionMedicineId !== id
-            ),
+            medicines: prev.medicines.filter((m) => m.prescriptionMedicineId !== id),
           }));
           popup.close();
-          toast.info("Đã xóa", "Đã xóa thuốc khỏi danh sách.");
+          toast.info("Đã xóa", "Đã xóa thuốc khỏi danh sách tạm.");
         },
       },
       onSave: (updatedMed) => {
+        // CẬP NHẬT VÀO BỘ NHỚ ĐỆM (Không call API)
         setPrescriptionData((prev) => ({
           ...prev,
           medicines: prev.medicines.map((m) =>
-            m.prescriptionMedicineId === updatedMed.prescriptionMedicineId
-              ? updatedMed
-              : m
+            // Tìm đúng thuốc theo ID tạm để thay thế bằng dữ liệu đã sửa
+            m.prescriptionMedicineId === updatedMed.prescriptionMedicineId ? updatedMed : m
           ),
         }));
-        toast.success("Đã cập nhật", "Thông tin thuốc đã được thay đổi.");
+        toast.success("Đã ghi nhớ", "Thông tin thuốc đã được cập nhật vào đơn.");
       },
     });
   };
@@ -321,51 +338,103 @@ export default function ScanPrescriptionScreen() {
                 Thông tin chung
               </Text>
               <View className="gap-y-5">
-                {[
-                  {
-                    label: "Mã đơn",
-                    icon: <FileText size={18} color="black" />,
-                    value: prescriptionData.prescriptionCode,
-                  },
-                  {
-                    label: "Cơ sở khám",
-                    icon: <Building2 size={18} color="black" />,
-                    value: prescriptionData.hospitalName,
-                  },
-                  {
-                    label: "Bác sĩ",
-                    icon: <UserIcon size={18} color="black" />,
-                    value: prescriptionData.doctorName,
-                  },
-                  {
-                    label: "Ngày lập",
-                    icon: <Calendar size={18} color="black" />,
-                    value: prescriptionData.prescriptionDate,
-                  },
-                ].map((item, i) => (
-                  <View key={i}>
-                    <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
-                      {item.label}
-                    </Text>
-                    <View className="flex-row items-center bg-[#F3F4F6] border-2 border-black rounded-2xl px-4 py-3 gap-x-3">
-                      <View>{item.icon}</View>
-                      <Text
-                        className="text-base font-space-bold text-black flex-1"
-                        numberOfLines={1}
-                      >
-                        {item.value}
-                      </Text>
+                <View>
+                  <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
+                    Mã đơn (Tự động)
+                  </Text>
+                  <View className="flex-row items-center bg-[#F3F4F6] border-2 border-black rounded-2xl px-4 py-3 gap-x-3">
+                    <View>
+                      <FileText size={18} color="black" />
                     </View>
+                    <TextInput
+                      value={prescriptionData.prescriptionCode}
+                      onChangeText={(val) =>
+                        setPrescriptionData((p) => ({ ...p, prescriptionCode: val }))
+                      }
+                      placeholder="Mã phân loại..."
+                      placeholderTextColor="#A0A0A0"
+                      className="font-space-bold text-black text-base flex-1 p-0"
+                    />
                   </View>
-                ))}
+                </View>
+
+                <View>
+                  <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
+                    Cơ sở khám
+                  </Text>
+                  <View className="flex-row items-center bg-white border-2 border-black rounded-2xl px-4 py-1 h-14 shadow-sm gap-x-3">
+                    <View>
+                      <Building2 size={18} color="black" />
+                    </View>
+                    <TextInput
+                      value={prescriptionData.hospitalName}
+                      onChangeText={(val) =>
+                        setPrescriptionData((p) => ({ ...p, hospitalName: val }))
+                      }
+                      placeholder="VD: Bệnh viện / Phòng khám..."
+                      placeholderTextColor="#A0A0A0"
+                      className="flex-1 font-space-bold text-black text-base p-0"
+                    />
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
+                    Bác sĩ điều trị
+                  </Text>
+                  <View className="flex-row items-center bg-white border-2 border-black rounded-2xl px-4 py-1 h-14 shadow-sm gap-x-3">
+                    <View>
+                      <UserIcon size={18} color="black" />
+                    </View>
+                    <TextInput
+                      value={prescriptionData.doctorName}
+                      onChangeText={(val) =>
+                        setPrescriptionData((p) => ({ ...p, doctorName: val }))
+                      }
+                      placeholder="VD: BS. Nguyễn Văn A"
+                      placeholderTextColor="#A0A0A0"
+                      className="flex-1 font-space-bold text-black text-base p-0"
+                    />
+                  </View>
+                </View>
+
+                <View>
+                  <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
+                    Ngày lập đơn
+                  </Text>
+                  <View className="flex-row items-center bg-white border-2 border-black rounded-2xl px-4 py-1 h-14 shadow-sm gap-x-3">
+                    <View>
+                      <Calendar size={18} color="black" />
+                    </View>
+                    <TextInput
+                      value={prescriptionData.prescriptionDate}
+                      onChangeText={(val) =>
+                        setPrescriptionData((p) => ({ ...p, prescriptionDate: val }))
+                      }
+                      placeholder="DD/MM/YYYY"
+                      placeholderTextColor="#A0A0A0"
+                      className="flex-1 font-space-bold text-black text-base p-0"
+                    />
+                  </View>
+                </View>
+
                 <View>
                   <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
                     Lời dặn của bác sĩ
                   </Text>
-                  <View className="bg-[#FFF9C4] border-2 border-black rounded-2xl p-4 shadow-sm">
-                    <Text className="text-[15px] font-space-medium text-black leading-snug">
-                      {prescriptionData.notes}
-                    </Text>
+                  <View className="bg-[#FFF9C4] border-2 border-black rounded-2xl px-4 py-3 min-h-[100px] shadow-sm">
+                    <TextInput
+                      value={prescriptionData.notes}
+                      onChangeText={(val) =>
+                        setPrescriptionData((p) => ({ ...p, notes: val }))
+                      }
+                      placeholder="Ghi chú thêm từ bác sĩ (Không bắt buộc)..."
+                      placeholderTextColor="#A0A0A0"
+                      multiline
+                      numberOfLines={3}
+                      textAlignVertical="top"
+                      className="flex-1 font-space-medium text-black text-[15px] p-0 leading-snug"
+                    />
                   </View>
                 </View>
               </View>
@@ -445,9 +514,9 @@ export default function ScanPrescriptionScreen() {
               className={`w-full py-5 rounded-[24px] border-2 border-black flex-row items-center justify-center gap-x-2 shadow-md active:translate-y-0.5 ${prescriptionData.medicines.length > 0 ? "bg-[#A3E6A1]" : "bg-gray-200 border-gray-400"} ${isPending ? "opacity-70" : ""}`}
             >
               {isPending ? (
-                  <ActivityIndicator color="black" />
+                <ActivityIndicator color="black" />
               ) : (
-                  <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
+                <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
               )}
               <Text className={`text-lg font-space-bold uppercase ${prescriptionData.medicines.length > 0 ? "text-black" : "text-gray-500"}`}>
                 {isPending ? "Đang lưu..." : "Lưu Đơn Thuốc Này"}
