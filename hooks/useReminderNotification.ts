@@ -3,6 +3,7 @@
 import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { usePopup } from "@/stores/popupStore";
+import { Platform } from "react-native";
 
 // Cấu hình hiển thị thông báo khi app đang mở (foreground)
 Notifications.setNotificationHandler({
@@ -35,6 +36,16 @@ export function useReminderNotification() {
     const { open } = usePopup();
 
     useEffect(() => {
+        // Đảm bảo tạo Notification Channel toàn cục trên Android ngay khi mở app
+        if (Platform.OS === "android") {
+            Notifications.setNotificationChannelAsync("default", {
+                name: "default",
+                importance: Notifications.AndroidImportance.MAX,
+                vibrationPattern: [0, 250, 250, 250],
+                lightColor: "#FF231F7C",
+            });
+        }
+
         // Lắng nghe NOTIFICATIONs khi app đang FOREGROUND (mở app)
         const foregroundSub = Notifications.addNotificationReceivedListener((notification) => {
             const data = notification.request.content.data as any;
