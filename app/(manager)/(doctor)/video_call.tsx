@@ -1,7 +1,16 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Camera, Mic, MicOff, Minimize2, PhoneOff, SwitchCamera } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, PermissionsAndroid, Platform, Pressable, Text, View } from 'react-native';
+import {
+    ActivityIndicator,
+    Animated,
+    Modal,
+    PermissionsAndroid,
+    Platform,
+    Pressable,
+    Text,
+    View,
+} from 'react-native';
 import {
     ChannelProfileType,
     ClientRoleType,
@@ -20,10 +29,251 @@ import {
     useVideoCallActions,
 } from '../../../stores/videoCallStore';
 
-const { width, height } = Dimensions.get('window');
-
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'dummy_app_id';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Pause Confirm Modal (1 step — simple, informative)
+// ─────────────────────────────────────────────────────────────────────────────
+function PauseConfirmModal({ visible, onCancel, onConfirm }: {
+    visible: boolean; onCancel: () => void; onConfirm: () => void;
+}) {
+    const scaleAnim = useRef(new Animated.Value(0.88)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 160, useNativeDriver: true }),
+            ]).start();
+        } else {
+            scaleAnim.setValue(0.88);
+            opacityAnim.setValue(0);
+        }
+    }, [visible]);
+
+    return (
+        <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
+            <Animated.View style={{
+                flex: 1, backgroundColor: 'rgba(0,0,0,0.72)',
+                justifyContent: 'center', alignItems: 'center', padding: 28,
+                opacity: opacityAnim,
+            }}>
+                <Animated.View style={{
+                    backgroundColor: '#18181C', borderRadius: 28, padding: 26,
+                    width: '100%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)',
+                    transform: [{ scale: scaleAnim }],
+                }}>
+                    <View style={{
+                        width: 68, height: 68, borderRadius: 34,
+                        backgroundColor: 'rgba(251,191,36,0.15)',
+                        borderWidth: 2, borderColor: '#FBBF24',
+                        alignItems: 'center', justifyContent: 'center',
+                        alignSelf: 'center', marginBottom: 18,
+                    }}>
+                        <Text style={{ fontSize: 30 }}>⏸️</Text>
+                    </View>
+
+                    <Text style={{
+                        fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#fff',
+                        textAlign: 'center', marginBottom: 10,
+                    }}>Tạm dừng cuộc gọi?</Text>
+
+                    <Text style={{
+                        fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14,
+                        color: 'rgba(255,255,255,0.5)', textAlign: 'center',
+                        lineHeight: 21, marginBottom: 8,
+                    }}>
+                        Cuộc gọi sẽ được thu nhỏ xuống góc màn hình.
+                    </Text>
+
+                    {/* Highlight "có thể vào lại" */}
+                    <View style={{
+                        backgroundColor: 'rgba(34,197,94,0.12)', borderRadius: 14,
+                        borderWidth: 1, borderColor: 'rgba(34,197,94,0.3)',
+                        paddingHorizontal: 14, paddingVertical: 10, marginBottom: 26,
+                        flexDirection: 'row', alignItems: 'center', gap: 8,
+                    }}>
+                        <Text style={{ fontSize: 16 }}>✅</Text>
+                        <Text style={{
+                            fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13,
+                            color: '#4ADE80', flex: 1,
+                        }}>
+                            Bạn có thể vào lại bất kỳ lúc nào trong phiên khám.
+                        </Text>
+                    </View>
+
+                    <View style={{ gap: 10 }}>
+                        <Pressable
+                            onPress={onConfirm}
+                            style={({ pressed }) => ({
+                                height: 52, borderRadius: 16,
+                                backgroundColor: '#FBBF24',
+                                alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'row', gap: 8,
+                                opacity: pressed ? 0.82 : 1,
+                            })}
+                        >
+                            <Minimize2 size={18} color="#000" strokeWidth={2.5} />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }}>
+                                Thu nhỏ
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={onCancel}
+                            style={({ pressed }) => ({
+                                height: 50, borderRadius: 16,
+                                backgroundColor: 'rgba(255,255,255,0.07)',
+                                borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+                                alignItems: 'center', justifyContent: 'center',
+                                opacity: pressed ? 0.65 : 1,
+                            })}
+                        >
+                            <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+                                Tiếp tục cuộc gọi
+                            </Text>
+                        </Pressable>
+                    </View>
+                </Animated.View>
+            </Animated.View>
+        </Modal>
+    );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// End Session Confirm Modal (2 steps)
+// ─────────────────────────────────────────────────────────────────────────────
+function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
+    visible: boolean; step: 1 | 2;
+    onCancel: () => void; onStep1: () => void; onStep2: () => void;
+}) {
+    const scaleAnim = useRef(new Animated.Value(0.88)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 160, useNativeDriver: true }),
+            ]).start();
+        } else {
+            scaleAnim.setValue(0.88);
+            opacityAnim.setValue(0);
+        }
+    }, [visible, step]);
+
+    const isStep1 = step === 1;
+
+    return (
+        <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
+            <Animated.View style={{
+                flex: 1, backgroundColor: 'rgba(0,0,0,0.78)',
+                justifyContent: 'center', alignItems: 'center', padding: 28,
+                opacity: opacityAnim,
+            }}>
+                <Animated.View style={{
+                    backgroundColor: '#18181C', borderRadius: 28, padding: 26,
+                    width: '100%', borderWidth: 2, borderColor: isStep1 ? 'rgba(255,59,48,0.3)' : 'rgba(220,38,38,0.5)',
+                    transform: [{ scale: scaleAnim }],
+                }}>
+                    {/* Step progress */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', marginBottom: 20 }}>
+                        {[1, 2].map(s => (
+                            <View key={s} style={{
+                                height: 4, width: s === step ? 36 : 16, borderRadius: 2,
+                                backgroundColor: s <= step ? '#FF3B30' : 'rgba(255,255,255,0.15)',
+                            }} />
+                        ))}
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.35)', marginLeft: 2 }}>
+                            {step}/2
+                        </Text>
+                    </View>
+
+                    {/* Icon */}
+                    <View style={{
+                        width: 68, height: 68, borderRadius: 34,
+                        backgroundColor: isStep1 ? 'rgba(255,59,48,0.12)' : 'rgba(220,38,38,0.2)',
+                        borderWidth: 2, borderColor: isStep1 ? '#FF3B30' : '#DC2626',
+                        alignItems: 'center', justifyContent: 'center',
+                        alignSelf: 'center', marginBottom: 18,
+                    }}>
+                        <Text style={{ fontSize: 32 }}>{isStep1 ? '📋' : '⚠️'}</Text>
+                    </View>
+
+                    <Text style={{
+                        fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#fff',
+                        textAlign: 'center', marginBottom: 10,
+                    }}>
+                        {isStep1 ? 'Kết thúc phiên khám?' : 'Xác nhận lần cuối'}
+                    </Text>
+                    <Text style={{
+                        fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14,
+                        color: 'rgba(255,255,255,0.48)', textAlign: 'center',
+                        lineHeight: 21, marginBottom: 26,
+                    }}>
+                        {isStep1
+                            ? 'Hành động này sẽ đóng phiên tư vấn và không thể tiếp tục. Bạn có chắc muốn kết thúc?'
+                            : 'Đây là xác nhận CUỐI CÙNG. Dữ liệu phiên sẽ được lưu lại và phòng khám đóng hoàn toàn.'}
+                    </Text>
+
+                    <View style={{ gap: 10 }}>
+                        <Pressable
+                            onPress={isStep1 ? onStep1 : onStep2}
+                            style={({ pressed }) => ({
+                                height: 52, borderRadius: 16,
+                                backgroundColor: isStep1 ? '#FF3B30' : '#DC2626',
+                                alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'row', gap: 8,
+                                opacity: pressed ? 0.82 : 1,
+                            })}
+                        >
+                            <PhoneOff size={18} color="#fff" strokeWidth={2.5} />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#fff' }}>
+                                {isStep1 ? 'Có, tôi muốn kết thúc' : '🔴 Kết thúc phiên ngay'}
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={onCancel}
+                            style={({ pressed }) => ({
+                                height: 50, borderRadius: 16,
+                                backgroundColor: 'rgba(255,255,255,0.07)',
+                                borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+                                alignItems: 'center', justifyContent: 'center',
+                                opacity: pressed ? 0.65 : 1,
+                            })}
+                        >
+                            <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+                                {isStep1 ? 'Quay lại cuộc gọi' : 'Huỷ bỏ'}
+                            </Text>
+                        </Pressable>
+                    </View>
+                </Animated.View>
+            </Animated.View>
+        </Modal>
+    );
+}
+
+// ─── Call Timer ───────────────────────────────────────────────────────────────
+function CallTimer({ running }: { running: boolean }) {
+    const [secs, setSecs] = useState(0);
+    useEffect(() => {
+        if (!running) return;
+        const iv = setInterval(() => setSecs(s => s + 1), 1000);
+        return () => clearInterval(iv);
+    }, [running]);
+    if (!running) return null;
+    const hh = Math.floor(secs / 3600);
+    const mm = Math.floor((secs % 3600) / 60);
+    const ss = secs % 60;
+    const p = (n: number) => n.toString().padStart(2, '0');
+    return (
+        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.6)', letterSpacing: 1.5, marginTop: 3 }}>
+            {hh > 0 ? `${p(hh)}:${p(mm)}:${p(ss)}` : `${p(mm)}:${p(ss)}`}
+        </Text>
+    );
+}
+
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function VideoCallScreen() {
     const router = useRouter();
     const toast = useToast();
@@ -35,17 +285,18 @@ export default function VideoCallScreen() {
     const [isMuted, setIsMuted] = useState(callState.isActive ? callState.isMuted : false);
     const [isCameraOff, setIsCameraOff] = useState(callState.isActive ? callState.isCameraOff : false);
 
+    const [pauseDialog, setPauseDialog] = useState(false);
+    const [endDialog, setEndDialog] = useState(false);
+    const [endStep, setEndStep] = useState<1 | 2>(1);
+
     const agoraEngineRef = useRef<IRtcEngine | null>(getGlobalAgoraEngine());
     const sid = typeof sessionId === 'string' ? sessionId : (sessionId?.[0] || '');
 
-    // Mark call as active in the global store when entering this screen
     useEffect(() => {
         if (sid) {
             const aid = typeof appointmentId === 'string' ? appointmentId : (appointmentId?.[0] || '');
-            // If returning from minimized state, just un-minimize
             if (callState.isMinimized && callState.sessionId === sid) {
                 updateCallState({ isMinimized: false });
-                // Restore state from global store
                 setHasJoined(callState.hasJoined);
                 setRemoteUids(callState.remoteUids || []);
                 setIsMuted(callState.isMuted);
@@ -57,7 +308,6 @@ export default function VideoCallScreen() {
         }
     }, [sid]);
 
-    // Sync local state to global store
     useEffect(() => {
         if (callState.isActive) {
             updateCallState({ hasJoined, remoteUids, isMuted, isCameraOff });
@@ -66,7 +316,6 @@ export default function VideoCallScreen() {
 
     useEffect(() => {
         let isMounted = true;
-
         const initAgora = async () => {
             if (Platform.OS === 'android') {
                 const granted = await PermissionsAndroid.requestMultiple([
@@ -78,151 +327,80 @@ export default function VideoCallScreen() {
                     granted[PermissionsAndroid.PERMISSIONS.CAMERA] !== PermissionsAndroid.RESULTS.GRANTED
                 ) {
                     toast.error("Thiết lập", "Vui lòng cấp quyền truy cập Mic và Camera");
-                    router.back();
-                    return;
+                    router.back(); return;
                 }
             }
-
             try {
-                // Reuse existing engine if returning from minimized
                 const existingEngine = getGlobalAgoraEngine();
-                if (existingEngine) {
-                    agoraEngineRef.current = existingEngine;
-                    return; // Already initialized and connected
-                }
+                if (existingEngine) { agoraEngineRef.current = existingEngine; return; }
 
                 const engine = createAgoraRtcEngine();
                 engine.initialize({ appId: AGORA_APP_ID });
-
                 engine.registerEventHandler({
-                    onJoinChannelSuccess: () => {
-                        console.log('Successfully joined the channel');
-                        if (isMounted) setHasJoined(true);
-                    },
-                    onUserJoined: (_connection: RtcConnection, uid: number) => {
-                        console.log('Remote user joined', uid);
-                        if (isMounted) setRemoteUids(prev => prev.includes(uid) ? prev : [...prev, uid]);
-                    },
-                    onUserOffline: (_connection: RtcConnection, uid: number) => {
-                        console.log('Remote user left', uid);
-                        if (isMounted) setRemoteUids(prev => prev.filter(u => u !== uid));
-                    },
-                    onError: (err, msg) => {
-                        console.error('Agora Error', err, msg);
-                    }
+                    onJoinChannelSuccess: () => { if (isMounted) setHasJoined(true); },
+                    onUserJoined: (_: RtcConnection, uid: number) => { if (isMounted) setRemoteUids(p => p.includes(uid) ? p : [...p, uid]); },
+                    onUserOffline: (_: RtcConnection, uid: number) => { if (isMounted) setRemoteUids(p => p.filter(u => u !== uid)); },
+                    onError: (err, msg) => { console.error('Agora Error', err, msg); },
                 });
-
                 engine.enableVideo();
                 engine.startPreview();
 
-                // Fetch Token from API
                 let rtcToken = '';
-                try {
-                    const tokenRes = await getVideoCallToken(sid, "publisher");
-                    if (tokenRes.success && tokenRes.data) {
-                        rtcToken = tokenRes.data;
-                    }
-                } catch (e) {
-                    console.log('Error fetching Agora Token:', e);
-                }
+                try { const tr = await getVideoCallToken(sid, "publisher"); if (tr.success && tr.data) rtcToken = tr.data; } catch { }
+                try { await joinSession(sid, { role: "Member" }); } catch { }
 
-                // Call Backend Session Join
-                try {
-                    await joinSession(sid, { role: "Member" });
-                } catch (e) {
-                    console.log('Error joining session backend:', e);
-                }
-
-                // Join Channel
                 engine.joinChannel(rtcToken, sid, 0, {
                     clientRoleType: ClientRoleType.ClientRoleBroadcaster,
                     channelProfile: ChannelProfileType.ChannelProfileCommunication,
                 });
-
                 agoraEngineRef.current = engine;
-                setGlobalAgoraEngine(engine); // Store globally for PiP
-            } catch (error) {
-                console.error('Error initializing Agora:', error);
-            }
+                setGlobalAgoraEngine(engine);
+            } catch (e) { console.error('Agora error:', e); }
         };
 
-        // Don't re-init if returning from minimized with existing engine
-        if (getGlobalAgoraEngine()) {
-            agoraEngineRef.current = getGlobalAgoraEngine();
-            return;
-        }
-
-        if (AGORA_APP_ID !== 'dummy_app_id') {
-            initAgora();
-        } else {
-            console.warn("Agora App ID is missing. Video call will not function correctly.");
-            setTimeout(() => {
-                if (isMounted) setHasJoined(true);
-            }, 1000);
-        }
-
-        // NOTE: We do NOT clean up Agora here — cleanup happens in endCall() from the store.
-        return () => {
-            isMounted = false;
-        };
+        if (getGlobalAgoraEngine()) { agoraEngineRef.current = getGlobalAgoraEngine(); return; }
+        if (AGORA_APP_ID !== 'dummy_app_id') { initAgora(); }
+        else { setTimeout(() => { if (isMounted) setHasJoined(true); }, 1000); }
+        return () => { isMounted = false; };
     }, []);
 
-    const toggleMute = () => {
-        if (agoraEngineRef.current) {
-            agoraEngineRef.current.muteLocalAudioStream(!isMuted);
-        }
-        setIsMuted(!isMuted);
-    };
+    const toggleMute = () => { agoraEngineRef.current?.muteLocalAudioStream(!isMuted); setIsMuted(!isMuted); };
+    const toggleCamera = () => { agoraEngineRef.current?.muteLocalVideoStream(!isCameraOff); setIsCameraOff(!isCameraOff); };
+    const switchCamera = () => { agoraEngineRef.current?.switchCamera(); };
 
-    const switchCamera = () => {
-        if (agoraEngineRef.current) {
-            agoraEngineRef.current.switchCamera();
-        }
-    };
-
-    const toggleCamera = () => {
-        if (agoraEngineRef.current) {
-            agoraEngineRef.current.muteLocalVideoStream(!isCameraOff);
-        }
-        setIsCameraOff(!isCameraOff);
-    };
-
-    const handleMinimize = () => {
-        // Save current state to global store and go back
+    // ── Pause = minimize ──────────────────────────────────────────────────────
+    const handlePauseConfirmed = () => {
+        setPauseDialog(false);
         updateCallState({ hasJoined, remoteUids, isMuted, isCameraOff });
         minimize();
         router.back();
+        toast.info("Đã thu nhỏ", "Nhấn vào cửa sổ nhỏ để quay lại cuộc gọi bất kỳ lúc nào.");
     };
 
-    const handleEndCall = async () => {
-        try {
-            if (sid) {
-                await endSession(sid);
-            }
-        } catch (e) {
-            console.error(e);
-        }
-        endCall(); // This cleans up Agora engine via the store
-        toast.info("Cuộc gọi đã kết thúc", "Trở về trang lịch khám");
+    // ── End session (2 steps) ─────────────────────────────────────────────────
+    const handleEndStep2 = async () => {
+        try { if (sid) await endSession(sid); } catch (e) { console.error(e); }
+        endCall();
+        setEndDialog(false);
+        toast.info("Phiên khám đã kết thúc", "Cảm ơn bạn đã sử dụng MediMate.");
         router.back();
     };
 
     const isMocking = AGORA_APP_ID === 'dummy_app_id';
+    const isConnected = remoteUids.length > 0;
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: '#000' }} edges={['top']}>
             <View style={{ flex: 1, backgroundColor: '#000', position: 'relative' }}>
 
-                {/* Remote Video Stream (Main Background) */}
+                {/* ── Remote Video ── */}
                 {hasJoined ? (
-                    (remoteUids.length > 0 || isMocking) ? (
+                    isConnected || isMocking ? (
                         <View style={{ flex: 1, backgroundColor: '#1C1C1E' }}>
-                            {remoteUids.length > 0 && agoraEngineRef.current ? (
+                            {isConnected && agoraEngineRef.current ? (
                                 remoteUids.length === 1 ? (
-                                    // 1 Remote User -> Full Screen
                                     <RtcSurfaceView canvas={{ uid: remoteUids[0] }} style={{ flex: 1 }} />
                                 ) : (
-                                    // 2+ Remote Users -> Split Screen
                                     <View style={{ flex: 1 }}>
                                         <View style={{ flex: 1, borderBottomWidth: 2, borderColor: '#000' }}>
                                             <RtcSurfaceView canvas={{ uid: remoteUids[0] }} style={{ flex: 1 }} />
@@ -234,162 +412,182 @@ export default function VideoCallScreen() {
                                 )
                             ) : (
                                 <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
-                                        Bác sĩ đang vào...
-                                    </Text>
-                                    <ActivityIndicator size="large" color="#FFD700" style={{ marginTop: 16 }} />
+                                    <Text style={{ fontSize: 48, marginBottom: 8 }}>👨‍⚕️</Text>
+                                    <Text style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 15 }}>Bác sĩ đang vào...</Text>
+                                    <ActivityIndicator size="large" color="#B3354B" style={{ marginTop: 14 }} />
                                 </View>
                             )}
                         </View>
                     ) : (
                         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                            <Text style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 16 }}>
-                                Đang chờ bác sĩ tham gia...
-                            </Text>
+                            <Text style={{ fontSize: 48, marginBottom: 8 }}>👨‍⚕️</Text>
+                            <Text style={{ color: 'rgba(255,255,255,0.55)', fontFamily: 'SpaceGrotesk_500Medium', fontSize: 15 }}>Đang chờ bác sĩ tham gia...</Text>
                         </View>
                     )
                 ) : (
                     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
                         <ActivityIndicator color="white" size="large" />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#fff', marginTop: 16, letterSpacing: 2, textTransform: 'uppercase' }}>
-                            Đang kết nối...
-                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#fff', marginTop: 16, letterSpacing: 2, textTransform: 'uppercase' }}>Đang kết nối...</Text>
                     </View>
                 )}
 
-                {/* Local Video Stream (Picture-in-Picture) */}
+                {/* ── Self PiP (top-right) ── */}
                 <View style={{
                     position: 'absolute', top: 24, right: 24,
-                    width: 112, height: 160,
-                    borderRadius: 24, backgroundColor: '#2C2C2E',
-                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
+                    width: 110, height: 156, borderRadius: 22,
+                    backgroundColor: '#2C2C2E',
+                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
                     overflow: 'hidden',
                 }}>
-                    {!isCameraOff ? (
-                        agoraEngineRef.current ? (
-                            <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
-                        ) : (
-                            <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' }}>
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#fff', fontSize: 10 }}>Bạn</Text>
-                            </View>
-                        )
-                    ) : (
-                        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
-                            <Camera size={24} color="#666" />
+                    {!isCameraOff
+                        ? agoraEngineRef.current
+                            ? <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
+                            : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>Bạn</Text></View>
+                        : <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
+                            <Camera size={20} color="#666" />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Đã tắt</Text>
                         </View>
-                    )}
+                    }
                 </View>
 
-                {/* Top Left info overlay */}
-                <View style={{
-                    position: 'absolute', top: 24, left: 24,
-                    paddingHorizontal: 16, paddingVertical: 8,
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-                }}>
-                    <Text style={{
-                        color: '#fff', fontFamily: 'SpaceGrotesk_700Bold',
-                        letterSpacing: 2, fontSize: 10, textTransform: 'uppercase',
-                    }}>
-                        {remoteUids.length > 0 ? (remoteUids.length > 1 ? '👥 Phòng 3 người' : '🟢 Đang tư vấn') : '🔴 Đang chờ'}
-                    </Text>
-                </View>
+                {/* ─────────────────────────────────────────────────────────── */}
+                {/* ── NÚT KẾT THÚC PHIÊN — góc trên bên TRÁI (absolute) ── */}
+                {/* ─────────────────────────────────────────────────────────── */}
+                <Pressable
+                    onPress={() => { setEndStep(1); setEndDialog(true); }}
+                    style={({ pressed }) => ({
+                        position: 'absolute',
+                        top: 24, left: 20,
+                        flexDirection: 'row', alignItems: 'center', gap: 7,
+                        paddingHorizontal: 14, paddingVertical: 10,
+                        backgroundColor: pressed ? '#CC2F26' : '#FF3B30',
+                        borderRadius: 20,
+                        borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
+                        shadowColor: '#FF3B30',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.55, shadowRadius: 10, elevation: 8,
+                        transform: [{ scale: pressed ? 0.93 : 1 }],
+                    })}
+                >
+                    <PhoneOff size={15} color="#fff" strokeWidth={2.5} />
+                    <View>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#fff' }}>
+                            Kết thúc phiên
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>
+                            Xác nhận 2 lần
+                        </Text>
+                    </View>
+                </Pressable>
 
-                {/* Compact Floating Dock Controls */}
-                <View style={{
-                    position: 'absolute', bottom: 48, left: 0, right: 0,
-                    alignItems: 'center',
-                }}>
+                {/* ── Status + Timer (below the end button) ── */}
+                <View style={{ position: 'absolute', top: 80, left: 20 }}>
                     <View style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 18,
-                        paddingHorizontal: 18, paddingVertical: 12,
-                        backgroundColor: 'rgba(28, 28, 30, 0.85)',
-                        borderRadius: 36,
-                        borderWidth: 1.5,
-                        borderColor: 'rgba(255,255,255,0.15)',
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 10 },
-                        shadowOpacity: 0.5,
-                        shadowRadius: 20,
-                        elevation: 12,
+                        paddingHorizontal: 10, paddingVertical: 5,
+                        backgroundColor: 'rgba(0,0,0,0.5)',
+                        borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+                        flexDirection: 'row', alignItems: 'center', gap: 5,
                     }}>
+                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isConnected ? '#22C55E' : '#F59E0B' }} />
+                        <Text style={{ color: '#fff', fontFamily: 'SpaceGrotesk_700Bold', letterSpacing: 1.2, fontSize: 9, textTransform: 'uppercase' }}>
+                            {isConnected ? (remoteUids.length > 1 ? '3 người' : 'Đang tư vấn') : 'Đang chờ'}
+                        </Text>
+                    </View>
+                    <CallTimer running={hasJoined && isConnected} />
+                </View>
 
-                        {/* Minimize */}
-                        <Pressable
-                            onPress={handleMinimize}
-                            style={({ pressed }) => ({
-                                width: 50, height: 50, borderRadius: 25,
-                                alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: 'rgba(255,255,255,0.12)',
-                                transform: [{ scale: pressed ? 0.92 : 1 }],
-                            })}
-                        >
-                            <Minimize2 size={24} color="white" />
-                        </Pressable>
+                {/* ─────────────────────────────────────────────────────────── */}
+                {/* ── BOTTOM DOCK — giữa bên dưới ── */}
+                {/* ─────────────────────────────────────────────────────────── */}
+                <View style={{ position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', gap: 14 }}>
 
+                    {/* Row: Mic | Camera | SwitchCamera */}
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 14,
+                        paddingHorizontal: 20, paddingVertical: 10,
+                        backgroundColor: 'rgba(14,14,20,0.88)',
+                        borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+                        shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
+                    }}>
                         {/* Mic */}
-                        <Pressable
-                            onPress={toggleMute}
-                            style={({ pressed }) => ({
-                                width: 50, height: 50, borderRadius: 25,
-                                alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: isMuted ? '#FF453A' : 'rgba(255,255,255,0.12)',
-                                transform: [{ scale: pressed ? 0.92 : 1 }],
-                            })}
-                        >
-                            {isMuted ? <MicOff size={24} color="white" /> : <Mic size={24} color="white" />}
-                        </Pressable>
-
-                        {/* End Call (Main Action) */}
-                        <Pressable
-                            onPress={handleEndCall}
-                            style={({ pressed }) => ({
-                                width: 64, height: 64, borderRadius: 32,
-                                alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: '#FF3B30',
-                                shadowColor: '#FF3B30',
-                                shadowOffset: { width: 0, height: 6 },
-                                shadowOpacity: 0.6,
-                                shadowRadius: 15,
-                                transform: [{ scale: pressed ? 0.9 : 1 }],
-                                borderWidth: 3.5,
-                                borderColor: 'rgba(255,255,255,0.2)',
-                                elevation: 8,
-                            })}
-                        >
-                            <PhoneOff size={24} color="white" strokeWidth={2.5} />
+                        <Pressable onPress={toggleMute} style={({ pressed }) => ({
+                            width: 52, height: 52, borderRadius: 26,
+                            alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: isMuted ? '#FF453A' : 'rgba(255,255,255,0.1)',
+                            borderWidth: 1, borderColor: isMuted ? 'transparent' : 'rgba(255,255,255,0.15)',
+                            transform: [{ scale: pressed ? 0.9 : 1 }],
+                        })}>
+                            {isMuted ? <MicOff size={22} color="#fff" /> : <Mic size={22} color="#fff" />}
                         </Pressable>
 
                         {/* Camera */}
-                        <Pressable
-                            onPress={toggleCamera}
-                            style={({ pressed }) => ({
-                                width: 50, height: 50, borderRadius: 25,
-                                alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: isCameraOff ? '#FF453A' : 'rgba(255,255,255,0.12)',
-                                transform: [{ scale: pressed ? 0.92 : 1 }],
-                            })}
-                        >
-                            <Camera size={24} color="white" />
+                        <Pressable onPress={toggleCamera} style={({ pressed }) => ({
+                            width: 52, height: 52, borderRadius: 26,
+                            alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: isCameraOff ? '#FF453A' : 'rgba(255,255,255,0.1)',
+                            borderWidth: 1, borderColor: isCameraOff ? 'transparent' : 'rgba(255,255,255,0.15)',
+                            transform: [{ scale: pressed ? 0.9 : 1 }],
+                        })}>
+                            <Camera size={22} color="#fff" />
                         </Pressable>
 
                         {/* Switch Camera */}
-                        <Pressable
-                            onPress={switchCamera}
-                            style={({ pressed }) => ({
-                                width: 50, height: 50, borderRadius: 25,
-                                alignItems: 'center', justifyContent: 'center',
-                                backgroundColor: 'rgba(255,255,255,0.12)',
-                                transform: [{ scale: pressed ? 0.92 : 1 }],
-                            })}
-                        >
-                            <SwitchCamera size={24} color="white" />
+                        <Pressable onPress={switchCamera} style={({ pressed }) => ({
+                            width: 52, height: 52, borderRadius: 26,
+                            alignItems: 'center', justifyContent: 'center',
+                            backgroundColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+                            transform: [{ scale: pressed ? 0.9 : 1 }],
+                        })}>
+                            <SwitchCamera size={22} color="#fff" />
                         </Pressable>
-
                     </View>
-                </View>
 
+                    {/* ── NÚT TẠM DỪNG — trung tâm, nổi bật ── */}
+                    <Pressable
+                        onPress={() => setPauseDialog(true)}
+                        style={({ pressed }) => ({
+                            flexDirection: 'row', alignItems: 'center', gap: 10,
+                            paddingHorizontal: 32, height: 58,
+                            borderRadius: 30,
+                            backgroundColor: pressed ? 'rgba(14,14,20,0.95)' : 'rgba(14,14,20,0.88)',
+                            borderWidth: 2, borderColor: '#FBBF24',
+                            transform: [{ scale: pressed ? 0.95 : 1 }],
+                            shadowColor: '#FBBF24',
+                            shadowOffset: { width: 0, height: 4 },
+                            shadowOpacity: pressed ? 0.5 : 0.3,
+                            shadowRadius: 12, elevation: 8,
+                        })}
+                    >
+                        <Minimize2 size={20} color="#FBBF24" strokeWidth={2.5} />
+                        <View>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#FBBF24' }}>
+                                Tạm dừng & Thu nhỏ
+                            </Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(251,191,36,0.55)' }}>
+                                Có thể vào lại bất kỳ lúc nào
+                            </Text>
+                        </View>
+                    </Pressable>
+
+                </View>
             </View>
+
+            {/* ── Pause confirm modal ── */}
+            <PauseConfirmModal
+                visible={pauseDialog}
+                onCancel={() => setPauseDialog(false)}
+                onConfirm={handlePauseConfirmed}
+            />
+
+            {/* ── End session confirm modal (2 steps) ── */}
+            <EndSessionModal
+                visible={endDialog}
+                step={endStep}
+                onCancel={() => { setEndDialog(false); setEndStep(1); }}
+                onStep1={() => setEndStep(2)}
+                onStep2={handleEndStep2}
+            />
         </SafeAreaView>
     );
 }

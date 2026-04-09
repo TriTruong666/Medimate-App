@@ -122,7 +122,7 @@ export default function LoginQRScreen() {
                     )}
                 </View>
 
-                <Pressable
+                {/* <Pressable
                     className="mt-6 rounded-[24px] p-5 bg-[#FFD700] border-2 border-black flex-row items-center shadow-md active:translate-y-1"
                     onPress={handlePickImage}
                     disabled={isPending}
@@ -135,7 +135,7 @@ export default function LoginQRScreen() {
                         <Text className="text-[12px] font-space-medium opacity-60">Dùng khi bạn có ảnh QR sẵn</Text>
                     </View>
                     <AntDesign name="arrow-right" size={20} color="black" />
-                </Pressable>
+                </Pressable> */}
             </View>
         </SafeAreaView>
     );
