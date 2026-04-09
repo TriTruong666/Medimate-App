@@ -128,7 +128,7 @@ function MemberAppointmentCard({
             </View>
 
             {/* --- Doctor Info --- */}
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+            {/* <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 }}>
                 <View style={{ width: 64, height: 64, backgroundColor: '#D9AEF6', borderRadius: 20, borderWidth: 2, borderColor: '#000', overflow: 'hidden' }}>
                     <Image source={{ uri: doctorAva }} style={{ width: '100%', height: '100%' }} />
                 </View>
@@ -140,7 +140,7 @@ function MemberAppointmentCard({
                         {doctorSpec}
                     </Text>
                 </View>
-            </View>
+            </View> */}
 
             {/* Phân cách */}
             <View style={{ height: 2, backgroundColor: 'rgba(0,0,0,0.06)', width: '100%', borderRadius: 2, marginBottom: 20 }} />
