@@ -431,6 +431,7 @@ export default function AppointmentsScreen() {
                         avatar: appt.doctorAvatar || appt.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
                         specialty: appt.specialty || appt.doctorSpecialty || "Nha khoa",
                         sessionId: res.data.consultanSessionId,
+                        startedAt: res.data.startedAt,
                         isCompleted: appt.status === 'Completed'
                     }
                 });
@@ -497,6 +498,7 @@ export default function AppointmentsScreen() {
                         avatar: appt.doctorAvatar || appt.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
                         specialty: appt.specialty || appt.doctorSpecialty || "Nha khoa",
                         sessionId: res.data.consultanSessionId,
+                        startedAt: res.data.startedAt,
                         isCompleted: appt.status === 'Completed'
                     }
                 });

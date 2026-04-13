@@ -19,16 +19,6 @@ export function useGetFamilyNotificationSetting(familyId: string | undefined) {
     });
 }
 
-export function useGetUserNotifications() {
-    return useQuery({
-        queryKey: ["notifications"],
-        queryFn: async () => {
-            const res = await NotificationApi.getUserNotifications();
-            if (!res.success) throw new Error(res.message);
-            return res.data;
-        },
-    });
-}
 
 // ======================= MUTATIONS =======================
 
@@ -53,20 +43,29 @@ export function useUpdateFamilyNotificationSetting() {
     });
 }
 
+export function useGetUserNotifications(memberId?: string) {
+    return useQuery({
+        queryKey: ["notifications", memberId],
+        queryFn: async () => {
+            const res = await NotificationApi.getUserNotifications(memberId);
+            if (!res.success) throw new Error(res.message);
+            return res.data;
+        },
+    });
+}
+
 export function useMarkNotificationAsRead() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (notificationId: string) => NotificationApi.markNotificationAsRead(notificationId),
-        onSuccess: (res) => {
+        // Khai báo rõ mutationFn nhận vào 1 Object
+        mutationFn: ({ notificationId, memberId }: { notificationId: string; memberId?: string }) =>
+            NotificationApi.markNotificationAsRead(notificationId, memberId),
+        onSuccess: (res, variables) => {
             if (res.success) {
-                // Tự động làm mới danh sách thông báo khi đánh dấu đọc thành công
-                queryClient.invalidateQueries({ queryKey: ["notifications"] });
+                queryClient.invalidateQueries({ queryKey: ["notifications", variables.memberId] });
             }
         },
-        onError: (error: any) => {
-            console.error("Lỗi khi đánh dấu đã đọc:", error);
-        }
     });
 }
 
@@ -75,17 +74,15 @@ export function useMarkAllNotificationsAsRead() {
     const toast = useToast();
 
     return useMutation({
-        mutationFn: () => NotificationApi.markAllNotificationsAsRead(),
-        onSuccess: (res) => {
+        // Khai báo rõ mutationFn nhận vào string (memberId)
+        mutationFn: (memberId?: string) => NotificationApi.markAllNotificationsAsRead(memberId),
+        onSuccess: (res, memberId) => {
             if (res.success) {
-                queryClient.invalidateQueries({ queryKey: ["notifications"] });
+                queryClient.invalidateQueries({ queryKey: ["notifications", memberId] });
                 toast.success("Thành công", "Đã đánh dấu đọc tất cả!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể đánh dấu đọc tất cả.");
             }
         },
-        onError: (error: any) => {
-            Alert.alert("Lỗi", error?.message || "Lỗi kết nối máy chủ.");
-        }
     });
 }

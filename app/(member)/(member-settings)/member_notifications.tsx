@@ -9,23 +9,27 @@ import {
     CheckCheck,
     Clock,
     Info,
+    MessageSquare,
+    Video,
     Zap
 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
     ActivityIndicator,
     FlatList,
+    Modal,
     Pressable,
     RefreshControl,
     Text,
-    View
+    View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// Giả sử bạn đã có các hook này trong useNotification.ts hoặc cần tạo mới dựa trên memberId
+// Tái sử dụng Modal đã được cập nhật logic .includes('APPOINTMENT') từ Manager
+import { NotificationDetailModal } from "@/app/(manager)/(settings)/notifications";
 import {
     useGetUserNotifications,
-    useMarkAllNotificationsAsRead, // Hook mới lấy theo MemberId
+    useMarkAllNotificationsAsRead,
     useMarkNotificationAsRead,
 } from "@/hooks/useNotification";
 import { NotificationData } from "@/types/Notification";
@@ -33,26 +37,45 @@ import { NotificationData } from "@/types/Notification";
 dayjs.extend(relativeTime);
 dayjs.locale("vi");
 
+// ─── Notification type config ────────────────────────────────────
 const TYPE_CONFIG: Record<string, { icon: any; color: string; bg: string; label: string }> = {
     REMINDER: { icon: Clock, color: "#F59E0B", bg: "#FEF3C7", label: "Nhắc nhở" },
     APPOINTMENT: { icon: Calendar, color: "#6366F1", bg: "#EDE9FE", label: "Lịch hẹn" },
+    CHAT: { icon: MessageSquare, color: "#0EA5E9", bg: "#E0F2FE", label: "Tin nhắn" },
+    SESSION: { icon: Video, color: "#10B981", bg: "#D1FAE5", label: "Phòng khám" },
     SYSTEM: { icon: Info, color: "#0EA5E9", bg: "#E0F2FE", label: "Hệ thống" },
     DEFAULT: { icon: Zap, color: "#8B5CF6", bg: "#F5F3FF", label: "Thông báo" },
 };
 
-function getTypeConfig(type: string) {
-    return TYPE_CONFIG[type?.toUpperCase()] ?? TYPE_CONFIG["DEFAULT"];
+export function getTypeConfig(type: string, title?: string) {
+    const notifType = type?.toUpperCase() || '';
+    const notifTitle = title?.toUpperCase() || '';
+
+    const isChatGroup = ['NEW_CHAT_MESSAGE'].includes(notifType);
+    const isSessionGroup = ['SESSION_STARTED', 'SESSION_IN_PROGRESS', 'SESSION_ENDED', 'SESSION_TIMEOUT', 'GUARDIAN_SESSION_INVITE'].includes(notifType);
+    const isAppointmentGroup = [
+        'NEW_APPOINTMENT', 'APPOINTMENT_UPDATE', 'APPOINTMENT_CANCELLED', 'UPCOMING_APPOINTMENT'
+    ].includes(notifType) || notifType.includes('APPOINTMENT') || notifTitle.includes('LỊCH');
+
+    if (isChatGroup) return TYPE_CONFIG["CHAT"];
+    if (isSessionGroup) return TYPE_CONFIG["SESSION"];
+    if (isAppointmentGroup) return TYPE_CONFIG["APPOINTMENT"];
+
+    return TYPE_CONFIG[notifType] ?? TYPE_CONFIG["DEFAULT"];
 }
 
 export default function MemberNotificationsScreen() {
     const router = useRouter();
-    // Lấy memberId và memberName từ route params
-    const { memberId, memberName } = useLocalSearchParams<{ memberId: string; memberName: string }>();
+
+    // Lấy params và ép kiểu an toàn về string (Fix lỗi string | string[])
+    const params = useLocalSearchParams();
+    const memberId = params.memberId as string;
+    const memberName = params.memberName as string;
 
     const [selected, setSelected] = useState<NotificationData | null>(null);
 
-    // Lấy dữ liệu thông báo dành riêng cho Member này
-    const { data: notifications, isLoading, isFetching, refetch } = useGetUserNotifications();
+    const { data: notifications, isLoading, isFetching, refetch } = useGetUserNotifications(memberId);
+
     const { mutate: markAsRead } = useMarkNotificationAsRead();
     const { mutate: markAllRead, isPending: isMarkingAll } = useMarkAllNotificationsAsRead();
 
@@ -60,15 +83,19 @@ export default function MemberNotificationsScreen() {
 
     const handlePressNotification = (item: NotificationData) => {
         if (!item.isRead) {
-            markAsRead(item.notificationId);
+            markAsRead({ notificationId: item.notificationId, memberId: memberId });
         }
         setSelected(item);
     };
 
+    const handleMarkAllRead = () => {
+        markAllRead(memberId);
+    };
+
     const renderItem = ({ item }: { item: NotificationData }) => {
-        const cfg = getTypeConfig(item.type);
-        const IconComp = cfg.icon;
+        const cfg = getTypeConfig(item.type, item.title);
         const isRead = item.isRead;
+        const IconComp = cfg.icon;
 
         return (
             <Pressable
@@ -127,7 +154,6 @@ export default function MemberNotificationsScreen() {
 
     return (
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F9F6FC" }} edges={["top"]}>
-            {/* Header Neo-Brutalism */}
             <View className="flex-row items-center justify-between px-5 pt-3 pb-5">
                 <Pressable
                     onPress={() => router.back()}
@@ -144,7 +170,7 @@ export default function MemberNotificationsScreen() {
                 </View>
 
                 <Pressable
-                    onPress={() => markAllRead()}
+                    onPress={handleMarkAllRead}
                     disabled={isMarkingAll || unreadCount === 0}
                     style={{ backgroundColor: unreadCount > 0 ? "#A3E6A1" : "#F3F4F6", opacity: isMarkingAll ? 0.6 : 1 }}
                     className="w-12 h-12 border-2 border-black rounded-2xl items-center justify-center shadow-sm"
@@ -153,7 +179,6 @@ export default function MemberNotificationsScreen() {
                 </Pressable>
             </View>
 
-            {/* List Content */}
             <View className="flex-1 px-5">
                 {isLoading ? (
                     <View className="flex-1 items-center justify-center">
@@ -180,8 +205,21 @@ export default function MemberNotificationsScreen() {
                 )}
             </View>
 
-            {/* Detail Modal (Giữ nguyên logic của bạn) */}
-            {/* ... Modal Code ... */}
+            <Modal
+                visible={!!selected}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setSelected(null)}
+            >
+                {selected && (
+                    <NotificationDetailModal
+                        notification={selected}
+                        onClose={() => setSelected(null)}
+                        // [QUAN TRỌNG]: Điều hướng chính xác vào Lịch hẹn của Member
+                        onViewAppointment={() => router.push('/(member)/(appointment)/' as any)}
+                    />
+                )}
+            </Modal>
         </SafeAreaView>
     );
 }

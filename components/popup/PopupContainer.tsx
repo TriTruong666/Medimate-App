@@ -135,6 +135,7 @@ export const PopupContainer: React.FC = () => {
                     avatar={activePopup.data?.avatar}
                     specialty={activePopup.data?.specialty}
                     sessionId={activePopup.data?.sessionId}
+                    startedAt={activePopup.data?.startedAt}
                     isCompleted={activePopup.data?.isCompleted}
                     onClose={handleClose}
                 />

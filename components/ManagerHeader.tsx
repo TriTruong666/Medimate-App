@@ -41,7 +41,7 @@ export default function ManagerHeader(_props: ManagerHeaderProps) {
     const currentMemberId = userId ? undefined : effectiveMemberId;
 
     // 3. Lấy số thông báo (Lấy theo memberId hiện tại nếu có)
-    const { data: notifications } = useGetUserNotifications();
+    const { data: notifications } = useGetUserNotifications(currentMemberId);
     const unreadCount = (notifications || []).filter(n => !n.isRead).length;
 
     // LOGIC ĐIỀU HƯỚNG THÔNG MINH
