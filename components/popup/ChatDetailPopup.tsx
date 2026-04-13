@@ -37,6 +37,7 @@ interface ChatDetailPopupProps {
     specialty?: string;
     sessionId?: string;
     appointmentId?: string;
+    startedAt?: string | null;
     isCompleted?: boolean;
     onClose: () => void;
 }
@@ -60,6 +61,7 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     specialty = "Nha khoa",
     sessionId,
     appointmentId,
+    startedAt,
     isCompleted = false,
     onClose,
 }) => {
@@ -69,8 +71,46 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const [isDownloading, setIsDownloading] = useState(false);
+    const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const toast = useToast();
+
+    React.useEffect(() => {
+        if (!startedAt || isCompleted) return;
+        
+        const startTime = new Date(startedAt).getTime();
+        const endTime = startTime + 125 * 60 * 1000;
+
+        const updateTimer = () => {
+            const now = Date.now();
+            const diff = endTime - now;
+            
+            if (diff <= 0) {
+                setTimeLeft("Đã hết giờ");
+                return false;
+            }
+            
+            const h = Math.floor(diff / (1000 * 60 * 60));
+            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const s = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            const timeStr = [
+                h > 0 ? h.toString().padStart(2, '0') : null,
+                m.toString().padStart(2, '0'),
+                s.toString().padStart(2, '0')
+            ].filter(Boolean).join(':');
+            
+            setTimeLeft(timeStr);
+            return true;
+        };
+
+        if (updateTimer()) {
+            const interval = setInterval(() => {
+                if (!updateTimer()) clearInterval(interval);
+            }, 1000);
+            return () => clearInterval(interval);
+        }
+    }, [startedAt, isCompleted]);
 
     React.useEffect(() => {
         if (!sessionId) return;
@@ -271,6 +311,15 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                         </Pressable>
                     </View>
                 </View>
+
+                {/* Optional Timer Banner */}
+                {!isCompleted && timeLeft && (
+                    <View style={{ backgroundColor: "#FEF3C7", paddingVertical: 8, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" }}>
+                        <Text style={{ fontFamily: "SpaceGrotesk_600SemiBold", fontSize: 12, color: "#D97706" }}>
+                            Thời gian chat còn lại: {timeLeft}
+                        </Text>
+                    </View>
+                )}
 
                 {/* 2. Chat History (Fills Flex Space) */}
                 <View style={{ flex: 1 }}>

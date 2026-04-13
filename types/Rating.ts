@@ -1,6 +1,7 @@
 export type RatingRequest = {
-    score: number;   // Từ 1 - 5
-    comment: string; // Nội dung đánh giá
+    score: number;
+    comment?: string;
+    image?: any; // Thêm dòng này (để type là any vì React Native File object hơi đặc thù)
 };
 
 export type RatingResponse = {

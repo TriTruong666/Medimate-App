@@ -16,9 +16,10 @@ import {
 } from '@expo-google-fonts/outfit';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useFonts } from 'expo-font';
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 import "../global.css";
 import { SignalRInjector } from "../hooks/useSignalR";
 import { ReminderNotificationInjector } from "../hooks/useReminderNotification";
@@ -31,13 +32,38 @@ import { PopupContainer } from "../components/popup/PopupContainer";
 import { ToastContainer } from "../components/toast/ToastContainer";
 import FloatingVideoCall from "../components/video/FloatingVideoCall";
 
-import { authSessionAtom, initAuthAtom } from '../stores/authStore';
+import { authSessionAtom, initAuthAtom, kickOutAtom } from '../stores/authStore';
 import { useAtom, useSetAtom } from 'jotai';
 
 export default function RootLayout() {
   const [queryClient] = useState(() => new QueryClient());
   const initAuth = useSetAtom(initAuthAtom);
   const [session] = useAtom(authSessionAtom);
+  const [kickOut, setKickOut] = useAtom(kickOutAtom);
+  const router = useRouter();
+
+  // ─ Xử lý kick-out khi interceptor hoặc SignalR gửi signal ─────────────────
+  useEffect(() => {
+    if (!kickOut) return;
+
+    const { message, isKickedOut } = kickOut;
+
+    // Reset signal trước
+    setKickOut(null);
+
+    // 1. Navigate về welcome NGAY LẬP TỨC (không chờ user bấm gì)
+    router.replace('/welcome');
+
+    // 2. Show Alert SAU khi welcome đã render (dùng timeout nhỏ để đảm bảo)
+    setTimeout(() => {
+      Alert.alert(
+        isKickedOut ? '⚠️ Cảnh báo bảo mật' : 'Phiên hết hạn',
+        message,
+        [{ text: 'Đồng ý', style: 'default' }],
+        { cancelable: true }
+      );
+    }, 500);
+  }, [kickOut]);
 
   const [loaded] = useFonts({
     SpaceGrotesk_300Light,

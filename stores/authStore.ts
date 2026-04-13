@@ -16,6 +16,10 @@ export const authSessionAtom = atom<UserSession | null | undefined>(null);
 // Atom for token (can be used for requests)
 export const accessTokenAtom = atom<string | null>(null);
 
+// ── Kick-out signal ── 
+// Interceptor set atom này khi nhận 401 → _layout.tsx lắng nghe và navigate
+export const kickOutAtom = atom<{ message: string; isKickedOut: boolean } | null>(null);
+
 /**
  * Helper to initialize auth state from SecureStore
  */

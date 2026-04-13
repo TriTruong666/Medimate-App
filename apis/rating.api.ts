@@ -10,7 +10,28 @@ export async function createRating(
     data: RatingRequest
 ): Promise<BaseResponse<RatingResponse>> {
     try {
-        const res = await axiosClient.post(`/api/v1/ratings/session/${sessionId}`, data);
+        // 1. CHUYỂN ĐỔI JSON THÀNH FORM DATA
+        const formData = new FormData();
+
+        // Form Data chỉ nhận chuỗi (string) hoặc File (Blob), nên phải ép kiểu số sang chuỗi
+        formData.append("Score", data.score.toString());
+
+        if (data.comment) {
+            formData.append("Comment", data.comment);
+        }
+
+        // Nếu sau này bạn có truyền ảnh (file) từ UI, bạn thêm logic này:
+        if (data.image) {
+            formData.append("Image", data.image as any);
+        }
+
+        // 2. GỬI ĐI VỚI HEADER MULTIPART
+        const res = await axiosClient.post(`/api/v1/ratings/session/${sessionId}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
