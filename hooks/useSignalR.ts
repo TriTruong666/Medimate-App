@@ -4,9 +4,10 @@ import * as SecureStore from "expo-secure-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { Platform, AppState, AppStateStatus } from "react-native";
 import { useAtomValue } from "jotai";
-import { authSessionAtom } from "@/stores/authStore";
+import { authSessionAtom, kickOutAtom } from "@/stores/authStore";
 import { useToast } from "@/stores/toastStore";
 import { usePopup } from "@/stores/popupStore";
+import { getDefaultStore } from "jotai";
 
 let connection: signalR.HubConnection | null = null;
 const base_net_url = process.env.EXPO_PUBLIC_NET_API_URL;
@@ -106,7 +107,29 @@ export function useAppSignalR() {
                 queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
             });
 
-            // ── Cuộc gọi 3 bên: Mời Guardian tham gia ─────────────────────────────
+            // ── Force Logout: Bị đá văng do thiết bị khác đăng nhập ──────────────────────
+            // Backend emit event này ngay khi xác nhận đăng nhập máy mới thành công
+            connection.on("ForceLogout", async (data: { message?: string } = {}) => {
+                console.log("🔴 [SignalR] ForceLogout received - Đang kick-out thiết bị này...");
+
+                // 1. Dừng SignalR connection trước để không nhận thêm event
+                if (connection) {
+                    try { await connection.stop(); } catch { /* ignore */ }
+                    connection = null;
+                }
+
+                // 2. Xóa token khỏi SecureStore
+                await SecureStore.deleteItemAsync("accessToken");
+
+                // 3. Dùng getDefaultStore() (outside component) để set atoms
+                const store = getDefaultStore();
+                store.set(authSessionAtom, undefined);
+
+                // 4. Set kick-out signal → _layout.tsx sẽ xử lý Alert + navigate
+                const message = data?.message || "Tài khoản của bạn đã đăng nhập trên một thiết bị khác.";
+                store.set(kickOutAtom, { message, isKickedOut: true });
+            });
+
             connection.on("GuardianSessionInvite", (data: {
                 sessionId: string;
                 memberName: string;

@@ -1,7 +1,9 @@
 import React, { useRef, useState } from 'react';
 import {
     Animated,
+    Dimensions,
     KeyboardAvoidingView,
+    PanResponder,
     Platform,
     Pressable,
     ScrollView,
@@ -10,6 +12,13 @@ import {
     View,
 } from 'react-native';
 import { Bot, ChevronRight, Send, X } from 'lucide-react-native';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+
+const BUBBLE_W = 52;
+const BUBBLE_H = 90;
+const MARGIN = 0;
+const BOTTOM_OFFSET = 120;
 
 // ─── Hardcoded AI responses ───────────────────────────────────────────────────
 const AI_SUGGESTIONS = [
@@ -56,6 +65,58 @@ export default function AIChatBubble() {
 
     const slideAnim = useRef(new Animated.Value(0)).current;
 
+    // ── Draggable position ────────────────────────────────────────────────────
+    // Vị trí ban đầu: cạnh phải, bottom = BOTTOM_OFFSET
+    const posX = useRef(new Animated.Value(SCREEN_W - BUBBLE_W - MARGIN)).current;
+    const posY = useRef(new Animated.Value(SCREEN_H - BOTTOM_OFFSET - BUBBLE_H)).current;
+    const lastX = useRef(SCREEN_W - BUBBLE_W - MARGIN);
+    const lastY = useRef(SCREEN_H - BOTTOM_OFFSET - BUBBLE_H);
+
+    const panResponder = useRef(
+        PanResponder.create({
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: (_, g) =>
+                Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+            onPanResponderGrant: () => {
+                posX.setOffset(lastX.current);
+                posY.setOffset(lastY.current);
+                posX.setValue(0);
+                posY.setValue(0);
+            },
+            onPanResponderMove: Animated.event(
+                [null, { dx: posX, dy: posY }],
+                { useNativeDriver: false }
+            ),
+            onPanResponderRelease: (_, g) => {
+                posX.flattenOffset();
+                posY.flattenOffset();
+
+                // Snap sang trái hoặc phải
+                const newX = g.moveX < SCREEN_W / 2
+                    ? MARGIN
+                    : SCREEN_W - BUBBLE_W - MARGIN;
+                const rawY = lastY.current + g.dy;
+                const newY = Math.max(60, Math.min(rawY, SCREEN_H - BUBBLE_H - 90));
+
+                lastX.current = newX;
+                lastY.current = newY;
+
+                Animated.spring(posX, {
+                    toValue: newX,
+                    useNativeDriver: false,
+                    damping: 18,
+                    stiffness: 180,
+                }).start();
+                Animated.spring(posY, {
+                    toValue: newY,
+                    useNativeDriver: false,
+                    damping: 18,
+                    stiffness: 180,
+                }).start();
+            },
+        })
+    ).current;
+
     const openChat = () => {
         setIsOpen(true);
         Animated.spring(slideAnim, {
@@ -86,7 +147,6 @@ export default function AIChatBubble() {
         setMessages(newMessages);
         setInput('');
 
-        // Simulate AI thinking then reply
         setTimeout(() => {
             const reply = AI_RESPONSES[msg] || `🤖 Cảm ơn câu hỏi của bạn về "${msg}".\n\nHiện tại tôi đang trong giai đoạn phát triển và chưa thể trả lời câu hỏi này. Vui lòng liên hệ bác sĩ hoặc dược sĩ để được tư vấn chính xác nhất! 💙`;
             setMessages(prev => [
@@ -99,36 +159,40 @@ export default function AIChatBubble() {
         scrollRef.current?.scrollToEnd({ animated: true });
     };
 
+    // Chat panel slide từ phải vào
     const chatTranslateX = slideAnim.interpolate({
         inputRange: [0, 1],
         outputRange: [340, 0],
     });
 
+    // Bubble ở bên trái → panel trượt sang phải; ở phải → panel sang trái
+    // Chỉ cần panel không bị cắt là được
+
     return (
         <>
-            {/* ── Floating Toggle Button (collapsed) ── */}
+            {/* ── Floating Toggle Button (draggable) ── */}
             {!isOpen && (
-                <View style={{
-                    position: 'absolute',
-                    right: 0,
-                    bottom: 120,
-                    zIndex: 999,
-                }}>
+                <Animated.View
+                    style={{
+                        position: 'absolute',
+                        zIndex: 999,
+                        transform: [{ translateX: posX }, { translateY: posY }],
+                    }}
+                    {...panResponder.panHandlers}
+                >
                     <Pressable
                         onPress={openChat}
                         style={{
                             backgroundColor: '#B3354B',
                             borderWidth: 2,
                             borderColor: '#000',
-                            borderRightWidth: 0,
-                            borderTopLeftRadius: 20,
-                            borderBottomLeftRadius: 20,
+                            borderRadius: 20,
                             paddingVertical: 14,
                             paddingHorizontal: 12,
                             alignItems: 'center',
                             gap: 6,
                             shadowColor: '#000',
-                            shadowOffset: { width: -3, height: 4 },
+                            shadowOffset: { width: 3, height: 4 },
                             shadowOpacity: 1,
                             shadowRadius: 0,
                             elevation: 6,
@@ -137,7 +201,7 @@ export default function AIChatBubble() {
                         <Bot size={20} color="#fff" strokeWidth={2.5} />
                         <ChevronRight size={14} color="rgba(255,255,255,0.7)" strokeWidth={3} />
                     </Pressable>
-                </View>
+                </Animated.View>
             )}
 
             {/* ── Expanded Chat Panel ── */}
@@ -217,6 +281,7 @@ export default function AIChatBubble() {
                                 contentContainerStyle={{ padding: 12, gap: 10 }}
                                 showsVerticalScrollIndicator={false}
                                 onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+                                keyboardShouldPersistTaps="handled"
                             >
                                 {messages.map((m) => (
                                     <View key={m.id} style={{
@@ -237,7 +302,7 @@ export default function AIChatBubble() {
                                         <View style={{
                                             maxWidth: '88%',
                                             backgroundColor: m.role === 'user' ? '#000' : '#F8FAFC',
-                                            borderRadius: m.role === 'user' ? 14 : 14,
+                                            borderRadius: 14,
                                             borderTopRightRadius: m.role === 'user' ? 4 : 14,
                                             borderTopLeftRadius: m.role === 'ai' ? 4 : 14,
                                             borderWidth: 1.5,
@@ -272,6 +337,7 @@ export default function AIChatBubble() {
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingVertical: 8 }}
                                 style={{ borderTopWidth: 1.5, borderTopColor: 'rgba(0,0,0,0.06)', maxHeight: 52 }}
+                                keyboardShouldPersistTaps="handled"
                             >
                                 {AI_SUGGESTIONS.map((s) => (
                                     <Pressable
@@ -286,8 +352,7 @@ export default function AIChatBubble() {
                                         <Text style={{
                                             fontFamily: 'SpaceGrotesk_600SemiBold',
                                             fontSize: 11, color: '#000',
-                                            whiteSpace: 'nowrap',
-                                        } as any}>
+                                        }}>
                                             {s}
                                         </Text>
                                     </Pressable>

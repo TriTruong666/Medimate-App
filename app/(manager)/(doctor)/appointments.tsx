@@ -98,8 +98,13 @@ function AppointmentCard({
     const memberGender = merged.memberGender || 'Chưa rõ';
     const memberAge = merged.memberDateOfBirth ? `${dayjs().diff(dayjs(merged.memberDateOfBirth), 'year')} tuổi` : 'N/A';
 
-    // Thời gian
-    const timeDisplay = merged.appointmentTime || 'Chờ xác nhận';
+    // Thời gian — format gọn để không bị xuống dòng
+    const rawTime: string = merged.appointmentTime || '';
+    // Tách "7h30 - 8h30" → startTime = "7h30", endTime = "8h30"
+    const timeParts = rawTime.split(' - ');
+    const startTime = timeParts[0]?.trim() || rawTime;
+    const endTime = timeParts[1]?.trim() || '';
+    const timeDisplay = rawTime || 'Chờ xác nhận';
 
     // Logic enable video call: cho phép 5 phút trước giờ bắt đầu
     const canJoinVideo = (() => {
@@ -212,7 +217,12 @@ function AppointmentCard({
                         <Calendar size={16} color="#64748B" strokeWidth={2.5} />
                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#64748B', textTransform: 'uppercase' }}>Ngày khám</Text>
                     </View>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }}>
+                    <Text
+                        style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.75}
+                    >
                         {dayjs(merged.appointmentDate).format('DD/MM/YYYY')}
                     </Text>
                 </View>
@@ -220,11 +230,22 @@ function AppointmentCard({
                 <View style={{ flex: 1, backgroundColor: '#F8FAFC', padding: 14, borderRadius: 18, borderWidth: 2, borderColor: '#000' }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
                         <Clock size={16} color="#B3354B" strokeWidth={2.5} />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#64748B', textTransform: 'uppercase' }}>Giờ bắt đầu</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#64748B', textTransform: 'uppercase' }}>Giờ hẹn</Text>
                     </View>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }}>
-                        {timeDisplay}
-                    </Text>
+                    {endTime ? (
+                        <View>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                                {startTime}
+                            </Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#94A3B8' }} numberOfLines={1}>
+                                → {endTime}
+                            </Text>
+                        </View>
+                    ) : (
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>
+                            {timeDisplay}
+                        </Text>
+                    )}
                 </View>
             </View>
 

@@ -9,6 +9,7 @@ import {
     CheckCheck,
     Clock,
     Info,
+    MessageSquare,
     Zap
 } from "lucide-react-native";
 import React, { useState } from "react";
@@ -55,6 +56,15 @@ function NotificationDetailModal({
 }) {
     const cfg = getTypeConfig(notification.type);
     const IconComp = cfg.icon;
+    const router = useRouter();
+    const notifType = (notification.type || '').toUpperCase();
+
+    const handleNavigate = () => {
+        onClose();
+        if (notifType === 'APPOINTMENT') {
+            setTimeout(() => router.push('/(manager)/(doctor)/appointments' as any), 300);
+        }
+    };
 
     return (
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
@@ -117,18 +127,56 @@ function NotificationDetailModal({
                     {dayjs(notification.createdAt).format("HH:mm — DD/MM/YYYY")}
                 </Text>
 
+                {/* Action CTA - chỉ hiện với loại APPOINTMENT */}
+                {notifType === 'APPOINTMENT' && (
+                    <Pressable
+                        onPress={handleNavigate}
+                        style={({ pressed }) => ({
+                            marginTop: 16,
+                            backgroundColor: '#6366F1',
+                            borderRadius: 16,
+                            paddingVertical: 14,
+                            alignItems: 'center',
+                            flexDirection: 'row',
+                            justifyContent: 'center',
+                            gap: 8,
+                            borderWidth: 2,
+                            borderColor: '#000',
+                            shadowColor: '#000',
+                            shadowOffset: { width: pressed ? 0 : 3, height: pressed ? 0 : 3 },
+                            shadowOpacity: 1,
+                            shadowRadius: 0,
+                            elevation: pressed ? 0 : 3,
+                            transform: [{ translateY: pressed ? 2 : 0 }],
+                        })}
+                    >
+                        <Calendar size={16} color="#fff" strokeWidth={2.5} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Xem lịch hẹn
+                        </Text>
+                    </Pressable>
+                )}
+
                 {/* Close btn */}
                 <Pressable
                     onPress={onClose}
                     style={{
-                        marginTop: 20,
-                        backgroundColor: "#000",
+                        marginTop: notifType === 'APPOINTMENT' ? 10 : 20,
+                        backgroundColor: notifType === 'APPOINTMENT' ? '#F8FAFC' : '#000',
                         borderRadius: 16,
                         paddingVertical: 16,
-                        alignItems: "center",
+                        alignItems: 'center',
+                        borderWidth: notifType === 'APPOINTMENT' ? 2 : 0,
+                        borderColor: 'rgba(0,0,0,0.12)',
                     }}
                 >
-                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 15, color: "#FFF", textTransform: "uppercase", letterSpacing: 1 }}>
+                    <Text style={{
+                        fontFamily: "SpaceGrotesk_700Bold",
+                        fontSize: 15,
+                        color: notifType === 'APPOINTMENT' ? '#64748B' : '#FFF',
+                        textTransform: "uppercase",
+                        letterSpacing: 1,
+                    }}>
                         Đóng
                     </Text>
                 </Pressable>

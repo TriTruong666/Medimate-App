@@ -15,7 +15,7 @@ import { Image, Pressable, ScrollView, Text, View, ActivityIndicator } from "rea
 import { popupAtom } from "../../stores/popupStore";
 import { useToast } from "../../stores/toastStore";
 import { BottomSheetBase } from "./BottomSheetBase";
-import { useGetFamilies, useGetFamilyMembers } from "../../hooks/useFamily";
+import { useGetFamilies, useGetFamilyMembers, useGetSubscription } from "../../hooks/useFamily";
 import { createAppointment } from "../../apis/appointment.api";
 import { router } from "expo-router";
 import dayjs from "dayjs";
@@ -36,6 +36,7 @@ export default function BookingConfirmPopup() {
 
     const { data: families, isLoading: isLoadingFamilies } = useGetFamilies();
     const { data: members, isLoading: isLoadingMembers } = useGetFamilyMembers(selectedFamilyId || undefined);
+    const { data: subscription, isLoading: isLoadingSubscription } = useGetSubscription(selectedFamilyId || undefined);
 
     // Auto-select personal family member initially if available
     useEffect(() => {
@@ -180,11 +181,22 @@ export default function BookingConfirmPopup() {
 
                             <View className="flex-row items-center bg-[#A3E6A1] border-2 border-black rounded-2xl px-4 py-4 shadow-sm">
                                 <Check size={20} color="#034B1D" strokeWidth={3.5} />
-                                <View className="ml-3 flex-1 flex-row items-center justify-between">
-                                    <View>
-                                        <Text className="text-[10px] font-space-bold text-black/30 uppercase leading-tight text-left">Phí dịch vụ</Text>
-                                        <Text className="text-sm font-space-bold text-[#2D5A27] text-left uppercase">Đã bao gồm (Gói Premium)</Text>
-                                    </View>
+                                <View className="ml-3 flex-1">
+                                    <Text className="text-[10px] font-space-bold text-black/30 uppercase leading-tight text-left">Phí dịch vụ</Text>
+                                    {isLoadingSubscription ? (
+                                        <Text className="text-sm font-space-bold text-[#2D5A27] text-left uppercase">Đang tải gói...</Text>
+                                    ) : subscription ? (
+                                        <View>
+                                            <Text className="text-sm font-space-bold text-[#2D5A27] text-left uppercase">
+                                                {subscription.packageName}
+                                            </Text>
+                                            <Text className="text-[10px] font-space-medium text-[#166534] text-left">
+                                                Còn {subscription.remainingConsultantCount}/{subscription.consultantLimit} buổi khám
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <Text className="text-sm font-space-bold text-[#DC2626] text-left uppercase">Chưa có gói dịch vụ</Text>
+                                    )}
                                 </View>
                             </View>
                         </View>
