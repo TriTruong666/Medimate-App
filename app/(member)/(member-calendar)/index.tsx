@@ -1,7 +1,9 @@
 import { useGetMemberById } from "@/hooks/useMember";
 import { useGetMemberDailyReminders, useGetMemberSchedules, useUpdateReminderAction } from "@/hooks/useSchedule";
+import { usePopup } from "@/stores/popupStore";
 import { ReminderResponse } from "@/types/Schedule";
 import { getDecodedToken } from "@/utils/token";
+import { PopupContainer } from "@/components/popup/PopupContainer";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import { useRouter } from "expo-router";
@@ -12,6 +14,7 @@ import {
   ChevronRight,
   Clock,
   LayoutGrid,
+  Settings,
   StretchHorizontal
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -24,6 +27,7 @@ dayjs.locale("vi");
 
 export default function MemberCalendarScreen() {
   const router = useRouter();
+  const popup = usePopup();
 
   // 1. Lấy thông tin Member hiện tại từ Token & Profile
   const [memberId, setMemberId] = useState<string | undefined>(undefined);
@@ -128,28 +132,58 @@ export default function MemberCalendarScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F9F6FC" }} edges={["top"]}>
       {/* Header */}
       <View style={{ paddingHorizontal: 20, paddingVertical: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 100 }}>
-        {/* Đối với tab Member, có thể không cần nút Back nếu đây là root TAB */}
-        {/* Nhưng ta cứ giữ để đồng bộ nếu cần (hoặc đổi thành tiêu đề) */}
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", color: "#000" }}>Lịch uống thuốc</Text>
         </View>
 
-        <View style={{ flexDirection: "row", backgroundColor: "#fff", borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, padding: 3 }}>
+        <View style={{ flexDirection: "row", backgroundColor: "#fff", borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, padding: 3, marginRight: 10 }}>
           <Pressable
             onPress={() => setViewMode("7days")}
             style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: viewMode === "7days" ? "#000" : "transparent" }}
           >
             <StretchHorizontal size={16} color={viewMode === "7days" ? "#FFF" : "#000"} />
-            {viewMode === "7days" && <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 10 }}>7 DAYS</Text>}
+            {viewMode === "7days" && <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 10 }}>7 NGÀY</Text>}
           </Pressable>
           <Pressable
             onPress={() => setViewMode("30days")}
             style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: viewMode === "30days" ? "#000" : "transparent" }}
           >
             <LayoutGrid size={16} color={viewMode === "30days" ? "#FFF" : "#000"} />
-            {viewMode === "30days" && <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 10 }}>30 DAYS</Text>}
+            {viewMode === "30days" && <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 10 }}>30 NGÀY</Text>}
           </Pressable>
         </View>
+
+        <Pressable
+          onPress={() => memberId && popup.open({
+            type: 'preferred_times',
+            data: {
+              memberId,
+              initialTimes: memberProfile,
+              onSave: refetchReminders
+            }
+          })}
+          style={({ pressed }) => ({
+            paddingHorizontal: 14,
+            height: 44,
+            backgroundColor: pressed ? "#D9AEF6" : "#F3E8FF",
+            borderWidth: 2,
+            borderColor: BORDER_COLOR,
+            borderRadius: 14,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            shadowColor: "#000",
+            shadowOffset: { width: pressed ? 0 : 3, height: pressed ? 0 : 3 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: pressed ? 0 : 3,
+            transform: [{ translateY: pressed ? 3 : 0 }]
+          })}
+        >
+          <Settings size={18} color="#000" strokeWidth={2.5} />
+          <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, color: "#000", textTransform: "uppercase" }}>Giờ uống</Text>
+        </Pressable>
       </View>
 
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -295,6 +329,7 @@ export default function MemberCalendarScreen() {
           </View>
         </View>
       </ScrollView>
+      <PopupContainer />
     </SafeAreaView>
   );
 }

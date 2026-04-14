@@ -45,6 +45,7 @@ export default function ScanPrescriptionScreen() {
   const [photo, setPhoto] = useState<CameraCapturedPicture | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<ScanStep>("camera");
+  const [showConfirm, setShowConfirm] = useState(false);
   const { memberId } = useLocalSearchParams<{ memberId: string }>();
 
   React.useEffect(() => {
@@ -164,6 +165,11 @@ export default function ScanPrescriptionScreen() {
   };
 
   const handleSavePrescription = () => {
+    // Mở xác nhận trước khi lưu
+    setShowConfirm(true);
+  };
+
+  const doSavePrescription = () => {
     if (!memberId) return;
 
     const formatToISODate = (dateStr: string | undefined | null) => {
@@ -332,6 +338,14 @@ export default function ScanPrescriptionScreen() {
             contentContainerStyle={{ padding: 24, paddingBottom: 150 }}
             showsVerticalScrollIndicator={false}
           >
+            {/* AI Warning Banner */}
+            <View style={{ backgroundColor: "#FEF3C7", borderWidth: 2, borderColor: "#F59E0B", borderRadius: 16, padding: 14, marginBottom: 20, flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+              <Text style={{ fontSize: 20 }}>⚠️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#92400E", marginBottom: 2 }}>AI có thể nhận diện sai!</Text>
+                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#78350F", lineHeight: 18 }}>Ảnh mờ hoặc khó đọc có thể gây nhầm tên thuốc, liều lượng. Vui lòng kiểm tra kỹ từng mục trước khi lưu.</Text>
+              </View>
+            </View>
             {/* Info Card */}
             <View className="bg-white border-2 border-black rounded-[24px] p-6 shadow-md mb-8">
               <Text className="text-lg font-space-bold mb-5 text-black border-b-2 border-black/5 pb-2">
@@ -507,22 +521,60 @@ export default function ScanPrescriptionScreen() {
             </Pressable>
           </ScrollView>
 
-          <View className="absolute bottom-0 left-0 right-0 bg-[#F9F6FC] px-6 pb-10 pt-4 border-t-2 border-black/5">
+          <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#F9F6FC", paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, borderTopWidth: 2, borderTopColor: "rgba(0,0,0,0.05)" }}>
             <Pressable
               disabled={isPending || prescriptionData.medicines.length === 0}
               onPress={handleSavePrescription}
               className={`w-full py-5 rounded-[24px] border-2 border-black flex-row items-center justify-center gap-x-2 shadow-md active:translate-y-0.5 ${prescriptionData.medicines.length > 0 ? "bg-[#A3E6A1]" : "bg-gray-200 border-gray-400"} ${isPending ? "opacity-70" : ""}`}
+              style={({ pressed }) => ({
+                width: "100%", paddingVertical: 20, borderRadius: 24, borderWidth: 2, borderColor: "#000",
+                flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+                shadowColor: "#000",
+                shadowOffset: { width: pressed ? 0 : 4, height: pressed ? 0 : 4 },
+                shadowOpacity: 1, shadowRadius: 0, elevation: pressed ? 0 : 4,
+                transform: [{ translateY: pressed ? 4 : 0 }],
+                backgroundColor: prescriptionData.medicines.length > 0 ? "#A3E6A1" : "#E5E7EB",
+                opacity: isPending ? 0.7 : 1
+              })}
             >
               {isPending ? (
                 <ActivityIndicator color="black" />
               ) : (
                 <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
               )}
-              <Text className={`text-lg font-space-bold uppercase ${prescriptionData.medicines.length > 0 ? "text-black" : "text-gray-500"}`}>
+              <Text style={{ fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", textTransform: "uppercase", color: prescriptionData.medicines.length > 0 ? "#000" : "#9CA3AF" }}>
                 {isPending ? "Đang lưu..." : "Lưu Đơn Thuốc Này"}
               </Text>
             </Pressable>
           </View>
+
+          {/* Confirmation Modal */}
+          {showConfirm && (
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+              <View style={{ backgroundColor: "#FFFBEB", borderWidth: 2.5, borderColor: "#000", borderRadius: 28, padding: 28, width: "100%", shadowColor: "#000", shadowOffset: { width: 6, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6 }}>
+                <Text style={{ fontSize: 26, textAlign: "center", marginBottom: 8 }}>🤖</Text>
+                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, color: "#000", textAlign: "center", marginBottom: 10 }}>Xác nhận trước khi lưu</Text>
+                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 14, color: "#44403C", textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
+                  AI có thể nhận diện sai lệch. Bạn đã kiểm tra kỹ{" "}
+                  <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#92400E" }}>tên thuốc, liều lượng và cách dùng</Text>{" "}trước khi lưu chưa?
+                </Text>
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Pressable
+                    onPress={() => setShowConfirm(false)}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#fff", alignItems: "center" }}
+                  >
+                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>Kiểm tra lại</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => { setShowConfirm(false); doSavePrescription(); }}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#A3E6A1", alignItems: "center" }}
+                  >
+                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>Đã kiểm tra, lưu!</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       );
     }

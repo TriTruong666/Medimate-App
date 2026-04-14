@@ -1,6 +1,7 @@
 import * as ScheduleApi from "@/apis/schedule.api";
 import {
     CreateBulkScheduleRequest,
+    UpdatePreferredTimesRequest,
     UpdateReminderActionRequest,
     UpdateScheduleDetailRequest,
     UpdateScheduleRequest
@@ -195,6 +196,27 @@ export function useSnoozeReminder() {
                 Alert.alert("Thành công", "Đã hoãn báo thức!");
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể hoãn báo thức.");
+            }
+        },
+        onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),
+    });
+}
+
+export function useUpdatePreferredTimes() {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ memberId, data }: { memberId: string; data: UpdatePreferredTimesRequest }) =>
+            ScheduleApi.updatePreferredTimes(memberId, data), // Sửa ScheduleApi thành tên import API tương ứng của bạn
+        onSuccess: (res, variables) => {
+            if (res.success) {
+                // Cập nhật lại cache của các lịch trình hoặc thông tin member liên quan
+                queryClient.invalidateQueries({ queryKey: ["member-schedules", variables.memberId] });
+                queryClient.invalidateQueries({ queryKey: ["member-detail", variables.memberId] });
+
+                Alert.alert("Thành công", "Đã cập nhật giờ ưu tiên uống thuốc!");
+            } else {
+                Alert.alert("Lỗi", res.message || "Không thể cập nhật giờ ưu tiên.");
             }
         },
         onError: (error: any) => Alert.alert("Lỗi kết nối", error?.message),

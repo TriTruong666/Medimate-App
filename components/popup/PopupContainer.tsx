@@ -19,6 +19,7 @@ import { GuardianInvitePopup } from './GuardianInvitePopup';
 import RatingPopup from './RatingPopup';
 import ViewRatingPopup from './ViewRatingPopup';
 import { DoctorInfoPopup } from './DoctorInfoPopup';
+import { PreferredTimesPopup } from './PreferredTimesPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -170,6 +171,15 @@ export const PopupContainer: React.FC = () => {
                     fallbackAvatar={activePopup.data?.avatar}
                     fallbackSpecialty={activePopup.data?.specialty}
                     onClose={handleClose}
+                />
+            )}
+
+            {activePopup.type === 'preferred_times' && (
+                <PreferredTimesPopup
+                    memberId={activePopup.data.memberId}
+                    initialTimes={activePopup.data.initialTimes}
+                    onClose={handleClose}
+                    onSave={activePopup.data.onSave}
                 />
             )}
         </Modal>

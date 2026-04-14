@@ -75,3 +75,10 @@ export type UpdateReminderActionRequest = {
     notes?: string | null;
     actualTime?: string | null;
 };
+
+export type UpdatePreferredTimesRequest = {
+    morningTime: string;    // VD: "08:00:00"
+    noonTime: string;       // VD: "12:00:00"
+    afternoonTime: string;  // VD: "17:00:00"
+    eveningTime: string;    // VD: "20:00:00"
+};

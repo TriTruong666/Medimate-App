@@ -25,4 +25,8 @@ export type FamilyMember = {
     role: "Owner" | "Member";
     avatarUrl: string | null;
     isActive: boolean;
+    morningTime?: string;
+    noonTime?: string;
+    afternoonTime?: string;
+    eveningTime?: string;
 };

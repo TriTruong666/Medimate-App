@@ -1,4 +1,7 @@
+import { PopupContainer } from "@/components/popup/PopupContainer";
+import { useGetMemberById } from "@/hooks/useMember";
 import { useGetMemberDailyReminders, useGetMemberSchedules, useUpdateReminderAction } from "@/hooks/useSchedule";
+import { usePopup } from "@/stores/popupStore";
 import { ReminderResponse } from "@/types/Schedule";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
@@ -16,8 +19,9 @@ import {
   LayoutGrid,
   Plus,
   QrCode,
+  Settings,
   StretchHorizontal,
-  X,
+  X
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Dimensions, Pressable, ScrollView, Text, View } from "react-native";
@@ -35,6 +39,9 @@ export default function MemberScheduleScreen() {
     memberId: string;
     memberName: string;
   }>();
+
+  const popup = usePopup();
+  const { data: memberDetail } = useGetMemberById(memberId);
 
   const [viewMode, setViewMode] = useState<"7days" | "30days">("7days");
   const [selectedDateStr, setSelectedDateStr] = useState(dayjs().format("YYYY-MM-DD"));
@@ -140,10 +147,24 @@ export default function MemberScheduleScreen() {
 
         <View style={{ zIndex: 200, flexDirection: "row", gap: 10 }}>
           <Pressable
+            onPress={() => popup.open({
+              type: 'preferred_times',
+              data: {
+                memberId,
+                initialTimes: memberDetail,
+                onSave: refetchReminders
+              }
+            })}
+            style={{ width: 44, height: 44, backgroundColor: "#FFF", borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, alignItems: "center", justifyContent: "center" }}
+          >
+            <Settings size={18} color="#000" strokeWidth={2.5} />
+
+          </Pressable>
+          <Pressable
             onPress={() => router.push({ pathname: "/(manager)/(prescription)/member_prescriptions", params: { memberId, memberName } } as any)}
             style={{ width: 44, height: 44, backgroundColor: "#FFF", borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, alignItems: "center", justifyContent: "center" }}
           >
-             <FileText size={22} color="#000" strokeWidth={2.5} />
+            <FileText size={22} color="#000" strokeWidth={2.5} />
           </Pressable>
           <Pressable
             onPress={() => setShowAddMenu(!showAddMenu)}
@@ -317,6 +338,7 @@ export default function MemberScheduleScreen() {
           </View>
         </View>
       </ScrollView>
+      <PopupContainer />
     </SafeAreaView>
   );
 }
@@ -410,7 +432,7 @@ function TimelineItem({
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontFamily: "SpaceGrotesk_700Bold", color: "#000", marginBottom: 4 }}>{med.medicineName}</Text>
-                  
+
                   {cleanDose ? (
                     <Text style={{ fontSize: 13, fontFamily: "SpaceGrotesk_600SemiBold", color: "#F59E0B", marginBottom: 2 }}>
                       💊 Liều uống: <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#D97706" }}>{cleanDose}</Text>

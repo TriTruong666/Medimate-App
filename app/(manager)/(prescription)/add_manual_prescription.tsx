@@ -17,6 +17,7 @@ import { useCreatePrescription } from "@/hooks/usePrescription";
 import { UpsertPrescriptionRequest } from "@/types/Prescription";
 import {
     KeyboardAvoidingView,
+    Modal,
     Platform,
     Pressable,
     ScrollView,
@@ -39,6 +40,7 @@ export type MedicineData = {
 export default function AddManualPrescriptionScreen() {
     const toast = useToast();
     const popup = usePopup();
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const [prescriptionData, setPrescriptionData] = useState({
         prescriptionCode: "MED-" + Math.random().toString(36).substring(7).toUpperCase(),
@@ -66,6 +68,10 @@ export default function AddManualPrescriptionScreen() {
             return;
         }
         if (!memberId) return;
+        setShowConfirm(true);
+    };
+
+    const doSavePrescription = () => {
 
         const formatToISODate = (dateStr: string | undefined | null) => {
             if (!dateStr) return new Date().toISOString();
@@ -376,6 +382,34 @@ export default function AddManualPrescriptionScreen() {
                 </Pressable>
             </View>
             <PopupContainer />
+
+            {/* Confirmation Modal */}
+            {showConfirm && (
+                <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", zIndex: 999, justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <View style={{ backgroundColor: "#fff", borderWidth: 2.5, borderColor: "#000", borderRadius: 28, padding: 28, width: "100%", shadowColor: "#000", shadowOffset: { width: 6, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6 }}>
+                        <Text style={{ fontSize: 26, textAlign: "center", marginBottom: 8 }}>📝</Text>
+                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, color: "#000", textAlign: "center", marginBottom: 10 }}>Xác nhận lưu đơn thuốc</Text>
+                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 14, color: "#374151", textAlign: "center", lineHeight: 22, marginBottom: 24 }}>
+                            Thông tin đơn thuốc sẽ được lưu vĩnh viễn. Bạn chắc chắn rằng{" "}
+                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#1D4ED8" }}>tên thuốc, liều lượng và hướng dẫn</Text>{" "}là chính xác?
+                        </Text>
+                        <View style={{ flexDirection: "row", gap: 12 }}>
+                            <Pressable
+                                onPress={() => setShowConfirm(false)}
+                                style={{ flex: 1, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#fff", alignItems: "center" }}
+                            >
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>Hủy</Text>
+                            </Pressable>
+                            <Pressable
+                                onPress={() => { setShowConfirm(false); doSavePrescription(); }}
+                                style={{ flex: 1, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#A3E6A1", alignItems: "center" }}
+                            >
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>Xác nhận lưu</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            )}
         </SafeAreaView>
     );
 }

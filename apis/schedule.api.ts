@@ -3,6 +3,7 @@ import {
     CreateBulkScheduleRequest,
     ReminderResponse,
     ScheduleResponse,
+    UpdatePreferredTimesRequest,
     UpdateReminderActionRequest,
     UpdateScheduleDetailRequest,
     UpdateScheduleRequest
@@ -127,6 +128,19 @@ export async function snoozeReminder(reminderId: string, delayMinutes: number): 
                 'Content-Type': 'application/json'
             }
         });
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+export async function updatePreferredTimes(
+    memberId: string,
+    data: UpdatePreferredTimesRequest
+): Promise<BaseResponse<boolean>> {
+    try {
+        const res = await axiosClient.put(`/api/v1/members/${memberId}/preferred-times`, data);
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
