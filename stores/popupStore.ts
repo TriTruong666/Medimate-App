@@ -20,6 +20,7 @@ export type PopupType =
     | 'rate_doctor'
     | 'view_rating'
     | 'doctor_info'
+    | 'preferred_times'
     | null;
 
 export type PopupConfirmData = {
