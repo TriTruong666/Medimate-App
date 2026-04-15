@@ -264,12 +264,12 @@ function MemberAppointmentCard({
                                     }
                                 ])}
                             >
-                                <View style={{ width: 38, height: 38, backgroundColor: '#FEF3C7', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
+                                <View style={{ padding: 5, backgroundColor: '#FEF3C7', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
                                     <MessageSquare size={18} color="#000" strokeWidth={2.5} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000', marginLeft: 12 }} numberOfLines={1}>
+                                        Hồ sơ tư vấn & Đơn thuốc
+                                    </Text>
                                 </View>
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
-                                    Hồ sơ tư vấn & Đơn thuốc
-                                </Text>
                             </Pressable>
                         </View>
                     );
