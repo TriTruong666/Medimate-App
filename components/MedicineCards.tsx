@@ -1,7 +1,7 @@
 import dayjs from "dayjs";
-import { CalendarCheck, Clock } from "lucide-react-native";
+import { CalendarCheck, Clock, Pill } from "lucide-react-native";
 import React from "react";
-import { Image, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 
 export function ReminderCard({ item }: { item: any }) {
     const isTaken = item.status === "Taken";
@@ -55,6 +55,7 @@ const LOG_STATUS_CONFIG: Record<string, { bg: string; border: string; text: stri
 };
 
 export function LogCard({ item }: { item: any }) {
+    const [expanded, setExpanded] = React.useState(false);
     const cfg = LOG_STATUS_CONFIG[item.status] || { bg: '#FEF3C7', border: '#F59E0B', text: '#92400E', label: item.status };
 
     const memberName: string = item.memberName || '';
@@ -73,85 +74,152 @@ export function LogCard({ item }: { item: any }) {
             : String(item.actualTime).substring(0, 5)
         : null;
 
+    const medicines = item.medicines || [];
+
     return (
         <View style={{
             backgroundColor: '#fff',
             borderWidth: 2,
             borderColor: '#000',
             borderRadius: 20,
-            padding: 14,
             marginBottom: 10,
-            flexDirection: 'row',
-            alignItems: 'center',
+            overflow: 'hidden',
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
             shadowOpacity: 0.08,
             shadowRadius: 6,
             elevation: 2,
         }}>
-            {/* Member avatar */}
-            <View style={{
-                width: 46,
-                height: 46,
-                borderRadius: 23,
-                overflow: 'hidden',
-                borderWidth: 2,
-                borderColor: '#000',
-                marginRight: 12,
-                backgroundColor: cfg.bg,
-                alignItems: 'center',
-                justifyContent: 'center',
-            }}>
-                {avatarUrl ? (
-                    <Image
-                        source={{ uri: avatarUrl }}
-                        style={{ width: 46, height: 46, borderRadius: 23 }}
-                    />
-                ) : (
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: cfg.text }}>
-                        {initial}
-                    </Text>
-                )}
-            </View>
-
-            {/* Info */}
-            <View style={{ flex: 1, marginRight: 10 }}>
-                {memberName ? (
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#111', marginBottom: 1 }} numberOfLines={1}>
-                        {memberName}
-                    </Text>
-                ) : null}
-                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#374151' }} numberOfLines={1}>
-                    {item.medicineName || 'Thuốc'}
-                </Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                    <Clock size={11} color="#9CA3AF" strokeWidth={2} />
-                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#9CA3AF' }}>
-                        {`Hẹn ${scheduledDisplay}${actualDisplay ? `  ·  Thực tế ${actualDisplay}` : ''}`}
-                    </Text>
+            <Pressable
+                onPress={() => medicines.length > 0 && setExpanded(!expanded)}
+                style={{
+                    padding: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                }}
+            >
+                {/* Member avatar */}
+                <View style={{
+                    width: 46,
+                    height: 46,
+                    borderRadius: 23,
+                    overflow: 'hidden',
+                    borderWidth: 2,
+                    borderColor: '#000',
+                    marginRight: 12,
+                    backgroundColor: cfg.bg,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}>
+                    {avatarUrl ? (
+                        <Image
+                            source={{ uri: avatarUrl }}
+                            style={{ width: 46, height: 46, borderRadius: 23 }}
+                        />
+                    ) : (
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: cfg.text }}>
+                            {initial}
+                        </Text>
+                    )}
                 </View>
-                {item.notes ? (
-                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#A3A3A3', marginTop: 2 }} numberOfLines={1}>
-                        {`📝 ${item.notes}`}
-                    </Text>
-                ) : null}
-            </View>
 
-            {/* Status badge */}
-            <View style={{
-                backgroundColor: cfg.bg,
-                borderWidth: 1.5,
-                borderColor: cfg.border,
-                borderRadius: 10,
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                alignItems: 'center',
-            }}>
-                <CalendarCheck size={13} color={cfg.text} strokeWidth={2.5} style={{ marginBottom: 2 }} />
-                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 9, color: cfg.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                    {cfg.label}
-                </Text>
-            </View>
+                {/* Info */}
+                <View style={{ flex: 1, marginRight: 10 }}>
+                    {memberName ? (
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#111', marginBottom: 1 }} numberOfLines={1}>
+                            {memberName}
+                        </Text>
+                    ) : null}
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#374151' }} numberOfLines={1}>
+                        {item.medicineName || 'Thuốc'}
+                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                        <Clock size={11} color="#9CA3AF" strokeWidth={2} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#9CA3AF' }}>
+                            {`Hẹn ${scheduledDisplay}${actualDisplay ? `  ·  Thực tế ${actualDisplay}` : ''}`}
+                        </Text>
+                    </View>
+                    {item.notes ? (
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#A3A3A3', marginTop: 2 }} numberOfLines={1}>
+                            {`📝 ${item.notes}`}
+                        </Text>
+                    ) : null}
+                </View>
+
+                {/* Status badge */}
+                <View style={{
+                    backgroundColor: cfg.bg,
+                    borderWidth: 1.5,
+                    borderColor: cfg.border,
+                    borderRadius: 10,
+                    paddingHorizontal: 10,
+                    paddingVertical: 6,
+                    alignItems: 'center',
+                }}>
+                    <CalendarCheck size={13} color={cfg.text} strokeWidth={2.5} style={{ marginBottom: 2 }} />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 9, color: cfg.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {cfg.label}
+                        </Text>
+                        {medicines.length > 0 && (
+                            <Clock 
+                                size={12} 
+                                color={cfg.text} 
+                                // Dùng icon thay thế vì lucide ChevronDown chưa import ở scope LogCard (nếu không import ở đầu file)
+                            />
+                        )}
+                    </View>
+                </View>
+            </Pressable>
+
+            {/* Medicines expand section */}
+            {expanded && medicines.length > 0 && (
+                <View style={{
+                    borderTopWidth: 1.5,
+                    borderTopColor: '#F3F4F6',
+                    backgroundColor: '#FAFAFA',
+                    paddingHorizontal: 14,
+                    paddingVertical: 10,
+                }}>
+                    {medicines.map((med: any, idx: number) => (
+                        <View
+                            key={idx}
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'flex-start',
+                                paddingVertical: 8,
+                                borderBottomWidth: idx < medicines.length - 1 ? 1 : 0,
+                                borderBottomColor: '#E5E7EB',
+                            }}
+                        >
+                            <View style={{
+                                width: 32, height: 32, borderRadius: 10,
+                                backgroundColor: '#EDE9FE',
+                                borderWidth: 1.5, borderColor: '#7C3AED',
+                                alignItems: 'center', justifyContent: 'center',
+                                marginRight: 10, marginTop: 2,
+                            }}>
+                                <Pill size={15} color="#7C3AED" strokeWidth={2.5} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#1F1F1F', marginBottom: 2 }}>
+                                    {med.medicineName}
+                                </Text>
+                                {med.dosage ? (
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#6B7280', marginBottom: 1 }}>
+                                        💊 Liều: {med.dosage}
+                                    </Text>
+                                ) : null}
+                                {med.instructions ? (
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#6B7280' }}>
+                                        📋 {med.instructions}
+                                    </Text>
+                                ) : null}
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            )}
         </View>
     );
 }

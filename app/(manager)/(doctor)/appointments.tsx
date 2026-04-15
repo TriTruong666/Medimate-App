@@ -333,12 +333,13 @@ function AppointmentCard({
                                     }
                                 ])}
                             >
-                                <View style={{ width: 38, height: 38, backgroundColor: '#FEF3C7', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
+                                <View style={{ width: 320, height: 50, backgroundColor: '#FEF3C7', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
                                     <MessageSquare size={18} color="#000" strokeWidth={2.5} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000', marginLeft: 12 }} numberOfLines={1}>
+                                        Hồ sơ tư vấn & Đơn thuốc
+                                    </Text>
                                 </View>
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
-                                    Hồ sơ tư vấn & Đơn thuốc
-                                </Text>
+
                             </Pressable>
 
                             {/* --- Nút 2: Phần Đánh giá (Nút bấm hoặc Trạng thái đã xong) --- */}
@@ -356,12 +357,13 @@ function AppointmentCard({
                                         }
                                     ])}
                                 >
-                                    <View style={{ width: 38, height: 38, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
+                                    <View style={{ width: 320, height: 50, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
                                         <Check size={20} color="#000" strokeWidth={4} />
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
+                                            Bạn đã hoàn tất đánh giá
+                                        </Text>
                                     </View>
-                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
-                                        Bạn đã hoàn tất đánh giá
-                                    </Text>
+
                                 </Pressable>
                             ) : (
                                 <Pressable
@@ -379,12 +381,13 @@ function AppointmentCard({
                                         }
                                     ])}
                                 >
-                                    <View style={{ width: 38, height: 38, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
+                                    <View style={{ width: 320, height: 50, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
                                         {isSessionLoading ? <ActivityIndicator size="small" color="#000" /> : <Text style={{ fontSize: 18 }}>⭐</Text>}
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
+                                            {isSessionLoading ? 'Đang tải phiên...' : 'Đánh giá trải nghiệm khám'}
+                                        </Text>
                                     </View>
-                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
-                                        {isSessionLoading ? 'Đang tải phiên...' : 'Đánh giá trải nghiệm khám'}
-                                    </Text>
+
                                 </Pressable>
                             )}
                         </View>

@@ -16,7 +16,7 @@ export default function NotificationSettingsScreen() {
     const [emailEnabled, setEmailEnabled] = useState(false);
     const [familyAlertEnabled, setFamilyAlertEnabled] = useState(false);
     const [advanceMinutes, setAdvanceMinutes] = useState(15);
-    const [autoSnooze, setAutoSnooze] = useState(false);
+    const [autoSnooze, setAutoSnooze] = useState(true);
 
     // Advanced Safety Settings
     const [minimumHoursGap, setMinimumHoursGap] = useState(4);
@@ -35,9 +35,9 @@ export default function NotificationSettingsScreen() {
             
             try {
                 const custom = JSON.parse(currentSettings.customSetting || '{}');
-                setAutoSnooze(!!custom.autoSnooze);
+                setAutoSnooze(custom.autoSnooze !== undefined ? custom.autoSnooze : true);
             } catch (e) {
-                setAutoSnooze(false);
+                setAutoSnooze(true);
             }
         }
     }, [currentSettings]);

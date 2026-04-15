@@ -73,9 +73,16 @@ export default function MemberPrescriptionsScreen() {
                                         <Text className="text-[17px] font-space-bold text-black" numberOfLines={1}>
                                             {pres.hospitalName || "Đơn thuốc cá nhân"}
                                         </Text>
-                                        <Text className="text-xs font-space-medium text-gray-500 mt-1">
-                                            {pres.doctorName ? `BS. ${pres.doctorName}` : "Chưa có tên BS"} • {pres.prescriptionDate ? new Date(pres.prescriptionDate).toLocaleDateString('vi-VN') : "N/A"}
-                                        </Text>
+                                        <View className="flex-row items-center mt-1">
+                                            <View className={`px-2 py-0.5 rounded-md border border-black/20 mr-2 ${pres.status === 'Active' ? 'bg-[#A3E6A1]' : pres.status === 'Completed' ? 'bg-gray-200' : 'bg-gray-100'}`}>
+                                                <Text className="text-[10px] font-space-bold text-black uppercase">
+                                                    {pres.status === 'Active' ? 'Đang dùng' : pres.status === 'Completed' ? 'Đã xong' : pres.status || 'Chờ'}
+                                                </Text>
+                                            </View>
+                                            <Text className="text-xs font-space-medium text-gray-500">
+                                                {pres.doctorName ? `BS. ${pres.doctorName}` : "Chưa có tên BS"} • {pres.prescriptionDate ? new Date(pres.prescriptionDate).toLocaleDateString('vi-VN') : "N/A"}
+                                            </Text>
+                                        </View>
                                     </View>
                                     <View className="flex-row gap-x-2">
                                         {/* Nút Sửa */}
