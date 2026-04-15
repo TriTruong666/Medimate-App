@@ -91,6 +91,7 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
     const medicines = data.medicines || [];
 
     const canSnoozeBtn = data.endTime ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime)) : true;
+    const isMissed = data.endTime ? dayjs().isAfter(dayjs(data.endTime)) : false;
 
     const handleTaken = () => {
         logAction({
@@ -146,7 +147,7 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
 
                 {/* Header strip */}
                 <View style={{
-                    backgroundColor: timeConfig.bg,
+                    backgroundColor: isMissed ? '#FEE2E2' : timeConfig.bg,
                     borderWidth: 2,
                     borderColor: BORDER_COLOR,
                     borderRadius: 24,
@@ -166,31 +167,35 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                         borderColor: BORDER_COLOR,
                         alignItems: 'center',
                         justifyContent: 'center',
-                        shadowColor: timeConfig.accent,
+                        shadowColor: isMissed ? '#EF4444' : timeConfig.accent,
                         shadowOffset: { width: 0, height: 4 },
                         shadowOpacity: 0.35,
                         shadowRadius: 10,
                         elevation: 6,
                     }}>
-                        <Bell size={26} color={timeConfig.accent} strokeWidth={2.5} />
+                        <Bell size={26} color={isMissed ? '#EF4444' : timeConfig.accent} strokeWidth={2.5} />
                     </Animated.View>
 
                     <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                             <TimeOfDayIcon hour={hour} />
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: timeConfig.textColor, textTransform: 'uppercase', letterSpacing: 1 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: isMissed ? '#991B1B' : timeConfig.textColor, textTransform: 'uppercase', letterSpacing: 1 }}>
                                 {timeConfig.label} · {timeDisplay}
                             </Text>
                         </View>
                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#000', lineHeight: 24 }}>
-                            {done ? '✅ Đã xác nhận!' : '⏰ Đến giờ uống thuốc!'}
+                            {done ? '✅ Đã xác nhận!' : isMissed ? '🚨 ĐÃ BỎ LỠ THUỐC!' : '⏰ Đến giờ uống thuốc!'}
                         </Text>
-                        {data.scheduleName && (
+                        {isMissed && !done ? (
+                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#DC2626', marginTop: 2 }}>
+                                Bạn đã bỏ lỡ thuốc vui lòng chú ý và uống thuốc theo đúng lịch.
+                            </Text>
+                        ) : data.scheduleName ? (
                             <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#6B7280', marginTop: 2 }}>
                                 Lịch: {data.scheduleName}
                                 {data.memberName ? ` · ${data.memberName}` : ''}
                             </Text>
-                        )}
+                        ) : null}
                     </View>
 
                     <Pressable
@@ -263,7 +268,7 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                 )}
 
                 {/* Action buttons */}
-                {!done && (
+                {!done && !isMissed && (
                     <View style={{ gap: 12, marginTop: 16 }}>
                         {/* Taken (Full Width) */}
                         <Pressable
