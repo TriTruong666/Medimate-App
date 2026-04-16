@@ -3,6 +3,7 @@ import { LogCard } from "@/components/MedicineCards";
 import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
 import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
 import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
+import { useGetFamilyMedicationDashboard } from "@/hooks/data/useMedicationDashboard";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -11,8 +12,9 @@ import {
     Calendar,
     ChevronRight as CardArrow,
     ChevronDown, ChevronLeft, ChevronRight,
-    Moon, Pill, Sun, Sunrise, Users, X
+    CheckCircle, Moon, Pill, Sun, Sunrise, TrendingUp, Users, X, XCircle
 } from "lucide-react-native";
+import { Image as RNImage } from "react-native";
 import React, { useMemo, useState } from "react";
 import {
     ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View
@@ -24,7 +26,7 @@ dayjs.extend(isSameOrBefore);
 dayjs.extend(isSameOrAfter);
 dayjs.locale('vi');
 
-const TABS = ['Lịch nhắc nhở', 'Lịch sử dùng thuốc'];
+const TABS = ['Lịch nhắc nhở', 'Lịch sử dùng thuốc', 'Thống kê'];
 const BORDER_COLOR = '#000000';
 const SOFT_PURPLE = '#D9AEF6';
 const SHADOW_MD = {
@@ -418,9 +420,101 @@ function FamilyMedLogSection({ family, date }: { family: any; date: string }) {
     );
 }
 
+// ─── Dashboard Adherence Card ────────────────────────────────────────────────
+function FamilyAdherenceDashboard({ familyId }: { familyId: string }) {
+    const today = dayjs();
+    // Lấy từ đầu tháng đến hôm nay
+    const startDate = today.startOf('month').format('YYYY-MM-DD');
+    const endDate = today.format('YYYY-MM-DD');
+
+    const { data: dashboard, isLoading } = useGetFamilyMedicationDashboard(familyId, { startDate, endDate });
+
+    if (isLoading) {
+        return (
+            <View style={{ backgroundColor: '#fff', borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 20, padding: 16, marginBottom: 18, ...SHADOW_MD }}>
+                <ActivityIndicator size="small" color="#9370DB" />
+            </View>
+        );
+    }
+
+    if (!dashboard) return null;
+
+    const rate = Math.round(dashboard.overallAdherenceRate ?? 0);
+    const rateColor = rate >= 80 ? '#16A34A' : rate >= 50 ? '#D97706' : '#DC2626';
+    const rateBg = rate >= 80 ? '#DCFCE7' : rate >= 50 ? '#FEF3C7' : '#FEE2E2';
+
+    return (
+        <View style={{ backgroundColor: '#fff', borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 20, padding: 16, marginBottom: 18, ...SHADOW_MD }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 8 }}>
+                <View style={{ width: 34, height: 34, backgroundColor: '#F3E8FF', borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}>
+                    <TrendingUp size={18} color="#9370DB" strokeWidth={2.5} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#0F172A' }}>Tỉ lệ uống thuốc tháng này</Text>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: '#94A3B8' }}>{today.startOf('month').format('DD/MM')} – {today.format('DD/MM/YYYY')}</Text>
+                </View>
+                <View style={{ backgroundColor: rateBg, borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: rateColor }}>{rate}%</Text>
+                </View>
+            </View>
+
+            {/* Progress bar */}
+            <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, marginBottom: 14, overflow: 'hidden' }}>
+                <View style={{ width: `${rate}%` as any, height: '100%', backgroundColor: rateColor, borderRadius: 4 }} />
+            </View>
+
+            {/* Summary stats */}
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+                <StatChip icon={<CheckCircle size={13} color="#16A34A" strokeWidth={2.5}/>} label="Đã uống" value={dashboard.totalTaken} color="#DCFCE7" textColor="#166534" />
+                <StatChip icon={<XCircle size={13} color="#DC2626" strokeWidth={2.5}/>} label="Bỏ lỡ" value={dashboard.totalMissed} color="#FEE2E2" textColor="#991B1B" />
+                <StatChip icon={<Pill size={13} color="#9370DB" strokeWidth={2.5}/>} label="Tổng" value={dashboard.totalScheduled} color="#F3E8FF" textColor="#6B21A8" />
+            </View>
+
+            {/* Member stats */}
+            {dashboard.memberStats && dashboard.memberStats.length > 0 && (
+                <View style={{ gap: 8 }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>Thành viên</Text>
+                    {dashboard.memberStats.map(member => {
+                        const mRate = Math.round(member.adherenceRate ?? 0);
+                        const mColor = mRate >= 80 ? '#16A34A' : mRate >= 50 ? '#D97706' : '#DC2626';
+                        const mBg = mRate >= 80 ? '#DCFCE7' : mRate >= 50 ? '#FEF3C7' : '#FEE2E2';
+                        return (
+                            <View key={member.memberId} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F8FAFC', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 }}>
+                                {member.avatarUrl
+                                    ? <Image source={{ uri: member.avatarUrl }} style={{ width: 30, height: 30, borderRadius: 10 }} />
+                                    : <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
+                                        <Users size={14} color="#94A3B8" strokeWidth={2}/>
+                                    </View>
+                                }
+                                <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 12, color: '#0F172A', flex: 1 }} numberOfLines={1}>{member.memberName}</Text>
+                                <View style={{ flex: 1.5, height: 5, backgroundColor: '#E2E8F0', borderRadius: 3, overflow: 'hidden' }}>
+                                    <View style={{ width: `${mRate}%` as any, height: '100%', backgroundColor: mColor, borderRadius: 3 }} />
+                                </View>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: mColor, minWidth: 34, textAlign: 'right' }}>{mRate}%</Text>
+                            </View>
+                        );
+                    })}
+                </View>
+            )}
+        </View>
+    );
+}
+
+function StatChip({ icon, label, value, color, textColor }: { icon: React.ReactNode; label: string; value: number; color: string; textColor: string }) {
+    return (
+        <View style={{ flex: 1, backgroundColor: color, borderRadius: 12, padding: 10, alignItems: 'center', gap: 3 }}>
+            {icon}
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16, color: textColor }}>{value}</Text>
+            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: textColor, opacity: 0.8 }}>{label}</Text>
+        </View>
+    );
+}
+
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function ManagerHomeScreen() {
     const [selectedTab, setSelectedTab] = useState(TABS[0]);
+    const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
     const today = dayjs();
 
     // --- Date state (same pattern as doctor_detail) ---
@@ -596,7 +690,9 @@ export default function ManagerHomeScreen() {
                                     </Text>
                                 </View>
                                 : activeFamilies.map((family: any) => (
-                                    <FamilyReminderAccordion key={family.familyId} family={family} date={selectedDateStr} />
+                                    <View key={family.familyId} style={{ marginBottom: 16 }}>
+                                        <FamilyReminderAccordion family={family} date={selectedDateStr} />
+                                    </View>
                                 ))
                         }
                     </View>
@@ -612,8 +708,73 @@ export default function ManagerHomeScreen() {
                                     Chưa có gia đình nào.
                                 </Text>
                                 : activeFamilies.map((family: any) => (
-                                    <FamilyMedLogSection key={family.familyId} family={family} date={selectedDateStr} />
+                                    <View key={family.familyId} style={{ marginBottom: 16 }}>
+                                        <FamilyMedLogSection family={family} date={selectedDateStr} />
+                                    </View>
                                 ))
+                        }
+                    </View>
+                )}
+
+                {/* ─── 4c. Tab: Thống kê ─── */}
+                {selectedTab === TABS[2] && (
+                    <View>
+                        {familiesLoading
+                            ? <ActivityIndicator size="large" color="#9370DB" />
+                            : activeFamilies.length === 0
+                                ? <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                                    <TrendingUp size={48} color="#D1D5DB" strokeWidth={1.5} />
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#9CA3AF', marginTop: 12, textAlign: 'center' }}>
+                                        Chưa có gia đình để xem thống kê.
+                                    </Text>
+                                </View>
+                                : (
+                                    <View style={{ gap: 16 }}>
+                                        {/* Family selector */}
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 }}>
+                                            Chọn gia đình
+                                        </Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 4 }}>
+                                            {activeFamilies.map((family: any) => {
+                                                const isChosen = selectedFamilyId === family.familyId;
+                                                return (
+                                                    <Pressable
+                                                        key={family.familyId}
+                                                        onPress={() => setSelectedFamilyId(isChosen ? null : family.familyId)}
+                                                        style={{
+                                                            flexDirection: 'row', alignItems: 'center', gap: 8,
+                                                            backgroundColor: isChosen ? '#9370DB' : '#fff',
+                                                            borderWidth: 2, borderColor: isChosen ? '#9370DB' : '#E2E8F0',
+                                                            borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10,
+                                                            ...SHADOW_MD, shadowOpacity: 0.08,
+                                                        }}
+                                                    >
+                                                        <Users size={15} color={isChosen ? '#fff' : '#9370DB'} strokeWidth={2.5} />
+                                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: isChosen ? '#fff' : '#0F172A' }}>
+                                                            {family.familyName}
+                                                        </Text>
+                                                    </Pressable>
+                                                );
+                                            })}
+                                        </ScrollView>
+
+                                        {/* Dashboard content */}
+                                        {selectedFamilyId
+                                            ? <FamilyAdherenceDashboard familyId={selectedFamilyId} />
+                                            : (
+                                                <View style={{ alignItems: 'center', paddingVertical: 40, backgroundColor: '#fff', borderRadius: 20, borderWidth: 1.5, borderColor: '#E2E8F0', ...SHADOW_MD }}>
+                                                    <TrendingUp size={40} color="#D1D5DB" strokeWidth={1.5} />
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: '#94A3B8', marginTop: 12, textAlign: 'center' }}>
+                                                        Chọn một gia đình
+                                                    </Text>
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#CBD5E1', marginTop: 6, textAlign: 'center', paddingHorizontal: 24 }}>
+                                                        Để xem tỉ lệ tuân thủ uống thuốc của toàn gia đình
+                                                    </Text>
+                                                </View>
+                                            )
+                                        }
+                                    </View>
+                                )
                         }
                     </View>
                 )}

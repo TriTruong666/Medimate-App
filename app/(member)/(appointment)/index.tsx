@@ -275,6 +275,21 @@ function MemberAppointmentCard({
                     );
                 }
 
+                if (merged.status === 'Cancelled') {
+                    return (
+                        <View style={{ gap: 14, marginTop: 4 }}>
+                            <View style={{ backgroundColor: '#FFF5F5', padding: 14, borderRadius: 16, borderWidth: 2, borderColor: '#DC2626' }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#DC2626', textTransform: 'uppercase', marginBottom: 4 }}>
+                                    Lý do hủy lịch
+                                </Text>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14, color: '#991B1B', lineHeight: 20 }}>
+                                    {merged.cancelReason || 'Không có lý do cụ thể'}
+                                </Text>
+                            </View>
+                        </View>
+                    );
+                }
+
                 return null;
             })()}
 

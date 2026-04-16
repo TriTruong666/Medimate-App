@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
-import * as signalR from "@microsoft/signalr";
-import * as SecureStore from "expo-secure-store";
-import { useQueryClient } from "@tanstack/react-query";
-import { Platform, AppState, AppStateStatus } from "react-native";
-import { useAtomValue } from "jotai";
 import { authSessionAtom, kickOutAtom } from "@/stores/authStore";
-import { useToast } from "@/stores/toastStore";
 import { usePopup } from "@/stores/popupStore";
-import { getDefaultStore } from "jotai";
+import { useToast } from "@/stores/toastStore";
+import * as signalR from "@microsoft/signalr";
+import { useQueryClient } from "@tanstack/react-query";
+import * as SecureStore from "expo-secure-store";
+import { getDefaultStore, useAtomValue } from "jotai";
+import { useEffect, useState } from "react";
+import { AppState, AppStateStatus, Platform } from "react-native";
 
 let connection: signalR.HubConnection | null = null;
 const base_net_url = process.env.EXPO_PUBLIC_NET_API_URL;

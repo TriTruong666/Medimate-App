@@ -4,7 +4,7 @@ import BottomTab, { TabConfig } from "./BottomTab";
 
 const MEMBER_TABS: TabConfig[] = [
     { name: "(member-home)", icon: Heart, label: "Trang chủ" },
-    { name: "(member-calendar)", icon: Calendar, label: "Lịch nhắc nhở" },
+    { name: "(member-calendar)", icon: Calendar, label: "Lịch" },
     { name: "(appointment)", icon: Stethoscope, label: "Lịch khám" },
     { name: "(member-settings)", icon: User, label: "Setting" },
 ];
