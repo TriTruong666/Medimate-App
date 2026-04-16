@@ -1,9 +1,9 @@
+import { PopupContainer } from "@/components/popup/PopupContainer";
 import { useGetMemberById } from "@/hooks/useMember";
 import { useGetMemberDailyReminders, useGetMemberSchedules, useUpdateReminderAction } from "@/hooks/useSchedule";
 import { usePopup } from "@/stores/popupStore";
 import { ReminderResponse } from "@/types/Schedule";
 import { getDecodedToken } from "@/utils/token";
-import { PopupContainer } from "@/components/popup/PopupContainer";
 import dayjs from "dayjs";
 import "dayjs/locale/vi";
 import { useRouter } from "expo-router";
@@ -154,7 +154,7 @@ export default function MemberCalendarScreen() {
         </View>
 
         <Pressable
-          onPress={() => memberId && popup.open({
+          onPress={() => popup.open({
             type: 'preferred_times',
             data: {
               memberId,
@@ -162,27 +162,10 @@ export default function MemberCalendarScreen() {
               onSave: refetchReminders
             }
           })}
-          style={({ pressed }) => ({
-            paddingHorizontal: 14,
-            height: 44,
-            backgroundColor: pressed ? "#D9AEF6" : "#F3E8FF",
-            borderWidth: 2,
-            borderColor: BORDER_COLOR,
-            borderRadius: 14,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: 6,
-            shadowColor: "#000",
-            shadowOffset: { width: pressed ? 0 : 3, height: pressed ? 0 : 3 },
-            shadowOpacity: 1,
-            shadowRadius: 0,
-            elevation: pressed ? 0 : 3,
-            transform: [{ translateY: pressed ? 3 : 0 }]
-          })}
+          style={{ width: 44, height: 44, backgroundColor: "#FFF", borderWidth: 2, borderColor: BORDER_COLOR, borderRadius: 14, alignItems: "center", justifyContent: "center" }}
         >
           <Settings size={18} color="#000" strokeWidth={2.5} />
-          <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, color: "#000", textTransform: "uppercase" }}>Giờ uống</Text>
+
         </Pressable>
       </View>
 
@@ -423,7 +406,7 @@ function TimelineItem({
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontFamily: "SpaceGrotesk_700Bold", color: "#000", marginBottom: 4 }}>{med.medicineName}</Text>
-                  
+
                   {cleanDose ? (
                     <Text style={{ fontSize: 13, fontFamily: "SpaceGrotesk_600SemiBold", color: "#F59E0B", marginBottom: 2 }}>
                       💊 Liều uống: <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#D97706" }}>{cleanDose}</Text>

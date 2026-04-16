@@ -1,6 +1,6 @@
+import { GraduationCap, MapPin, Star, X } from 'lucide-react-native';
 import React from 'react';
-import { ActivityIndicator, Image, Pressable, Text, View, ScrollView } from 'react-native';
-import { X, Star, MapPin, Phone, GraduationCap } from 'lucide-react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useGetDoctorDetail } from '../../hooks/useDoctor';
 import { BottomSheetBase } from './BottomSheetBase';
 
@@ -25,10 +25,14 @@ export const DoctorInfoPopup: React.FC<DoctorInfoPopupProps> = ({
     const displayAvatar = doctor?.user?.avatarUrl || doctor?.avatarUrl || fallbackAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png';
     const displayName = doctor?.user?.fullName || doctor?.fullName || fallbackName || `Bác sĩ #${doctorId?.slice(0, 8)}`;
     const displaySpecialty = doctor?.specialty || fallbackSpecialty || 'Chuyên khoa tư vấn';
-    
-    // Some stats we can infer or mock using Neo-Brutalism pattern if not available
-    const clinicName = doctor?.clinicName || doctor?.clinic?.name || 'Phòng khám Đa khoa MediMate';
-    
+
+    // Thêm các thông tin nâng cao theo DoctorDetailResponse
+    const clinicName = doctor?.currentHospital || 'Phòng khám Đa khoa MediMate';
+    const yearsExperience = doctor?.yearsOfExperience || 0;
+    const avgRating = doctor?.averageRating || 0;
+    const totalReviews = doctor?.totalReviews || 0;
+    const bioText = doctor?.bio;
+
     return (
         <BottomSheetBase onClose={onClose} height="70%">
             {/* Thanh kéo & Close Button */}
@@ -53,9 +57,20 @@ export const DoctorInfoPopup: React.FC<DoctorInfoPopupProps> = ({
                     <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 22, color: '#000', textAlign: 'center', marginBottom: 4 }}>
                         {displayName}
                     </Text>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 15, color: '#64748B', textAlign: 'center' }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 15, color: '#64748B', textAlign: 'center', marginBottom: 16 }}>
                         {displaySpecialty}
                     </Text>
+
+                    {/* Rating Badge */}
+                    {(avgRating > 0 || totalReviews > 0) && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FEF3C7', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5, borderColor: '#000' }}>
+                            <Star size={16} color="#000" fill="#FCD34D" strokeWidth={2} />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }}>{avgRating.toFixed(1)}</Text>
+                            {totalReviews > 0 && (
+                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#64748B' }}>({totalReviews} đánh giá)</Text>
+                            )}
+                        </View>
+                    )}
                 </View>
 
                 {/* Phân cách */}
@@ -91,15 +106,30 @@ export const DoctorInfoPopup: React.FC<DoctorInfoPopupProps> = ({
                                     <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }}>{displaySpecialty}</Text>
                                 </View>
                             </View>
+
+                            {yearsExperience > 0 && (
+                                <>
+                                    <View style={{ height: 1, backgroundColor: 'rgba(0,0,0,0.1)', marginVertical: 4 }} />
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                        <View style={{ width: 36, height: 36, backgroundColor: '#D9AEF6', borderRadius: 10, borderWidth: 1.5, borderColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+                                            <Star size={16} color="#000" strokeWidth={2.5} />
+                                        </View>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#64748B', marginBottom: 2 }}>Kinh nghiệm</Text>
+                                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#000' }}>{yearsExperience} năm</Text>
+                                        </View>
+                                    </View>
+                                </>
+                            )}
                         </View>
 
-                        {doctor?.description && (
+                        {bioText && (
                             <View style={{ backgroundColor: '#fff', padding: 16, borderRadius: 20, borderWidth: 2, borderColor: '#000' }}>
                                 <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 8, letterSpacing: 0.5 }}>
                                     Tiểu sử Bác sĩ
                                 </Text>
                                 <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 15, color: '#1E293B', lineHeight: 22 }}>
-                                    {doctor.description}
+                                    {bioText}
                                 </Text>
                             </View>
                         )}

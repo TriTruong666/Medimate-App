@@ -26,7 +26,7 @@ const MENU_ITEMS = [
     label: "Về Medimate",
     subtitle: "Phiên bản 1.0.0",
     color: "#FFA07A",
-    route: "/(manager)/(member-settings)/version" as const,
+    route: "/(member)/(member-settings)/version" as const,
   },
 ];
 

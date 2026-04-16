@@ -31,19 +31,13 @@ const SHADOW = {
     elevation: 3,
 };
 
-const PLATFORMS: { key: VersionPlatform; label: string }[] = [
-    { key: 'IOS', label: 'iOS' },
-    { key: 'Android', label: 'Android' },
-];
-
 export default function AppVersionScreen() {
     const router = useRouter();
 
-    // auto-detect current platform
-    const defaultPlatform: VersionPlatform = Platform.OS === 'ios' ? 'IOS' : 'Android';
-    const [selectedPlatform, setSelectedPlatform] = useState<VersionPlatform>(defaultPlatform);
+    // auto-detect current platform permanently
+    const currentPlatform: VersionPlatform = Platform.OS === 'ios' ? 'IOS' : 'Android';
 
-    const { data: versions, isLoading } = useGetVersionsByPlatform(selectedPlatform);
+    const { data: versions, isLoading } = useGetVersionsByPlatform(currentPlatform);
 
     const versionList: AppVersion[] = Array.isArray(versions) ? versions : [];
 
@@ -79,37 +73,6 @@ export default function AppVersionScreen() {
                 contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Platform selector */}
-                <View style={{
-                    flexDirection: 'row', backgroundColor: '#F3F4F6',
-                    borderRadius: 18, borderWidth: 1.5, borderColor: '#E2E8F0',
-                    padding: 4, marginBottom: 24,
-                }}>
-                    {PLATFORMS.map(p => {
-                        const isActive = selectedPlatform === p.key;
-                        return (
-                            <Pressable
-                                key={p.key}
-                                onPress={() => setSelectedPlatform(p.key)}
-                                style={{
-                                    flex: 1, paddingVertical: 11, alignItems: 'center', borderRadius: 14,
-                                    backgroundColor: isActive ? '#9370DB' : 'transparent',
-                                    ...SHADOW,
-                                    shadowOpacity: isActive ? 0.15 : 0,
-                                    elevation: isActive ? 3 : 0,
-                                }}
-                            >
-                                <Text style={{
-                                    fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13,
-                                    color: isActive ? '#fff' : '#6B7280',
-                                }}>
-                                    {p.label}
-                                </Text>
-                            </Pressable>
-                        );
-                    })}
-                </View>
-
                 {/* Content */}
                 {isLoading ? (
                     <View style={{ alignItems: 'center', paddingVertical: 60 }}>
@@ -122,7 +85,7 @@ export default function AppVersionScreen() {
                     <View style={{ alignItems: 'center', paddingVertical: 60 }}>
                         <Tag size={48} color="#D1D5DB" strokeWidth={1.5} />
                         <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14, color: '#9CA3AF', marginTop: 14, textAlign: 'center' }}>
-                            Chưa có phiên bản nào cho {selectedPlatform === 'IOS' ? 'iOS' : 'Android'}
+                            Chưa có phiên bản nào cho {currentPlatform === 'IOS' ? 'iOS' : 'Android'}
                         </Text>
                     </View>
                 ) : (
