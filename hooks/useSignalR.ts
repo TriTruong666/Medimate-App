@@ -148,28 +148,32 @@ export function useAppSignalR() {
                 });
             }
 
-            // Tiến hành start logic (dùng chung cho cả tạo mới hoặc restart)
-            if (connection.state === signalR.HubConnectionState.Disconnected) {
-                try {
-                    await connection.start();
-                    if (isMounted) setIsConnected(true);
-                    console.log("🟢 [SignalR] Connected successfully.");
-                } catch (err) {
-                    console.log("🔴 [SignalR] Connection Error: ", err);
-                    // Để reconnect khi app active xử lý lại sau
+                // Tiến hành start logic (dùng chung cho cả tạo mới hoặc restart)
+                if (connection.state === signalR.HubConnectionState.Disconnected) {
+                    try {
+                        await connection.start();
+                        if (isMounted) setIsConnected(true);
+                        console.log("🟢 [SignalR] Connected successfully.");
+                    } catch (err: any) {
+                        if (err?.message?.includes("stop() was called")) {
+                            console.log("🟡 [SignalR] Start aborted gracefully by stop().");
+                            return;
+                        }
+                        console.log("🔴 [SignalR] Connection Error: ", err);
+                        // Để reconnect khi app active xử lý lại sau
+                    }
                 }
-            }
         };
 
         // Try to connect when the hook is mounted
-        startConnection();
+        startConnection().catch(() => {});
 
         // ── Lắng nghe sự kiện thoát mở App (Background / Foreground) ──
         const appStateSubscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
             if (nextAppState === "active") {
                 console.log("📱 [SignalR] App trở lại Foreground, kiểm tra kết nối...");
                 if (!connection || connection.state === signalR.HubConnectionState.Disconnected) {
-                    startConnection();
+                    startConnection().catch(() => {});
                 }
             }
         });
@@ -177,11 +181,11 @@ export function useAppSignalR() {
         return () => {
             isMounted = false;
             appStateSubscription.remove();
-            // Dọn dẹp connection khi authSessionAtom đổi (thoát app/logout)
+            
             if (connection && !session && connection.state !== signalR.HubConnectionState.Disconnected) {
-                connection.stop().then(() => {
-                    connection = null;
-                }).catch(err => console.log("🔴 [SignalR] Stop Error: ", err));
+                // Ignore stop unhandled rejections cleanly
+                connection.stop().catch(() => {});
+                connection = null;
             } else if (!session) {
                 connection = null;
             }
