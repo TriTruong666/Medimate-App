@@ -1,8 +1,12 @@
-import React, { useRef, useState } from 'react';
+import { useGetAIModels, useChatWithAI } from '@/hooks/data/useRAGHook';
+import type { AIModel } from '@/types/RAGAIModel';
+import { Bot, ChevronDown, Send, StopCircle, X } from 'lucide-react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
     KeyboardAvoidingView,
+    Modal,
     PanResponder,
     Platform,
     Pressable,
@@ -11,395 +15,537 @@ import {
     TextInput,
     View,
 } from 'react-native';
-import { Bot, ChevronRight, Send, X } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+// ─── Constants ────────────────────────────────────────────────────────────────
+const SCREEN_W = Dimensions.get('window').width;
+const SCREEN_H = Dimensions.get('window').height;
+const BUBBLE_SIZE = 56;
+const MARGIN = 14;
+const BRAND = '#B3354B';
 
-const BUBBLE_W = 52;
-const BUBBLE_H = 90;
-const MARGIN = 0;
-const BOTTOM_OFFSET = 120;
-
-// ─── Hardcoded AI responses ───────────────────────────────────────────────────
-const AI_SUGGESTIONS = [
-    'Tôi nên uống thuốc vào lúc nào?',
-    'Tác dụng phụ phổ biến của thuốc?',
-    'Làm thế nào để không quên uống thuốc?',
-    'Tôi có thể đặt lịch khám không?',
+// ─── Rotating hint messages ───────────────────────────────────────────────────
+const HINT_MESSAGES = [
+    '💬 Bạn có câu hỏi về sức khỏe?',
+    '💊 Thắc mắc về thuốc?',
+    '🩺 Muốn đặt lịch khám?',
+    '🌡️ Theo dõi sức khỏe cả nhà?',
+    '⏰ Nhắc uống thuốc đúng giờ?',
 ];
 
-const AI_RESPONSES: Record<string, string> = {
-    'Tôi nên uống thuốc vào lúc nào?':
-        '💊 Thời điểm uống thuốc tốt nhất phụ thuộc vào loại thuốc:\n\n• Thuốc kháng sinh — nên uống đều các giờ trong ngày, ví dụ cách nhau 8 tiếng.\n• Thuốc huyết áp — thường uống buổi sáng sau khi thức dậy.\n• Thuốc tiểu đường — tùy loại, có thể trước hoặc sau bữa ăn.\n\nHãy luôn đọc kỹ hướng dẫn và hỏi bác sĩ để có lời khuyên chính xác nhất! 🩺',
-    'Tác dụng phụ phổ biến của thuốc?':
-        '⚠️ Một số tác dụng phụ thường gặp:\n\n• Buồn nôn, khó tiêu\n• Đau đầu, chóng mặt\n• Phát ban da\n• Mệt mỏi, buồn ngủ\n\nNếu bạn gặp bất kỳ phản ứng nghiêm trọng nào như khó thở, sưng mặt — hãy liên hệ cơ sở y tế ngay! 🚨',
-    'Làm thế nào để không quên uống thuốc?':
-        '⏰ Một số mẹo hay để nhớ uống thuốc:\n\n• Đặt báo thức nhắc nhở trên điện thoại\n• Để hộp thuốc cạnh bàn chải đánh răng\n• Sử dụng tính năng nhắc nhở trong ứng dụng MediMate\n• Nhờ người thân nhắc nhở\n\nMediMate có tính năng nhắc uống thuốc tự động — hãy thử ngay nhé! ✨',
-    'Tôi có thể đặt lịch khám không?':
-        '📅 Có, bạn hoàn toàn có thể đặt lịch khám trực tuyến qua MediMate!\n\n• Chọn bác sĩ phù hợp theo chuyên khoa\n• Xem lịch trống của bác sĩ\n• Đặt hẹn chỉ với vài thao tác\n• Nhận xác nhận và nhắc nhở tự động\n\nHãy vào mục "Đặt lịch khám" trên thanh điều hướng để bắt đầu! 🏥',
-};
-
-const DEFAULT_RESPONSE =
-    '🤖 Xin chào! Tôi là trợ lý AI của MediMate.\n\nTôi có thể giúp bạn về:\n• Thông tin thuốc và cách dùng\n• Lịch khám và nhắc nhở\n• Sức khỏe tổng quát\n\nBạn hãy thử chọn một trong các câu hỏi gợi ý bên dưới, hoặc nhập câu hỏi của bạn nhé! 😊';
+const QUICK_SUGGESTIONS = [
+    '💊 Cách dùng thuốc',
+    '📅 Đặt lịch khám',
+    '⏰ Nhắc uống thuốc',
+    '🩺 Tác dụng phụ',
+];
 
 interface Message {
     id: string;
     role: 'user' | 'ai';
     text: string;
     time: string;
+    isPending?: boolean;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+function clamp(v: number, lo: number, hi: number) {
+    return Math.max(lo, Math.min(hi, v));
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function AIChatBubble() {
-    const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: '0',
-            role: 'ai',
-            text: DEFAULT_RESPONSE,
-            time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-        },
-    ]);
+    const insets = useSafeAreaInsets();
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    const [isChatOpen, setIsChatOpen] = useState(false);
+    const [showHint, setShowHint] = useState(true);
+    const [showModelPicker, setShowModelPicker] = useState(false);
+    const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
+    const [hintIndex, setHintIndex] = useState(0);
+    const hintOpacity = useRef(new Animated.Value(1)).current;
+
+    const [messages, setMessages] = useState<Message[]>([{
+        id: '0',
+        role: 'ai',
+        text: '👋 Xin chào! Tôi là MediMate AI.\n\n• 💊 Thông tin thuốc & cách dùng\n• 📅 Lịch khám & nhắc nhở\n• 🩺 Sức khỏe tổng quát\n\nHãy hỏi tôi bất cứ điều gì! 😊',
+        time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+    }]);
     const [input, setInput] = useState('');
+
     const scrollRef = useRef<ScrollView>(null);
+    const abortRef = useRef<AbortController | null>(null);
+    const pendingIdRef = useRef<string | null>(null);
 
-    const slideAnim = useRef(new Animated.Value(0)).current;
+    const { mutateAsync: sendToAI, isPending: isAITyping } = useChatWithAI();
+    const { data: aiModels } = useGetAIModels();
 
-    // ── Draggable position ────────────────────────────────────────────────────
-    // Vị trí ban đầu: cạnh phải, bottom = BOTTOM_OFFSET
-    const posX = useRef(new Animated.Value(SCREEN_W - BUBBLE_W - MARGIN)).current;
-    const posY = useRef(new Animated.Value(SCREEN_H - BOTTOM_OFFSET - BUBBLE_H)).current;
-    const lastX = useRef(SCREEN_W - BUBBLE_W - MARGIN);
-    const lastY = useRef(SCREEN_H - BOTTOM_OFFSET - BUBBLE_H);
+    // auto-select first active model
+    useEffect(() => {
+        if (!selectedModel && aiModels && (aiModels as AIModel[]).length > 0) {
+            const list = aiModels as AIModel[];
+            setSelectedModel(list.find(m => m.is_active) ?? list[0]);
+        }
+    }, [aiModels, selectedModel]);
 
-    const panResponder = useRef(
-        PanResponder.create({
-            onStartShouldSetPanResponder: () => true,
-            onMoveShouldSetPanResponder: (_, g) =>
-                Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
-            onPanResponderGrant: () => {
-                posX.setOffset(lastX.current);
-                posY.setOffset(lastY.current);
-                posX.setValue(0);
-                posY.setValue(0);
-            },
-            onPanResponderMove: Animated.event(
-                [null, { dx: posX, dy: posY }],
-                { useNativeDriver: false }
-            ),
-            onPanResponderRelease: (_, g) => {
-                posX.flattenOffset();
-                posY.flattenOffset();
+    // ── Rotating hint ─────────────────────────────────────────────────────────
+    useEffect(() => {
+        if (isChatOpen) return;
+        const id = setInterval(() => {
+            Animated.sequence([
+                Animated.timing(hintOpacity, { toValue: 0, duration: 350, useNativeDriver: true }),
+                Animated.timing(hintOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
+            ]).start();
+            setHintIndex(i => (i + 1) % HINT_MESSAGES.length);
+        }, 5000);
+        return () => clearInterval(id);
+    }, [isChatOpen, hintOpacity]);
 
-                // Snap sang trái hoặc phải
-                const newX = g.moveX < SCREEN_W / 2
-                    ? MARGIN
-                    : SCREEN_W - BUBBLE_W - MARGIN;
-                const rawY = lastY.current + g.dy;
-                const newY = Math.max(60, Math.min(rawY, SCREEN_H - BUBBLE_H - 90));
+    // ── Draggable bubble ──────────────────────────────────────────────────────
+    const initX = SCREEN_W - BUBBLE_SIZE - MARGIN;
+    const initY = SCREEN_H * 0.65;
+    const posX = useRef(new Animated.Value(initX)).current;
+    const posY = useRef(new Animated.Value(initY)).current;
+    const lastX = useRef(initX);
+    const lastY = useRef(initY);
+    const isDragging = useRef(false);
 
-                lastX.current = newX;
-                lastY.current = newY;
+    const panResponder = useRef(PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 5 || Math.abs(g.dy) > 5,
+        onPanResponderGrant: () => {
+            isDragging.current = true;
+            posX.setOffset(lastX.current);
+            posX.setValue(0);
+            posY.setOffset(lastY.current);
+            posY.setValue(0);
+        },
+        onPanResponderMove: Animated.event([null, { dx: posX, dy: posY }], { useNativeDriver: false }),
+        onPanResponderRelease: (_, g) => {
+            isDragging.current = false;
+            posX.flattenOffset();
+            posY.flattenOffset();
+            const nx = lastX.current + g.dx;
+            const ny = lastY.current + g.dy;
+            const snapX = nx + BUBBLE_SIZE / 2 < SCREEN_W / 2 ? MARGIN : SCREEN_W - BUBBLE_SIZE - MARGIN;
+            const snapY = clamp(ny, insets.top + 20, SCREEN_H - BUBBLE_SIZE - insets.bottom - 80);
+            lastX.current = snapX;
+            lastY.current = snapY;
+            Animated.parallel([
+                Animated.spring(posX, { toValue: snapX, useNativeDriver: false, damping: 18, stiffness: 180 }),
+                Animated.spring(posY, { toValue: snapY, useNativeDriver: false, damping: 18, stiffness: 180 }),
+            ]).start();
+        },
+    })).current;
 
-                Animated.spring(posX, {
-                    toValue: newX,
-                    useNativeDriver: false,
-                    damping: 18,
-                    stiffness: 180,
-                }).start();
-                Animated.spring(posY, {
-                    toValue: newY,
-                    useNativeDriver: false,
-                    damping: 18,
-                    stiffness: 180,
-                }).start();
-            },
-        })
-    ).current;
+    // ── Cancel AI ─────────────────────────────────────────────────────────────
+    const cancelAI = useCallback(() => {
+        abortRef.current?.abort();
+        if (pendingIdRef.current) {
+            setMessages(prev => prev.map(m =>
+                m.id === pendingIdRef.current
+                    ? { ...m, text: '⏹️ Đã hủy câu trả lời.', isPending: false }
+                    : m
+            ));
+            pendingIdRef.current = null;
+        }
+    }, []);
 
-    const openChat = () => {
-        setIsOpen(true);
-        Animated.spring(slideAnim, {
-            toValue: 1,
-            useNativeDriver: true,
-            tension: 65,
-            friction: 9,
-        }).start();
-    };
-
-    const closeChat = () => {
-        Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 220,
-            useNativeDriver: true,
-        }).start(() => setIsOpen(false));
-    };
-
-    const sendMessage = (text?: string) => {
-        const msg = (text || input).trim();
-        if (!msg) return;
+    // ── Send message ──────────────────────────────────────────────────────────
+    const sendMessage = useCallback(async (text?: string) => {
+        const msg = (text ?? input).trim();
+        if (!msg || isAITyping || !selectedModel) return;
 
         const now = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-        const newMessages: Message[] = [
-            ...messages,
-            { id: Date.now().toString(), role: 'user', text: msg, time: now },
-        ];
-        setMessages(newMessages);
+        const pendingId = `ai-${Date.now()}`;
+        pendingIdRef.current = pendingId;
+
+        const abort = new AbortController();
+        abortRef.current = abort;
+
+        setMessages(prev => [
+            ...prev,
+            { id: `u-${Date.now()}`, role: 'user', text: msg, time: now },
+            { id: pendingId, role: 'ai', text: '', time: now, isPending: true },
+        ]);
         setInput('');
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 80);
 
-        setTimeout(() => {
-            const reply = AI_RESPONSES[msg] || `🤖 Cảm ơn câu hỏi của bạn về "${msg}".\n\nHiện tại tôi đang trong giai đoạn phát triển và chưa thể trả lời câu hỏi này. Vui lòng liên hệ bác sĩ hoặc dược sĩ để được tư vấn chính xác nhất! 💙`;
-            setMessages(prev => [
-                ...prev,
-                { id: (Date.now() + 1).toString(), role: 'ai', text: reply, time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) },
-            ]);
-            scrollRef.current?.scrollToEnd({ animated: true });
-        }, 800);
-
-        scrollRef.current?.scrollToEnd({ animated: true });
-    };
-
-    // Chat panel slide từ phải vào
-    const chatTranslateX = slideAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [340, 0],
-    });
-
-    // Bubble ở bên trái → panel trượt sang phải; ở phải → panel sang trái
-    // Chỉ cần panel không bị cắt là được
+        try {
+            const res = await sendToAI({ question: msg, ai_model_id: selectedModel.id });
+            if (abort.signal.aborted) return;
+            const aiText = res?.data?.answer ?? '🤖 Chưa thể trả lời, vui lòng thử lại.';
+            setMessages(prev => prev.map(m =>
+                m.id === pendingId
+                    ? { ...m, text: aiText, time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }), isPending: false }
+                    : m
+            ));
+        } catch (err: any) {
+            if (abort.signal.aborted || err?.name === 'AbortError' || err?.code === 'ERR_CANCELED') return;
+            setMessages(prev => prev.map(m =>
+                m.id === pendingId
+                    ? { ...m, text: '⚠️ Không kết nối được AI. Vui lòng thử lại.', isPending: false }
+                    : m
+            ));
+        } finally {
+            pendingIdRef.current = null;
+        }
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+    }, [input, isAITyping, selectedModel, sendToAI]);
 
     return (
         <>
-            {/* ── Floating Toggle Button (draggable) ── */}
-            {!isOpen && (
+            {/* ── Floating Bubble (always visible unless chat open) ─────────── */}
+            {!isChatOpen && (
                 <Animated.View
                     style={{
-                        position: 'absolute',
-                        zIndex: 999,
+                        position: 'absolute', zIndex: 999,
                         transform: [{ translateX: posX }, { translateY: posY }],
                     }}
                     {...panResponder.panHandlers}
                 >
+                    {/* Hint tooltip */}
+                    {showHint && (
+                        <Animated.View style={{
+                            opacity: hintOpacity,
+                            position: 'absolute', right: BUBBLE_SIZE + 10, top: 4,
+                            backgroundColor: '#fff',
+                            borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 14,
+                            paddingHorizontal: 10, paddingVertical: 8, minWidth: 185,
+                            shadowColor: '#000', shadowOffset: { width: 0, height: 3 },
+                            shadowOpacity: 0.1, shadowRadius: 8, elevation: 6,
+                        }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 11, color: '#334155', lineHeight: 16 }}>
+                                {HINT_MESSAGES[hintIndex]}
+                            </Text>
+                            <Pressable
+                                hitSlop={10}
+                                onPress={() => setShowHint(false)}
+                                style={{
+                                    position: 'absolute', top: -8, right: -8,
+                                    width: 18, height: 18, borderRadius: 9,
+                                    backgroundColor: '#94A3B8', alignItems: 'center', justifyContent: 'center',
+                                }}
+                            >
+                                <X size={10} color="#fff" strokeWidth={3} />
+                            </Pressable>
+                        </Animated.View>
+                    )}
+
+                    {/* Bubble button */}
                     <Pressable
-                        onPress={openChat}
+                        onPress={() => {
+                            if (!isDragging.current) setIsChatOpen(true);
+                        }}
                         style={{
-                            backgroundColor: '#B3354B',
-                            borderWidth: 2,
-                            borderColor: '#000',
-                            borderRadius: 20,
-                            paddingVertical: 14,
-                            paddingHorizontal: 12,
-                            alignItems: 'center',
-                            gap: 6,
-                            shadowColor: '#000',
-                            shadowOffset: { width: 3, height: 4 },
-                            shadowOpacity: 1,
-                            shadowRadius: 0,
-                            elevation: 6,
+                            width: BUBBLE_SIZE, height: BUBBLE_SIZE,
+                            backgroundColor: BRAND, borderRadius: 18,
+                            alignItems: 'center', justifyContent: 'center',
+                            shadowColor: BRAND, shadowOffset: { width: 0, height: 6 },
+                            shadowOpacity: 0.5, shadowRadius: 14, elevation: 10,
                         }}
                     >
-                        <Bot size={20} color="#fff" strokeWidth={2.5} />
-                        <ChevronRight size={14} color="rgba(255,255,255,0.7)" strokeWidth={3} />
+                        <Bot size={24} color="#fff" strokeWidth={2.5} />
                     </Pressable>
                 </Animated.View>
             )}
 
-            {/* ── Expanded Chat Panel ── */}
-            {isOpen && (
-                <Animated.View
+            {/* ── Chat Modal — full screen Modal fixes keyboard + touch issues ── */}
+            <Modal
+                visible={isChatOpen}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setIsChatOpen(false)}
+                statusBarTranslucent
+            >
+                {/* Backdrop — tap to close */}
+                <Pressable
+                    style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' }}
+                    onPress={() => setIsChatOpen(false)}
+                />
+
+                {/* Chat sheet — anchored to bottom */}
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     style={{
-                        position: 'absolute',
-                        right: 0,
-                        bottom: 80,
-                        zIndex: 1000,
-                        width: 320,
-                        maxHeight: 480,
-                        transform: [{ translateX: chatTranslateX }],
+                        position: 'absolute', bottom: 0, left: 0, right: 0,
                     }}
                 >
-                    <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={80}
-                    >
+                    <View style={{
+                        backgroundColor: '#fff',
+                        borderTopLeftRadius: 28, borderTopRightRadius: 28,
+                        overflow: 'hidden',
+                        shadowColor: '#000', shadowOffset: { width: 0, height: -6 },
+                        shadowOpacity: 0.14, shadowRadius: 24, elevation: 20,
+                        minHeight: 420,
+                        paddingBottom: insets.bottom,
+                    }}>
+                        {/* ── Header ── */}
                         <View style={{
-                            backgroundColor: '#fff',
-                            borderWidth: 2,
-                            borderRightWidth: 0,
-                            borderColor: '#000',
-                            borderTopLeftRadius: 24,
-                            borderBottomLeftRadius: 24,
-                            overflow: 'hidden',
-                            shadowColor: '#000',
-                            shadowOffset: { width: -4, height: 6 },
-                            shadowOpacity: 1,
-                            shadowRadius: 0,
-                            elevation: 8,
+                            backgroundColor: BRAND,
+                            borderTopLeftRadius: 28, borderTopRightRadius: 28,
+                            paddingHorizontal: 16, paddingTop: 14, paddingBottom: 12, gap: 10,
                         }}>
-                            {/* Header */}
-                            <View style={{
-                                flexDirection: 'row', alignItems: 'center',
-                                backgroundColor: '#B3354B',
-                                paddingHorizontal: 16, paddingVertical: 12,
-                                borderBottomWidth: 2, borderBottomColor: '#000',
-                            }}>
+                            {/* Drag handle */}
+                            <View style={{ width: 38, height: 4, backgroundColor: 'rgba(255,255,255,0.4)', borderRadius: 2, alignSelf: 'center', marginBottom: 4 }} />
+
+                            {/* Title row */}
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                                 <View style={{
-                                    width: 36, height: 36,
-                                    backgroundColor: 'rgba(255,255,255,0.2)',
-                                    borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)',
-                                    alignItems: 'center', justifyContent: 'center', marginRight: 10,
+                                    width: 36, height: 36, backgroundColor: 'rgba(255,255,255,0.2)',
+                                    borderRadius: 12, alignItems: 'center', justifyContent: 'center',
                                 }}>
                                     <Bot size={20} color="#fff" strokeWidth={2.5} />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#fff' }}>
-                                        MediMate AI
-                                    </Text>
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#fff' }}>MediMate AI</Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ADE80' }} />
-                                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.8)' }}>
-                                            Đang hoạt động
+                                        <View style={{
+                                            width: 6, height: 6, borderRadius: 3,
+                                            backgroundColor: isAITyping ? '#FCD34D' : '#4ADE80',
+                                        }} />
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: 'rgba(255,255,255,0.82)' }}>
+                                            {isAITyping ? 'Đang trả lời...' : 'Trợ lý sức khỏe'}
                                         </Text>
                                     </View>
                                 </View>
                                 <Pressable
-                                    onPress={closeChat}
+                                    hitSlop={10}
+                                    onPress={() => setIsChatOpen(false)}
                                     style={{
-                                        width: 32, height: 32,
-                                        backgroundColor: 'rgba(255,255,255,0.2)',
-                                        borderRadius: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
-                                        alignItems: 'center', justifyContent: 'center',
+                                        width: 32, height: 32, backgroundColor: 'rgba(255,255,255,0.2)',
+                                        borderRadius: 10, alignItems: 'center', justifyContent: 'center',
                                     }}
                                 >
-                                    <X size={16} color="#fff" strokeWidth={3} />
+                                    <X size={16} color="#fff" strokeWidth={2.5} />
                                 </Pressable>
                             </View>
 
-                            {/* Messages */}
-                            <ScrollView
-                                ref={scrollRef}
-                                style={{ flex: 0, maxHeight: 260 }}
-                                contentContainerStyle={{ padding: 12, gap: 10 }}
-                                showsVerticalScrollIndicator={false}
-                                onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-                                keyboardShouldPersistTaps="handled"
+                            {/* Model selector */}
+                            <Pressable
+                                onPress={() => setShowModelPicker(true)}
+                                style={{
+                                    flexDirection: 'row', alignItems: 'center', gap: 6,
+                                    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
+                                    paddingHorizontal: 12, paddingVertical: 8,
+                                }}
                             >
-                                {messages.map((m) => (
-                                    <View key={m.id} style={{
-                                        alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
-                                        marginBottom: 4,
-                                    }}>
-                                        {m.role === 'ai' && (
-                                            <View style={{
-                                                width: 24, height: 24,
-                                                backgroundColor: '#B3354B', borderRadius: 8,
-                                                borderWidth: 1.5, borderColor: '#000',
-                                                alignItems: 'center', justifyContent: 'center',
-                                                marginBottom: 4,
-                                            }}>
-                                                <Bot size={13} color="#fff" strokeWidth={2.5} />
-                                            </View>
-                                        )}
-                                        <View style={{
-                                            maxWidth: '88%',
-                                            backgroundColor: m.role === 'user' ? '#000' : '#F8FAFC',
-                                            borderRadius: 14,
-                                            borderTopRightRadius: m.role === 'user' ? 4 : 14,
-                                            borderTopLeftRadius: m.role === 'ai' ? 4 : 14,
-                                            borderWidth: 1.5,
-                                            borderColor: m.role === 'user' ? '#000' : 'rgba(0,0,0,0.12)',
-                                            padding: 10,
-                                        }}>
-                                            <Text style={{
-                                                fontFamily: 'SpaceGrotesk_500Medium',
-                                                fontSize: 13,
-                                                color: m.role === 'user' ? '#fff' : '#1E293B',
-                                                lineHeight: 19,
-                                            }}>
-                                                {m.text}
-                                            </Text>
-                                            <Text style={{
-                                                fontFamily: 'SpaceGrotesk_500Medium',
-                                                fontSize: 10,
-                                                color: m.role === 'user' ? 'rgba(255,255,255,0.5)' : '#94A3B8',
-                                                marginTop: 4,
-                                                textAlign: 'right',
-                                            }}>
-                                                {m.time}
-                                            </Text>
-                                        </View>
-                                    </View>
-                                ))}
-                            </ScrollView>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 12, color: '#fff', flex: 1 }} numberOfLines={1}>
+                                    {selectedModel ? `${selectedModel.name}  ·  ${selectedModel.provider}` : 'Chọn mô hình AI...'}
+                                </Text>
+                                <ChevronDown size={14} color="rgba(255,255,255,0.75)" strokeWidth={2.5} />
+                            </Pressable>
+                        </View>
 
-                            {/* Quick Suggestions */}
+                        {/* ── Messages ── */}
+                        <ScrollView
+                            ref={scrollRef}
+                            style={{ flex: 1, maxHeight: 300 }}
+                            contentContainerStyle={{ padding: 14, gap: 10 }}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+                        >
+                            {messages.map(m => (
+                                <View key={m.id} style={{ alignItems: m.role === 'user' ? 'flex-end' : 'flex-start', marginBottom: 2 }}>
+                                    {m.role === 'ai' && (
+                                        <View style={{
+                                            width: 22, height: 22, backgroundColor: BRAND,
+                                            borderRadius: 7, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+                                        }}>
+                                            <Bot size={12} color="#fff" strokeWidth={2.5} />
+                                        </View>
+                                    )}
+                                    <View style={{
+                                        maxWidth: '84%',
+                                        backgroundColor: m.role === 'user' ? '#0F172A' : '#F8FAFC',
+                                        borderRadius: 16,
+                                        borderTopRightRadius: m.role === 'user' ? 4 : 16,
+                                        borderTopLeftRadius: m.role === 'ai' ? 4 : 16,
+                                        borderWidth: 1,
+                                        borderColor: m.role === 'user' ? '#0F172A' : '#E2E8F0',
+                                        paddingHorizontal: 13, paddingVertical: 10,
+                                    }}>
+                                        {m.isPending
+                                            ? <TypingIndicator />
+                                            : <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: m.role === 'user' ? '#fff' : '#1E293B', lineHeight: 21 }}>{m.text}</Text>
+                                        }
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: m.role === 'user' ? 'rgba(255,255,255,0.4)' : '#94A3B8', marginTop: 5, textAlign: 'right' }}>
+                                            {m.time}
+                                        </Text>
+                                    </View>
+                                </View>
+                            ))}
+                        </ScrollView>
+
+                        {/* ── Quick suggestions (ẩn khi AI đang typing) ── */}
+                        {!isAITyping && (
                             <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingVertical: 8 }}
-                                style={{ borderTopWidth: 1.5, borderTopColor: 'rgba(0,0,0,0.06)', maxHeight: 52 }}
+                                horizontal showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={{ paddingHorizontal: 14, gap: 8, paddingVertical: 8 }}
+                                style={{ borderTopWidth: 1, borderTopColor: '#F1F5F9', maxHeight: 52 }}
                                 keyboardShouldPersistTaps="handled"
                             >
-                                {AI_SUGGESTIONS.map((s) => (
+                                {QUICK_SUGGESTIONS.map(s => (
                                     <Pressable
                                         key={s}
-                                        onPress={() => sendMessage(s)}
+                                        onPress={() => void sendMessage(s)}
+                                        disabled={!selectedModel}
                                         style={{
-                                            paddingHorizontal: 10, paddingVertical: 6,
-                                            borderRadius: 10, borderWidth: 1.5, borderColor: '#000',
-                                            backgroundColor: '#F8FAFC',
+                                            paddingHorizontal: 12, paddingVertical: 7,
+                                            borderRadius: 20, borderWidth: 1.5,
+                                            borderColor: BRAND, backgroundColor: '#FFF5F7',
                                         }}
                                     >
-                                        <Text style={{
-                                            fontFamily: 'SpaceGrotesk_600SemiBold',
-                                            fontSize: 11, color: '#000',
-                                        }}>
-                                            {s}
-                                        </Text>
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 12, color: BRAND }}>{s}</Text>
                                     </Pressable>
                                 ))}
                             </ScrollView>
+                        )}
 
-                            {/* Input */}
-                            <View style={{
-                                flexDirection: 'row', alignItems: 'center',
-                                borderTopWidth: 2, borderTopColor: '#000',
-                                paddingHorizontal: 12, paddingVertical: 10,
-                                backgroundColor: '#F9F6FC',
-                                gap: 8,
-                            }}>
-                                <TextInput
-                                    value={input}
-                                    onChangeText={setInput}
-                                    placeholder="Nhập câu hỏi..."
-                                    placeholderTextColor="#94A3B8"
-                                    style={{
-                                        flex: 1, height: 38,
-                                        backgroundColor: '#fff',
-                                        borderWidth: 2, borderColor: '#000',
-                                        borderRadius: 12,
-                                        paddingHorizontal: 12,
-                                        fontFamily: 'SpaceGrotesk_500Medium',
-                                        fontSize: 13, color: '#000',
-                                    }}
-                                    returnKeyType="send"
-                                    onSubmitEditing={() => sendMessage()}
-                                />
-                                <Pressable
-                                    onPress={() => sendMessage()}
-                                    style={{
-                                        width: 38, height: 38,
-                                        backgroundColor: '#000',
-                                        borderRadius: 12, borderWidth: 2, borderColor: '#000',
-                                        alignItems: 'center', justifyContent: 'center',
-                                    }}
-                                >
-                                    <Send size={16} color="#fff" strokeWidth={2.5} />
-                                </Pressable>
-                            </View>
+                        {/* ── Cancel bar ── */}
+                        {isAITyping && (
+                            <Pressable
+                                onPress={cancelAI}
+                                style={{
+                                    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    borderTopWidth: 1, borderTopColor: '#FEE2E2',
+                                    backgroundColor: '#FFF5F5', paddingVertical: 11,
+                                }}
+                            >
+                                <StopCircle size={16} color="#DC2626" strokeWidth={2.5} />
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#DC2626' }}>
+                                    Hủy câu trả lời
+                                </Text>
+                            </Pressable>
+                        )}
+
+                        {/* ── Input bar ── */}
+                        <View style={{
+                            flexDirection: 'row', alignItems: 'center', gap: 10,
+                            borderTopWidth: 1, borderTopColor: '#E2E8F0',
+                            paddingHorizontal: 14, paddingVertical: 10,
+                            backgroundColor: '#FAFAFA',
+                        }}>
+                            <TextInput
+                                value={input}
+                                onChangeText={setInput}
+                                placeholder={selectedModel ? 'Hỏi về sức khỏe...' : 'Chọn model AI trước...'}
+                                placeholderTextColor="#94A3B8"
+                                editable={!isAITyping && !!selectedModel}
+                                style={{
+                                    flex: 1, height: 44,
+                                    backgroundColor: '#fff',
+                                    borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 16,
+                                    paddingHorizontal: 14,
+                                    fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14, color: '#0F172A',
+                                }}
+                                returnKeyType="send"
+                                onSubmitEditing={() => void sendMessage()}
+                                multiline={false}
+                                blurOnSubmit={false}
+                            />
+                            <Pressable
+                                onPress={() => void sendMessage()}
+                                disabled={isAITyping || !input.trim() || !selectedModel}
+                                style={{
+                                    width: 44, height: 44, borderRadius: 16,
+                                    backgroundColor: isAITyping || !input.trim() || !selectedModel ? '#E2E8F0' : BRAND,
+                                    alignItems: 'center', justifyContent: 'center',
+                                }}
+                            >
+                                <Send size={18} color={isAITyping || !input.trim() || !selectedModel ? '#94A3B8' : '#fff'} strokeWidth={2.5} />
+                            </Pressable>
                         </View>
-                    </KeyboardAvoidingView>
-                </Animated.View>
-            )}
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
+
+            {/* ── Model Picker Modal ── */}
+            <Modal visible={showModelPicker} transparent animationType="slide" onRequestClose={() => setShowModelPicker(false)}>
+                <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }} onPress={() => setShowModelPicker(false)}>
+                    <Pressable onPress={e => e.stopPropagation()} style={{
+                        backgroundColor: '#fff', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+                        paddingTop: 20, paddingBottom: 36 + insets.bottom, paddingHorizontal: 20,
+                    }}>
+                        <View style={{ width: 38, height: 4, backgroundColor: '#E2E8F0', borderRadius: 2, alignSelf: 'center', marginBottom: 18 }} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#0F172A', marginBottom: 4 }}>
+                            Chọn mô hình AI
+                        </Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#64748B', marginBottom: 18 }}>
+                            Mỗi mô hình có tốc độ và khả năng khác nhau
+                        </Text>
+
+                        {(!aiModels || (aiModels as AIModel[]).length === 0)
+                            ? <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#94A3B8', textAlign: 'center', paddingVertical: 24 }}>Đang tải...</Text>
+                            : (
+                                <View style={{ gap: 10 }}>
+                                    {(aiModels as AIModel[]).filter(m => m.is_active).map(model => {
+                                        const sel = selectedModel?.id === model.id;
+                                        return (
+                                            <Pressable
+                                                key={model.id}
+                                                onPress={() => { setSelectedModel(model); setShowModelPicker(false); }}
+                                                style={{
+                                                    flexDirection: 'row', alignItems: 'center', gap: 12,
+                                                    padding: 14, borderRadius: 16,
+                                                    borderWidth: 2, borderColor: sel ? BRAND : '#E2E8F0',
+                                                    backgroundColor: sel ? '#FFF5F7' : '#F8FAFC',
+                                                }}
+                                            >
+                                                <View style={{
+                                                    width: 40, height: 40, borderRadius: 13,
+                                                    backgroundColor: sel ? BRAND : '#E2E8F0',
+                                                    alignItems: 'center', justifyContent: 'center',
+                                                }}>
+                                                    <Bot size={21} color={sel ? '#fff' : '#94A3B8'} strokeWidth={2.5} />
+                                                </View>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: sel ? BRAND : '#0F172A' }}>{model.name}</Text>
+                                                    <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#64748B', marginTop: 2 }}>
+                                                        {model.provider} · {(model.context_window / 1000).toFixed(0)}K ctx
+                                                    </Text>
+                                                </View>
+                                                {sel && <View style={{ width: 22, height: 22, backgroundColor: BRAND, borderRadius: 11, alignItems: 'center', justifyContent: 'center' }}>
+                                                    <X size={10} color="#fff" strokeWidth={3} />
+                                                </View>}
+                                            </Pressable>
+                                        );
+                                    })}
+                                </View>
+                            )
+                        }
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </>
+    );
+}
+
+// ─── Typing Indicator ─────────────────────────────────────────────────────────
+function TypingIndicator() {
+    return (
+        <View style={{ flexDirection: 'row', gap: 5, paddingVertical: 5 }}>
+            {[0, 130, 260].map((d, i) => <TypingDot key={i} delay={d} />)}
+        </View>
+    );
+}
+
+function TypingDot({ delay }: { delay: number }) {
+    const anim = useRef(new Animated.Value(0)).current;
+    useEffect(() => {
+        const loop = Animated.loop(Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(anim, { toValue: 1, duration: 350, useNativeDriver: true }),
+            Animated.timing(anim, { toValue: 0, duration: 350, useNativeDriver: true }),
+            Animated.delay(Math.max(0, 750 - delay)),
+        ]));
+        loop.start();
+        return () => loop.stop();
+    }, [anim, delay]);
+    return (
+        <Animated.View style={{
+            width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#94A3B8',
+            transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [0, -5] }) }],
+        }} />
     );
 }

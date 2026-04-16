@@ -4,27 +4,34 @@ import * as SecureStore from "expo-secure-store";
 import { getDefaultStore } from "jotai";
 
 const base_net_url = process.env.EXPO_PUBLIC_NET_API_URL;
+const base_rag_url = process.env.EXPO_PUBLIC_RAG_API_URL;
 
 export const axiosClient = axios.create({
   baseURL: base_net_url,
   timeout: 15000,
 });
 
+// RAG / AI client — Python backend riêng
+export const axiosRAGClient = axios.create({
+  baseURL: base_rag_url,
+  timeout: 30000, // AI có thể chậm hơn
+});
+
 // ── Request Interceptor: Tự động gắn Token ──────────────────────────────────
-axiosClient.interceptors.request.use(
-  async (config) => {
-    try {
-      const token = await SecureStore.getItemAsync("accessToken");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-    } catch (error) {
-      console.log("Lỗi lấy token từ SecureStore", error);
+const requestInterceptor = async (config: any) => {
+  try {
+    const token = await SecureStore.getItemAsync("accessToken");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  } catch (error) {
+    console.log("Lỗi lấy token từ SecureStore", error);
+  }
+  return config;
+};
+
+axiosClient.interceptors.request.use(requestInterceptor, (error) => Promise.reject(error));
+axiosRAGClient.interceptors.request.use(requestInterceptor, (error) => Promise.reject(error));
 
 // ── Flag chống xử lý 401 nhiều lần song song ────────────────────────────────
 let _isHandling401 = false;
