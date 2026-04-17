@@ -43,7 +43,7 @@ export function useGetMemberAppointments(memberId: string) {
 
 
 // Hook lấy chi tiết 1 appointment (có doctorName, appointmentTime, ...)
-export function useGetAppointmentDetail(appointmentId: string | undefined, options?: { pollingInterval?: number }) {
+export function useGetAppointmentDetail(appointmentId: string | undefined) {
     return useQuery({
         // Dùng queryKey riêng biệt chứa ID để cache riêng từng lịch hẹn
         queryKey: ["appointment-detail", appointmentId],
@@ -54,6 +54,7 @@ export function useGetAppointmentDetail(appointmentId: string | undefined, optio
             return res.data;
         },
         enabled: !!appointmentId, // Chỉ gọi API khi ID đã có sẵn (không bị undefined)
+        // Không dùng refetchInterval — SignalR sẽ invalidate khi có AppointmentStatusUpdated
     });
 }
 

@@ -50,9 +50,7 @@ function AppointmentCard({
 }) {
     // Fetch chi tiết từ API mới cập nhật
     const popup = usePopup();
-    const { data: detail, isFetching } = useGetAppointmentDetail(appt.appointmentId, {
-        pollingInterval: 15_000,
-    });
+    const { data: detail, isFetching } = useGetAppointmentDetail(appt.appointmentId);
 
     const merged: AppointmentResponse & Partial<AppointmentDetailResponse> = {
         ...appt,
