@@ -2,7 +2,12 @@ import { useRouter } from 'expo-router';
 import { MicOff } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Dimensions, Text, View } from 'react-native';
-import { RtcSurfaceView } from 'react-native-agora';
+let RtcSurfaceView: any = () => null;
+try {
+    const agora = require('react-native-agora');
+    RtcSurfaceView = agora.RtcSurfaceView;
+} catch (e) {
+}
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,

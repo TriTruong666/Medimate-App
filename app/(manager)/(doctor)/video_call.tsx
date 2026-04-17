@@ -11,14 +11,29 @@ import {
     Text,
     View,
 } from 'react-native';
-import {
-    ChannelProfileType,
-    ClientRoleType,
-    createAgoraRtcEngine,
+import type {
     IRtcEngine,
     RtcConnection,
-    RtcSurfaceView
 } from 'react-native-agora';
+
+let ChannelProfileType: any = {};
+let ClientRoleType: any = {};
+let createAgoraRtcEngine: any = () => ({
+    initialize: () => {}, registerEventHandler: () => {}, enableVideo: () => {},
+    startPreview: () => {}, joinChannel: () => {}, muteLocalAudioStream: () => {},
+    muteLocalVideoStream: () => {}, switchCamera: () => {}
+});
+let RtcSurfaceView: any = ({ style }: any) => <View style={[style, { backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' }]}><Text style={{color: 'white'}}>Mock Agora View</Text></View>;
+
+try {
+    const agora = require('react-native-agora');
+    ChannelProfileType = agora.ChannelProfileType;
+    ClientRoleType = agora.ClientRoleType;
+    createAgoraRtcEngine = agora.createAgoraRtcEngine;
+    RtcSurfaceView = agora.RtcSurfaceView;
+} catch (e) {
+    console.warn('react-native-agora not linked. Mocking for dev.');
+}
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { cancelNoShowSession, endSession, joinSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';

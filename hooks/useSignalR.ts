@@ -21,11 +21,28 @@ export function useAppSignalR() {
     useEffect(() => {
         let isMounted = true;
 
+        // ── LOGOUT: Ngắt kết nối ngay lập tức khi session là null/undefined ──
+        if (!session) {
+            if (connection) {
+                console.log("🔴 [SignalR] Session cleared (logout) — Stopping connection...");
+                connection.stop().catch(() => {});
+                connection = null;
+            }
+            if (isMounted) setIsConnected(false);
+            // Trả về cleanup function rỗng (không cần AppState listener khi chưa login)
+            return () => { isMounted = false; };
+        }
+
+        // ── LOGIN: Khởi tạo kết nối SignalR ───────────────────────────────────
         const startConnection = async () => {
             if (!base_net_url) return;
 
-            // Nếu đang có kết nối hoặc đang cố kết nối thì không làm gì
-            if (connection && (connection.state === signalR.HubConnectionState.Connected || connection.state === signalR.HubConnectionState.Connecting || connection.state === signalR.HubConnectionState.Reconnecting)) {
+            // Nếu đang Connected / Connecting / Reconnecting thì không làm gì thêm
+            if (connection && (
+                connection.state === signalR.HubConnectionState.Connected ||
+                connection.state === signalR.HubConnectionState.Connecting ||
+                connection.state === signalR.HubConnectionState.Reconnecting
+            )) {
                 if (connection.state === signalR.HubConnectionState.Connected && isMounted) {
                     setIsConnected(true);
                 }
@@ -35,7 +52,7 @@ export function useAppSignalR() {
             const token = await SecureStore.getItemAsync("accessToken");
             if (!token) return;
 
-            // Nếu chưa có kết nối hoàn toàn, tạo mới
+            // Tạo connection mới nếu chưa có
             if (!connection) {
                 let url = `${base_net_url}/hub/medimate`;
                 if (Platform.OS === 'android' && url.includes('localhost')) {
@@ -51,22 +68,22 @@ export function useAppSignalR() {
                         skipNegotiation: true,
                         transport: signalR.HttpTransportType.WebSockets,
                     })
-                    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 60000]) // Thêm thời gian retry để ổn định hơn
+                    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 60000])
                     .configureLogging(signalR.LogLevel.Warning)
                     .build();
 
-                // ===== Đăng ký Event Handlers =====
+                // ── Event Handlers ──────────────────────────────────────────────
 
                 connection.on("ReceiveNotification", (notif: any) => {
                     console.log("🔔 [SignalR] ReceiveNotification:", notif);
                     queryClient.invalidateQueries({ queryKey: ["notifications"] });
-                    if (notif && notif.title) {
+                    if (notif?.title) {
                         toast.success(notif.title, notif.message || "Bạn có thông báo mới");
                     }
                 });
 
                 connection.on("ReceiveNotificationUpdate", () => {
-                    console.log("🔔 [SignalR] Dấu đọc thông báo update");
+                    console.log("🔔 [SignalR] ReceiveNotificationUpdate");
                     queryClient.invalidateQueries({ queryKey: ["notifications"] });
                 });
 
@@ -75,7 +92,7 @@ export function useAppSignalR() {
                     queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
                     queryClient.invalidateQueries({ queryKey: ["appointment-detail"] });
                     queryClient.invalidateQueries({ queryKey: ["available-slots"] });
-                    if (data && data.status) {
+                    if (data?.status) {
                         toast.success("Lịch khám cập nhật", `Trạng thái: ${data.status}`);
                     }
                 });
@@ -84,7 +101,7 @@ export function useAppSignalR() {
                     console.log("💬 [SignalR] ReceiveMessage:", data);
                     queryClient.invalidateQueries({ queryKey: ["chat-messages", data?.sessionId] });
                     queryClient.invalidateQueries({ queryKey: ["session-details"] });
-                    if (data && data.senderName) {
+                    if (data?.senderName) {
                         toast.success(`Tin nhắn từ ${data.senderName}`, data.content || "[Hình ảnh đính kèm]");
                     }
                 });
@@ -105,7 +122,7 @@ export function useAppSignalR() {
                 });
 
                 connection.on("ForceLogout", async (data: { message?: string } = {}) => {
-                    console.log("🔴 [SignalR] ForceLogout received - Đang kick-out thiết bị này...");
+                    console.log("🔴 [SignalR] ForceLogout — Stopping and clearing session...");
                     if (connection) {
                         try { await connection.stop(); } catch { /* ignore */ }
                         connection = null;
@@ -132,7 +149,7 @@ export function useAppSignalR() {
                     queryClient.invalidateQueries({ queryKey: ["session", data.sessionId] });
                 });
 
-                // Lifecycle Handlers
+                // Lifecycle
                 connection.onreconnecting((err) => {
                     console.log("🟡 [SignalR] Reconnecting...", err);
                     if (isMounted) setIsConnected(false);
@@ -144,34 +161,44 @@ export function useAppSignalR() {
                 connection.onclose((err) => {
                     console.log("🔴 [SignalR] Connection closed.", err);
                     if (isMounted) setIsConnected(false);
-                    // LƯU Ý: KHÔNG GÁN connection = null Ở ĐÂY. Giữ nguyên để tự động / thủ công kết nối lại mà không mất Event handlers.
                 });
             }
 
-                // Tiến hành start logic (dùng chung cho cả tạo mới hoặc restart)
-                if (connection.state === signalR.HubConnectionState.Disconnected) {
-                    try {
-                        await connection.start();
-                        if (isMounted) setIsConnected(true);
-                        console.log("🟢 [SignalR] Connected successfully.");
-                    } catch (err: any) {
-                        if (err?.message?.includes("stop() was called")) {
-                            console.log("🟡 [SignalR] Start aborted gracefully by stop().");
-                            return;
-                        }
-                        console.log("🔴 [SignalR] Connection Error: ", err);
-                        // Để reconnect khi app active xử lý lại sau
+            // Start với timeout 2 giây để tránh treo UI
+            if (connection.state === signalR.HubConnectionState.Disconnected) {
+                try {
+                    console.log("⏳ [SignalR] Connecting (timeout 2s)...");
+
+                    const startPromise = connection.start();
+                    const timeoutPromise = new Promise<never>((_, reject) =>
+                        setTimeout(() => reject(new Error("SignalR_Connection_Timeout")), 2000)
+                    );
+
+                    await Promise.race([startPromise, timeoutPromise]);
+
+                    if (isMounted) setIsConnected(true);
+                    console.log("🟢 [SignalR] Connected successfully.");
+                } catch (err: any) {
+                    if (err?.message === "SignalR_Connection_Timeout") {
+                        console.log("🟡 [SignalR] Kết nối quá 2s, bỏ qua để tránh treo.");
+                        return;
                     }
+                    if (err?.message?.includes("stop() was called")) {
+                        console.log("🟡 [SignalR] Start aborted by stop().");
+                        return;
+                    }
+                    console.log("🔴 [SignalR] Connection Error:", err);
                 }
+            }
         };
 
-        // Try to connect when the hook is mounted
+        // Kết nối ngay khi hook mount / session thay đổi
         startConnection().catch(() => {});
 
-        // ── Lắng nghe sự kiện thoát mở App (Background / Foreground) ──
+        // Kết nối lại khi App quay về Foreground
         const appStateSubscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
             if (nextAppState === "active") {
-                console.log("📱 [SignalR] App trở lại Foreground, kiểm tra kết nối...");
+                console.log("📱 [SignalR] App về Foreground, kiểm tra kết nối...");
                 if (!connection || connection.state === signalR.HubConnectionState.Disconnected) {
                     startConnection().catch(() => {});
                 }
@@ -181,23 +208,14 @@ export function useAppSignalR() {
         return () => {
             isMounted = false;
             appStateSubscription.remove();
-            
-            if (connection && !session && connection.state !== signalR.HubConnectionState.Disconnected) {
-                // Ignore stop unhandled rejections cleanly
-                connection.stop().catch(() => {});
-                connection = null;
-            } else if (!session) {
-                connection = null;
-            }
         };
-    }, [queryClient, session]);
+    }, [session]);  // Chỉ phụ thuộc session — đảm bảo disconnect ngay khi logout
 
     return { isConnected };
 }
 
-// Global Injector component
+// Global Injector — mount 1 lần duy nhất trong _layout.tsx
 export function SignalRInjector() {
     useAppSignalR();
     return null;
 }
-

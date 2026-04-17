@@ -1,11 +1,11 @@
-import { useGetAIModels, useChatWithAI } from '@/hooks/data/useRAGHook';
+import { useChatWithAI, useGetAIModels } from '@/hooks/data/useRAGHook';
 import type { AIModel } from '@/types/RAGAIModel';
 import { Bot, ChevronDown, Send, StopCircle, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Animated,
     Dimensions,
-    KeyboardAvoidingView,
+    Keyboard,
     Modal,
     PanResponder,
     Platform,
@@ -75,6 +75,23 @@ export default function AIChatBubble() {
     const scrollRef = useRef<ScrollView>(null);
     const abortRef = useRef<AbortController | null>(null);
     const pendingIdRef = useRef<string | null>(null);
+
+    // ── Keyboard height tracking (fix Android keyboard che chat) ───────────────
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => setKeyboardHeight(e.endCoordinates.height)
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => setKeyboardHeight(0)
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     const { mutateAsync: sendToAI, isPending: isAITyping } = useChatWithAI();
     const { data: aiModels } = useGetAIModels();
@@ -263,11 +280,13 @@ export default function AIChatBubble() {
                     onPress={() => setIsChatOpen(false)}
                 />
 
-                {/* Chat sheet — anchored to bottom */}
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                {/* Chat sheet — shifts up when keyboard appears on Android */}
+                <View
                     style={{
-                        position: 'absolute', bottom: 0, left: 0, right: 0,
+                        position: 'absolute',
+                        bottom: keyboardHeight,
+                        left: 0,
+                        right: 0,
                     }}
                 >
                     <View style={{
@@ -276,8 +295,9 @@ export default function AIChatBubble() {
                         overflow: 'hidden',
                         shadowColor: '#000', shadowOffset: { width: 0, height: -6 },
                         shadowOpacity: 0.14, shadowRadius: 24, elevation: 20,
-                        minHeight: 420,
-                        paddingBottom: insets.bottom,
+                        minHeight: keyboardHeight > 0 ? 450 : 600,
+                        maxHeight: keyboardHeight > 0 ? SCREEN_H - keyboardHeight - insets.top - 20 : SCREEN_H * 0.75,
+                        paddingBottom: keyboardHeight > 0 ? 0 : insets.bottom,
                     }}>
                         {/* ── Header ── */}
                         <View style={{
@@ -339,7 +359,7 @@ export default function AIChatBubble() {
                         {/* ── Messages ── */}
                         <ScrollView
                             ref={scrollRef}
-                            style={{ flex: 1, maxHeight: 300 }}
+                            style={{ flex: 1, maxHeight: keyboardHeight > 0 ? 150 : 300 }}
                             contentContainerStyle={{ padding: 14, gap: 10 }}
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
@@ -457,7 +477,7 @@ export default function AIChatBubble() {
                             </Pressable>
                         </View>
                     </View>
-                </KeyboardAvoidingView>
+                </View>
             </Modal>
 
             {/* ── Model Picker Modal ── */}
