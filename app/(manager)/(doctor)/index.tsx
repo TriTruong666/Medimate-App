@@ -92,7 +92,7 @@ export default function DoctorScreen() {
     const ongoingApptRaw = upcomingAppointments[0];
     const upcomingAppt = upcomingAppointments.length > 1 ? upcomingAppointments[1] : null;
 
-    const { data: ongoingDetail } = useGetAppointmentDetail(ongoingApptRaw?.appointmentId, { pollingInterval: 15000 });
+    const { data: ongoingDetail } = useGetAppointmentDetail(ongoingApptRaw?.appointmentId);
     const ongoingAppt = ongoingApptRaw ? { ...ongoingApptRaw, ...ongoingDetail } : null;
 
     return (

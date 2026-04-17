@@ -1,6 +1,5 @@
-import { atom } from 'jotai';
 import * as SecureStore from 'expo-secure-store';
-import { getDecodedToken } from '../utils/token'; // Keep for other uses if needed
+import { atom } from 'jotai';
 import { jwtDecode } from "jwt-decode";
 import { CustomJwtPayload } from '../utils/token';
 
@@ -36,32 +35,32 @@ const withTimeout = <T>(promise: Promise<T>, ms: number, timeoutMsg: string): Pr
 export const initAuthAtom = atom(
     null,
     async (get, set) => {
-        console.log('[authStore] initAuthAtom is starting...');
+
         // Reset bất kỳ trạng thái kick-out cũ từ phiên trước
         set(kickOutAtom, null);
         try {
-            console.log('[authStore] Fetching accessToken from SecureStore...');
+
             // Gắn timeout 3s
             const token = await withTimeout(
                 SecureStore.getItemAsync('accessToken'),
                 3000,
                 'Lỗi: SecureStore.getItemAsync bị treo quá 3 giây!'
             );
-            
+
             console.log('[authStore] AccessToken found:', !!token);
 
             if (!token) {
-                console.log('[authStore] No token, setting authSessionAtom = undefined');
+
                 set(authSessionAtom, undefined);
                 return;
             }
 
-            console.log('[authStore] Decoding token directly...');
+
             const decoded = jwtDecode<CustomJwtPayload>(token);
-            
+
             // Validate token format and expiration
             if (!decoded) {
-                console.log('[authStore] Token decoding failed, deleting token.');
+
                 await SecureStore.deleteItemAsync('accessToken');
                 set(authSessionAtom, undefined);
                 set(accessTokenAtom, null);
@@ -70,7 +69,6 @@ export const initAuthAtom = atom(
 
             // check if token is expired
             if (decoded.exp && (Date.now() / 1000) >= decoded.exp) {
-                console.log('[authStore] Token is expired during startup. Clearing...');
                 await withTimeout(SecureStore.deleteItemAsync('accessToken'), 3000, 'Delete timeout');
                 set(authSessionAtom, undefined);
                 set(accessTokenAtom, null);

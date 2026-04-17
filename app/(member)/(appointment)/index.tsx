@@ -33,9 +33,7 @@ function MemberAppointmentCard({
     joiningState,
 }: any) {
     const popup = usePopup();
-    const { data: detail, isFetching } = useGetAppointmentDetail(appt.appointmentId, {
-        pollingInterval: 15_000,
-    });
+    const { data: detail, isFetching } = useGetAppointmentDetail(appt.appointmentId);
 
 
     const merged = { ...appt, ...detail };

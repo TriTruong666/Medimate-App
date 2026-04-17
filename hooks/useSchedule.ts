@@ -60,9 +60,8 @@ export function useGetMemberDailyReminders(memberId: string | undefined, date: s
             return res.data;
         },
         enabled: !!memberId && !!date,
-        staleTime: 0,                    // Luôn coi là stale → refetch khi focus lại
-        refetchOnWindowFocus: true,       // Refetch khi user quay lại app/tab
-        refetchInterval: 60_000,          // Tự refresh mỗi 60 giây
+        staleTime: 30_000,         // Cache 30 giây — SignalR sẽ invalidate khi có thay đổi thực
+        // Không dùng refetchInterval/refetchOnWindowFocus — SignalR ReceiveMedicationLogUpdate xử lý
     });
 }
 
