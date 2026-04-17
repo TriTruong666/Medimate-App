@@ -42,11 +42,18 @@ export default function RootLayout() {
   const [kickOut, setKickOut] = useAtom(kickOutAtom);
   const router = useRouter();
 
-  // ─ Xử lý kick-out khi interceptor hoặc SignalR gửi signal ─────────────────
+  // ─ Xử lý kick-out khi interceptor hoặc SignalR gửi signal ──────────────────────
   useEffect(() => {
     if (!kickOut) return;
 
     const { message, isKickedOut } = kickOut;
+
+    // Chỉ xử lý force-kick (ví dụ: đăng nhập từ thiết bị khác)
+    if (!isKickedOut) {
+      setKickOut(null);
+      router.replace('/welcome');
+      return;
+    }
 
     // Reset signal trước
     setKickOut(null);
@@ -57,7 +64,7 @@ export default function RootLayout() {
     // 2. Show Alert SAU khi welcome đã render (dùng timeout nhỏ để đảm bảo)
     setTimeout(() => {
       Alert.alert(
-        isKickedOut ? '⚠️ Cảnh báo bảo mật' : 'Phiên hết hạn',
+        '⚠️ Cảnh báo bảo mật',
         message,
         [{ text: 'Đồng ý', style: 'default' }],
         { cancelable: true }

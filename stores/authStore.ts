@@ -26,6 +26,8 @@ export const kickOutAtom = atom<{ message: string; isKickedOut: boolean } | null
 export const initAuthAtom = atom(
     null,
     async (get, set) => {
+        // Reset bất kỳ trạng thái kick-out cũ từ phiên trước
+        set(kickOutAtom, null);
         try {
             const token = await SecureStore.getItemAsync('accessToken');
             if (!token) {

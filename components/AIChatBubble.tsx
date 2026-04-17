@@ -265,7 +265,7 @@ export default function AIChatBubble() {
 
                 {/* Chat sheet — anchored to bottom */}
                 <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                     style={{
                         position: 'absolute', bottom: 0, left: 0, right: 0,
                     }}

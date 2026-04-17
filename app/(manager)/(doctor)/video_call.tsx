@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, Mic, MicOff, Minimize2, PhoneOff, SwitchCamera } from 'lucide-react-native';
+import { AlertTriangle, Camera, Mic, MicOff, Minimize2, PhoneOff, SwitchCamera, XCircle } from 'lucide-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
@@ -20,7 +20,7 @@ import {
     RtcSurfaceView
 } from 'react-native-agora';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { endSession, joinSession } from '../../../apis/session.api';
+import { cancelNoShowSession, endSession, joinSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';
 import { useToast } from '../../../stores/toastStore';
 import {
@@ -253,6 +253,120 @@ function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
     );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Cancel No-Show Modal (2 bước xác nhận)
+// ─────────────────────────────────────────────────────────────────────────────
+function CancelNoShowModal({ visible, step, onCancel, onStep1, onStep2 }: {
+    visible: boolean; step: 1 | 2;
+    onCancel: () => void; onStep1: () => void; onStep2: () => void;
+}) {
+    const scaleAnim = useRef(new Animated.Value(0.88)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+                Animated.timing(opacityAnim, { toValue: 1, duration: 160, useNativeDriver: true }),
+            ]).start();
+        } else {
+            scaleAnim.setValue(0.88);
+            opacityAnim.setValue(0);
+        }
+    }, [visible, step]);
+
+    const isStep1 = step === 1;
+
+    return (
+        <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
+            <Animated.View style={{
+                flex: 1, backgroundColor: 'rgba(0,0,0,0.78)',
+                justifyContent: 'center', alignItems: 'center', padding: 28,
+                opacity: opacityAnim,
+            }}>
+                <Animated.View style={{
+                    backgroundColor: '#18181C', borderRadius: 28, padding: 26,
+                    width: '100%', borderWidth: 2,
+                    borderColor: isStep1 ? 'rgba(234,179,8,0.4)' : 'rgba(234,179,8,0.7)',
+                    transform: [{ scale: scaleAnim }],
+                }}>
+                    {/* Step progress */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', marginBottom: 20 }}>
+                        {[1, 2].map(s => (
+                            <View key={s} style={{
+                                height: 4, width: s === step ? 36 : 16, borderRadius: 2,
+                                backgroundColor: s <= step ? '#EAB308' : 'rgba(255,255,255,0.15)',
+                            }} />
+                        ))}
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.35)', marginLeft: 2 }}>
+                            {step}/2
+                        </Text>
+                    </View>
+
+                    {/* Icon */}
+                    <View style={{
+                        width: 68, height: 68, borderRadius: 34,
+                        backgroundColor: isStep1 ? 'rgba(234,179,8,0.12)' : 'rgba(234,179,8,0.22)',
+                        borderWidth: 2, borderColor: '#EAB308',
+                        alignItems: 'center', justifyContent: 'center',
+                        alignSelf: 'center', marginBottom: 18,
+                    }}>
+                        <Text style={{ fontSize: 32 }}>{isStep1 ? '🚨' : '⚠️'}</Text>
+                    </View>
+
+                    <Text style={{
+                        fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#fff',
+                        textAlign: 'center', marginBottom: 10,
+                    }}>
+                        {isStep1 ? 'Hủy do Bác sĩ vắng?' : 'Xác nhận lần cuối'}
+                    </Text>
+                    <Text style={{
+                        fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14,
+                        color: 'rgba(255,255,255,0.48)', textAlign: 'center',
+                        lineHeight: 21, marginBottom: 26,
+                    }}>
+                        {isStep1
+                            ? 'Bác sĩ chưa tham gia sau khi đến giờ hẹn. Hủy phiên này sẽ được ghi nhận là bác sĩ vắng (No-Show).'
+                            : 'Đây là xác nhận CUỐI CÙNG. Phiên sẽ được hủy và hệ thống sẽ ghi nhận trạng thái No-Show của bác sĩ.'}
+                    </Text>
+
+                    <View style={{ gap: 10 }}>
+                        <Pressable
+                            onPress={isStep1 ? onStep1 : onStep2}
+                            style={({ pressed }) => ({
+                                height: 52, borderRadius: 16,
+                                backgroundColor: isStep1 ? '#EAB308' : '#CA8A04',
+                                alignItems: 'center', justifyContent: 'center',
+                                flexDirection: 'row', gap: 8,
+                                opacity: pressed ? 0.82 : 1,
+                            })}
+                        >
+                            <XCircle size={18} color="#000" strokeWidth={2.5} />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }}>
+                                {isStep1 ? 'Có, Bác sĩ không vào' : '🟡 Xác nhận Hủy No-Show'}
+                            </Text>
+                        </Pressable>
+                        <Pressable
+                            onPress={onCancel}
+                            style={({ pressed }) => ({
+                                height: 50, borderRadius: 16,
+                                backgroundColor: 'rgba(255,255,255,0.07)',
+                                borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+                                alignItems: 'center', justifyContent: 'center',
+                                opacity: pressed ? 0.65 : 1,
+                            })}
+                        >
+                            <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+                                {isStep1 ? 'Tiếp tục chờ' : 'Huỷ bỏ'}
+                            </Text>
+                        </Pressable>
+                    </View>
+                </Animated.View>
+            </Animated.View>
+        </Modal>
+    );
+}
+
 // ─── Call Timer ───────────────────────────────────────────────────────────────
 function CallTimer({ running }: { running: boolean }) {
     const [secs, setSecs] = useState(0);
@@ -288,6 +402,9 @@ export default function VideoCallScreen() {
     const [pauseDialog, setPauseDialog] = useState(false);
     const [endDialog, setEndDialog] = useState(false);
     const [endStep, setEndStep] = useState<1 | 2>(1);
+    const [noShowDialog, setNoShowDialog] = useState(false);
+    const [noShowStep, setNoShowStep] = useState<1 | 2>(1);
+    const [isCancellingNoShow, setIsCancellingNoShow] = useState(false);
 
     const agoraEngineRef = useRef<IRtcEngine | null>(getGlobalAgoraEngine());
     const sid = typeof sessionId === 'string' ? sessionId : (sessionId?.[0] || '');
@@ -377,13 +494,30 @@ export default function VideoCallScreen() {
         toast.info("Đã thu nhỏ", "Nhấn vào cửa sổ nhỏ để quay lại cuộc gọi bất kỳ lúc nào.");
     };
 
-    // ── End session (2 steps) ─────────────────────────────────────────────────
+    // ── End session (2 steps) ────────────────────────────────────────────────────
     const handleEndStep2 = async () => {
         try { if (sid) await endSession(sid); } catch (e) { console.error(e); }
         endCall();
         setEndDialog(false);
         toast.info("Phiên khám đã kết thúc", "Cảm ơn bạn đã sử dụng MediMate.");
         router.back();
+    };
+
+    // ── Cancel No-Show (2 steps) ──────────────────────────────────────────────
+    const handleNoShowStep2 = async () => {
+        setIsCancellingNoShow(true);
+        try {
+            if (sid) await cancelNoShowSession(sid);
+            endCall();
+            setNoShowDialog(false);
+            toast.info("🚨 Đã ghi nhận vắng mặt", "Phiên khám được hủy do bác sĩ không tham gia.");
+            router.back();
+        } catch (e) {
+            console.error(e);
+            toast.error("Lỗi", "Không thể hủy phiên. Vui lòng thử lại.");
+        } finally {
+            setIsCancellingNoShow(false);
+        }
     };
 
     const isMocking = AGORA_APP_ID === 'dummy_app_id';
@@ -431,14 +565,6 @@ export default function VideoCallScreen() {
                     </View>
                 )}
 
-                {/* ── Self PiP (top-right) ── */}
-                <View style={{
-                    position: 'absolute', top: 24, right: 24,
-                    width: 110, height: 156, borderRadius: 22,
-                    backgroundColor: '#2C2C2E',
-                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
-                    overflow: 'hidden',
-                }}>
                     {!isCameraOff
                         ? agoraEngineRef.current
                             ? <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
@@ -451,37 +577,68 @@ export default function VideoCallScreen() {
                 </View>
 
                 {/* ─────────────────────────────────────────────────────────── */}
-                {/* ── NÚT KẾT THÚC PHIÊN — góc trên bên TRÁI (absolute) ── */}
+                {/* ── TOP ACTION BAR (Bọc UI cho Thu Nhỏ và Kết Thúc) ── */}
                 {/* ─────────────────────────────────────────────────────────── */}
-                <Pressable
-                    onPress={() => { setEndStep(1); setEndDialog(true); }}
-                    style={({ pressed }) => ({
-                        position: 'absolute',
-                        top: 24, left: 20,
-                        flexDirection: 'row', alignItems: 'center', gap: 7,
-                        paddingHorizontal: 14, paddingVertical: 10,
-                        backgroundColor: pressed ? '#CC2F26' : '#FF3B30',
-                        borderRadius: 20,
-                        borderWidth: 2, borderColor: 'rgba(255,255,255,0.2)',
-                        shadowColor: '#FF3B30',
-                        shadowOffset: { width: 0, height: 4 },
-                        shadowOpacity: 0.55, shadowRadius: 10, elevation: 8,
-                        transform: [{ scale: pressed ? 0.93 : 1 }],
-                    })}
-                >
-                    <PhoneOff size={15} color="#fff" strokeWidth={2.5} />
-                    <View>
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#fff' }}>
-                            Kết thúc phiên
+                <View style={{
+                    position: 'absolute', top: 20, left: 16, right: 16, zIndex: 50,
+                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                    backgroundColor: 'rgba(14,14,20,0.85)', paddingHorizontal: 16, paddingVertical: 12,
+                    borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8
+                }}>
+                    {/* Kết thúc phiên */}
+                    <Pressable
+                        onPress={() => { setEndStep(1); setEndDialog(true); }}
+                        style={({ pressed }) => ({
+                            flexDirection: 'row', alignItems: 'center', gap: 6,
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            backgroundColor: pressed ? '#CC2F26' : 'rgba(255,59,48,0.15)',
+                            borderRadius: 14, borderWidth: 1.5, borderColor: '#FF3B30'
+                        })}
+                    >
+                        <PhoneOff size={14} color="#FF3B30" strokeWidth={2.5} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FF3B30' }}>
+                            Kết thúc
                         </Text>
-                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.6)' }}>
-                            Xác nhận 2 lần
-                        </Text>
-                    </View>
-                </Pressable>
+                    </Pressable>
 
-                {/* ── Status + Timer (below the end button) ── */}
-                <View style={{ position: 'absolute', top: 80, left: 20 }}>
+                    {/* Hủy No-Show — chỉ hiển khi bác sĩ chưa vào */}
+                    {!isConnected && hasJoined && (
+                        <Pressable
+                            onPress={() => { setNoShowStep(1); setNoShowDialog(true); }}
+                            style={({ pressed }) => ({
+                                flexDirection: 'row', alignItems: 'center', gap: 6,
+                                paddingHorizontal: 12, paddingVertical: 8,
+                                backgroundColor: pressed ? 'rgba(234,179,8,0.3)' : 'rgba(234,179,8,0.15)',
+                                borderRadius: 14, borderWidth: 1.5, borderColor: '#EAB308'
+                            })}
+                        >
+                            <AlertTriangle size={14} color="#EAB308" strokeWidth={2.5} />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#EAB308' }}>
+                                Bác sĩ vắng
+                            </Text>
+                        </Pressable>
+                    )}
+
+                    {/* Thu nhỏ */}
+                    <Pressable
+                        onPress={() => setPauseDialog(true)}
+                        style={({ pressed }) => ({
+                            flexDirection: 'row', alignItems: 'center', gap: 6,
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            backgroundColor: pressed ? 'rgba(251,191,36,0.3)' : 'rgba(251,191,36,0.15)',
+                            borderRadius: 14, borderWidth: 1.5, borderColor: '#FBBF24'
+                        })}
+                    >
+                        <Minimize2 size={14} color="#FBBF24" strokeWidth={2.5} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FBBF24' }}>
+                            Thu nhỏ
+                        </Text>
+                    </Pressable>
+                </View>
+
+                {/* ── Status + Timer ── */}
+                <View style={{ position: 'absolute', top: 90, left: 24, zIndex: 10 }}>
                     <View style={{
                         paddingHorizontal: 10, paddingVertical: 5,
                         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -495,6 +652,15 @@ export default function VideoCallScreen() {
                     </View>
                     <CallTimer running={hasJoined && isConnected} />
                 </View>
+
+                {/* ── Self PiP (top-right) moved below header ── */}
+                <View style={{
+                    position: 'absolute', top: 90, right: 16,
+                    width: 110, height: 156, borderRadius: 22,
+                    backgroundColor: '#2C2C2E',
+                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
+                    overflow: 'hidden', zIndex: 10
+                }}>
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 {/* ── BOTTOM DOCK — giữa bên dưới ── */}
@@ -543,33 +709,6 @@ export default function VideoCallScreen() {
                         </Pressable>
                     </View>
 
-                    {/* ── NÚT TẠM DỪNG — trung tâm, nổi bật ── */}
-                    <Pressable
-                        onPress={() => setPauseDialog(true)}
-                        style={({ pressed }) => ({
-                            flexDirection: 'row', alignItems: 'center', gap: 10,
-                            paddingHorizontal: 32, height: 58,
-                            borderRadius: 30,
-                            backgroundColor: pressed ? 'rgba(14,14,20,0.95)' : 'rgba(14,14,20,0.88)',
-                            borderWidth: 2, borderColor: '#FBBF24',
-                            transform: [{ scale: pressed ? 0.95 : 1 }],
-                            shadowColor: '#FBBF24',
-                            shadowOffset: { width: 0, height: 4 },
-                            shadowOpacity: pressed ? 0.5 : 0.3,
-                            shadowRadius: 12, elevation: 8,
-                        })}
-                    >
-                        <Minimize2 size={20} color="#FBBF24" strokeWidth={2.5} />
-                        <View>
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#FBBF24' }}>
-                                Tạm dừng & Thu nhỏ
-                            </Text>
-                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(251,191,36,0.55)' }}>
-                                Có thể vào lại bất kỳ lúc nào
-                            </Text>
-                        </View>
-                    </Pressable>
-
                 </View>
             </View>
 
@@ -587,6 +726,14 @@ export default function VideoCallScreen() {
                 onCancel={() => { setEndDialog(false); setEndStep(1); }}
                 onStep1={() => setEndStep(2)}
                 onStep2={handleEndStep2}
+            />
+            {/* ── Cancel No-Show confirm modal (2 bước) ── */}
+            <CancelNoShowModal
+                visible={noShowDialog}
+                step={noShowStep}
+                onCancel={() => { setNoShowDialog(false); setNoShowStep(1); }}
+                onStep1={() => setNoShowStep(2)}
+                onStep2={handleNoShowStep2}
             />
         </SafeAreaView>
     );

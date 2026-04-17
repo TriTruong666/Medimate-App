@@ -168,7 +168,7 @@ function ReminderCard({ item }: { item: any }) {
                         {item.memberName ? (
                             <>
                                 <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#9CA3AF' }}>·</Text>
-                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#9CA3AF' }} numberOfLines={1}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#9CA3AF', flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
                                     {item.memberName}
                                 </Text>
                             </>
