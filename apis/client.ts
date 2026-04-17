@@ -49,6 +49,7 @@ axiosClient.interceptors.response.use(
         let message = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
         if (data?.message) message = data.message;
 
+        // Chỉ coi là force-kick khi server báo rõ đăng nhập từ thiết bị khác
         const isKickedOut = message.includes("thiết bị khác");
 
         // Xóa token khỏi storage
@@ -61,10 +62,16 @@ axiosClient.interceptors.response.use(
         // Reset session
         store.set(authSessionAtom, undefined);
 
-        // Gửi signal kick-out → _layout.tsx sẽ xử lý Alert + navigate
-        store.set(kickOutAtom, { message, isKickedOut });
+        if (isKickedOut) {
+          // Chỉ set kickOutAtom khi bị force-logout từ server
+          // → _layout.tsx sẽ hiển thị Alert và navigate
+          store.set(kickOutAtom, { message, isKickedOut: true });
+        }
+        // với 401 bình thường (token hết hạn) chỉ clear session, không nói gì với user
       } catch (err) {
         console.error("Lỗi xử lý 401:", err);
+      } finally {
+        // Luôn reset flag để những lần sau vẫn xử lý được
         _isHandling401 = false;
       }
     }

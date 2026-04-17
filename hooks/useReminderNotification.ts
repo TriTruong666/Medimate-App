@@ -4,6 +4,9 @@ import * as Notifications from "expo-notifications";
 import { useEffect } from "react";
 import { usePopup } from "@/stores/popupStore";
 import { Platform } from "react-native";
+import { router } from "expo-router";
+import { useAtomValue } from "jotai";
+import { authSessionAtom } from "@/stores/authStore";
 
 // Cấu hình hiển thị thông báo khi app đang mở (foreground)
 Notifications.setNotificationHandler({
@@ -34,6 +37,7 @@ Notifications.setNotificationHandler({
 
 export function useReminderNotification() {
     const { open } = usePopup();
+    const session = useAtomValue(authSessionAtom);
 
     useEffect(() => {
         // Đảm bảo tạo Notification Channel toàn cục trên Android ngay khi mở app
@@ -94,6 +98,18 @@ export function useReminderNotification() {
                         ) : [],
                     }
                 });
+            } else if (
+                type?.startsWith('APPOINTMENT_') || 
+                type?.startsWith('SESSION_') || 
+                type?.startsWith('GUARDIAN_') || 
+                type === 'UPCOMING_APPOINTMENT'
+            ) {
+                // Điều hướng tới trang Lịch sử khám / Lịch hẹn
+                if (session?.role === 'manager') {
+                    router.push('/(manager)/(doctor)/appointments');
+                } else if (session?.role === 'member') {
+                    router.push('/(member)/(appointment)');
+                }
             }
         });
 
@@ -101,7 +117,7 @@ export function useReminderNotification() {
             foregroundSub.remove();
             backgroundTapSub.remove();
         };
-    }, [open]);
+    }, [open, session]);
 }
 
 // Global injector component

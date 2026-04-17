@@ -42,11 +42,20 @@ export default function RootLayout() {
   const [kickOut, setKickOut] = useAtom(kickOutAtom);
   const router = useRouter();
 
-  // ─ Xử lý kick-out khi interceptor hoặc SignalR gửi signal ─────────────────
+  console.log('[_layout] Rendering RootLayout...');
+
+  // ─ Xử lý kick-out khi interceptor hoặc SignalR gửi signal ──────────────────────
   useEffect(() => {
     if (!kickOut) return;
 
     const { message, isKickedOut } = kickOut;
+
+    // Chỉ xử lý force-kick (ví dụ: đăng nhập từ thiết bị khác)
+    if (!isKickedOut) {
+      setKickOut(null);
+      router.replace('/welcome');
+      return;
+    }
 
     // Reset signal trước
     setKickOut(null);
@@ -57,7 +66,7 @@ export default function RootLayout() {
     // 2. Show Alert SAU khi welcome đã render (dùng timeout nhỏ để đảm bảo)
     setTimeout(() => {
       Alert.alert(
-        isKickedOut ? '⚠️ Cảnh báo bảo mật' : 'Phiên hết hạn',
+        '⚠️ Cảnh báo bảo mật',
         message,
         [{ text: 'Đồng ý', style: 'default' }],
         { cancelable: true }
@@ -81,13 +90,24 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    console.log('[_layout] useEffect trigger (loaded/session checked) | loaded:', loaded, '| session_is_null:', session === null);
     if (loaded) {
-      initAuth(); // Initialize auth state immediately after fonts load
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+    // Nếu ứng dụng đã load xong fonts nhưng state authSession bị reset (thường gặp khi Fast Refresh) 
+    // hoặc đây là lần tải đầu tiên, chúng ta sẽ kéo lại auth data.
+    if (loaded && session === null) {
+      console.log('[_layout] Fonts loaded & Session is null (or reset by HMR). Calling initAuth()...');
+      initAuth(); 
+    }
+  }, [loaded, session]);
 
-  if (!loaded) return null;
+  if (!loaded) {
+    console.log('[_layout] Fonts not yet loaded. Returning null...');
+    return null;
+  }
+
+  console.log('[_layout] Rending actual Provider structure...');
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

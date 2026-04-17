@@ -198,11 +198,11 @@ export default function MemberScheduleScreen() {
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Name Info */}
         <View style={{ paddingHorizontal: 20, marginBottom: 12, marginTop: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" }}>
-          <View>
+          <View style={{ flex: 1, marginRight: 16 }}>
             <Text style={{ fontSize: 10, fontFamily: "SpaceGrotesk_700Bold", color: "#9CA3AF", letterSpacing: 1.5, textTransform: "uppercase" }}>LỊCH CỦA</Text>
-            <Text style={{ fontSize: 28, fontFamily: "SpaceGrotesk_700Bold", color: "#000", letterSpacing: -0.5 }}>{memberName || "Thành viên"}</Text>
+            <Text style={{ fontSize: 28, fontFamily: "SpaceGrotesk_700Bold", color: "#000", letterSpacing: -0.5 }} numberOfLines={1} ellipsizeMode="tail">{memberName || "Thành viên"}</Text>
           </View>
-          <View style={{ alignItems: "flex-end" }}>
+          <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
             <Text style={{ fontSize: 18, fontFamily: "SpaceGrotesk_700Bold", color: "#000", textTransform: "uppercase" }}>{currentMonth.format("MMMM")}</Text>
           </View>
         </View>

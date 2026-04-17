@@ -1,6 +1,8 @@
 import { atom } from 'jotai';
 import * as SecureStore from 'expo-secure-store';
-import { getDecodedToken } from '../utils/token';
+import { getDecodedToken } from '../utils/token'; // Keep for other uses if needed
+import { jwtDecode } from "jwt-decode";
+import { CustomJwtPayload } from '../utils/token';
 
 // Define types for user
 export interface UserSession {
@@ -20,23 +22,46 @@ export const accessTokenAtom = atom<string | null>(null);
 // Interceptor set atom này khi nhận 401 → _layout.tsx lắng nghe và navigate
 export const kickOutAtom = atom<{ message: string; isKickedOut: boolean } | null>(null);
 
+// Helper function to prevent SecureStore from hanging indefinitely on Expo Fast Refresh
+const withTimeout = <T>(promise: Promise<T>, ms: number, timeoutMsg: string): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error(timeoutMsg)), ms))
+    ]);
+};
+
 /**
  * Helper to initialize auth state from SecureStore
  */
 export const initAuthAtom = atom(
     null,
     async (get, set) => {
+        console.log('[authStore] initAuthAtom is starting...');
+        // Reset bất kỳ trạng thái kick-out cũ từ phiên trước
+        set(kickOutAtom, null);
         try {
-            const token = await SecureStore.getItemAsync('accessToken');
+            console.log('[authStore] Fetching accessToken from SecureStore...');
+            // Gắn timeout 3s
+            const token = await withTimeout(
+                SecureStore.getItemAsync('accessToken'),
+                3000,
+                'Lỗi: SecureStore.getItemAsync bị treo quá 3 giây!'
+            );
+            
+            console.log('[authStore] AccessToken found:', !!token);
+
             if (!token) {
+                console.log('[authStore] No token, setting authSessionAtom = undefined');
                 set(authSessionAtom, undefined);
                 return;
             }
 
-            const decoded = await getDecodedToken();
+            console.log('[authStore] Decoding token directly...');
+            const decoded = jwtDecode<CustomJwtPayload>(token);
             
             // Validate token format and expiration
             if (!decoded) {
+                console.log('[authStore] Token decoding failed, deleting token.');
                 await SecureStore.deleteItemAsync('accessToken');
                 set(authSessionAtom, undefined);
                 set(accessTokenAtom, null);
@@ -45,27 +70,36 @@ export const initAuthAtom = atom(
 
             // check if token is expired
             if (decoded.exp && (Date.now() / 1000) >= decoded.exp) {
-                console.log('Token is expired during startup');
-                await SecureStore.deleteItemAsync('accessToken');
+                console.log('[authStore] Token is expired during startup. Clearing...');
+                await withTimeout(SecureStore.deleteItemAsync('accessToken'), 3000, 'Delete timeout');
                 set(authSessionAtom, undefined);
                 set(accessTokenAtom, null);
                 return;
             }
 
             if (decoded?.MemberId) {
+                console.log('[authStore] Valid Member session found.');
                 set(authSessionAtom, { memberId: decoded.MemberId, role: 'member' });
                 set(accessTokenAtom, token);
             } else if (decoded?.Id) {
+                console.log('[authStore] Valid Manager session found.');
                 set(authSessionAtom, { id: decoded.Id, role: 'manager' });
                 set(accessTokenAtom, token);
             } else {
-                await SecureStore.deleteItemAsync('accessToken');
+                console.log('[authStore] Unrecognized payload format, clearing token.');
+                await withTimeout(SecureStore.deleteItemAsync('accessToken'), 3000, 'Delete timeout');
                 set(authSessionAtom, undefined);
                 set(accessTokenAtom, null);
             }
+            console.log('[authStore] Initialization complete.');
         } catch (e) {
-            console.error('Failed to initialize auth', e);
-            await SecureStore.deleteItemAsync('accessToken');
+            console.error('[authStore] Failed to initialize auth:', e);
+            try {
+                await withTimeout(SecureStore.deleteItemAsync('accessToken'), 3000, 'Delete timeout inside catch');
+            } catch (inner) {
+                console.error('[authStore] Emergency delete also triggered timeout/error. Bypassing...');
+            }
+            // Mấu chốt: Phải chắc chắn set data về undefined để index.tsx thoát khỏi vòng xoay loading
             set(authSessionAtom, undefined);
             set(accessTokenAtom, null);
         }

@@ -10,6 +10,8 @@ import { authSessionAtom } from '../stores/authStore';
 export default function Index() {
     const [session] = useAtom(authSessionAtom);
 
+    console.log('[Index] render - current session:', session === null ? 'null (Loading)' : (session === undefined ? 'undefined (Not Logged In)' : `Active As ${session.role}`));
+
     // 1. App Startup: Waiting for RootLayout to sync SecureStore -> Jotai
     if (session === null) {
         return (

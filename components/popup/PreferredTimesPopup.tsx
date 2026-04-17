@@ -70,6 +70,7 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ items, initialIndex, onSelect, 
                 <ScrollView
                     ref={scrollRef}
                     showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled={true}
                     snapToInterval={ITEM_HEIGHT}
                     decelerationRate="fast"
                     contentOffset={{ x: 0, y: initialIndex * ITEM_HEIGHT }}
@@ -300,6 +301,7 @@ export const PreferredTimesPopup: React.FC<PreferredTimesPopupProps> = ({
                 <ScrollView
                     contentContainerStyle={{ padding: 20, paddingBottom: 12 }}
                     showsVerticalScrollIndicator={false}
+                    nestedScrollEnabled={true}
                 >
                     <TimeSlotPicker
                         label="Buổi sáng"

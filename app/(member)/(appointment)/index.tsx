@@ -147,23 +147,46 @@ function MemberAppointmentCard({
 
             {/* --- Member Info --- */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 24 }}>
-                <View style={{ width: 44, height: 44, backgroundColor: '#F8FAFC', borderRadius: 14, borderWidth: 2, borderColor: '#000', overflow: 'hidden' }}>
-                    <Image source={{ uri: memberAva }} style={{ width: '100%', height: '100%' }} />
-                </View>
                 <View style={{ flex: 1 }}>
                     <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#94A3B8', textTransform: 'uppercase', marginBottom: 2 }}>
-                        Người nhận hẹn
+                        Bệnh nhân
                     </Text>
+
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }} numberOfLines={1}>
+                        {/* TÊN BỆNH NHÂN - CỰC KỲ QUAN TRỌNG: flexShrink: 1 */}
+                        <Text
+                            style={{
+                                fontFamily: 'SpaceGrotesk_700Bold',
+                                fontSize: 15,
+                                color: '#000',
+                                flexShrink: 1 // Nếu hàng bị chật, Tên sẽ tự động cắt ngắn và hiện dấu "..."
+                            }}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                        >
                             {memberDisplay}
                         </Text>
-                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1' }} />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#64748B' }}>
+
+                        {/* Dấu chấm ngăn cách và các thông số phụ - Dùng flexShrink: 0 để KHÔNG bị cắt */}
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', flexShrink: 0 }} />
+
+                        <Text style={{
+                            fontFamily: 'SpaceGrotesk_600SemiBold',
+                            fontSize: 13,
+                            color: '#64748B',
+                            flexShrink: 0 // Đảm bảo giới tính luôn hiển thị đủ
+                        }}>
                             {memberGender}
                         </Text>
-                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1' }} />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#64748B' }}>
+
+                        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: '#CBD5E1', flexShrink: 0 }} />
+
+                        <Text style={{
+                            fontFamily: 'SpaceGrotesk_600SemiBold',
+                            fontSize: 13,
+                            color: '#64748B',
+                            flexShrink: 0 // Đảm bảo tuổi luôn hiển thị đủ
+                        }}>
                             {memberAge}
                         </Text>
                     </View>
