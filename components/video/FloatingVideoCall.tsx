@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import { Maximize2, MicOff, Pause, PhoneOff } from 'lucide-react-native';
+import { MicOff } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, Dimensions, Pressable, Text, View } from 'react-native';
+import { Alert, Dimensions, Text, View } from 'react-native';
+import { RtcSurfaceView } from 'react-native-agora';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     runOnJS,
@@ -20,10 +21,10 @@ const PIP_H = 228;
 const MARGIN = 16;
 
 const SNAP_POSITIONS = [
-    { x: MARGIN,                      y: MARGIN + 60 },
-    { x: SCREEN_W - PIP_W - MARGIN,   y: MARGIN + 60 },
-    { x: MARGIN,                      y: SCREEN_H - PIP_H - MARGIN - 90 },
-    { x: SCREEN_W - PIP_W - MARGIN,   y: SCREEN_H - PIP_H - MARGIN - 90 },
+    { x: MARGIN, y: MARGIN + 60 },
+    { x: SCREEN_W - PIP_W - MARGIN, y: MARGIN + 60 },
+    { x: MARGIN, y: SCREEN_H - PIP_H - MARGIN - 90 },
+    { x: SCREEN_W - PIP_W - MARGIN, y: SCREEN_H - PIP_H - MARGIN - 90 },
 ];
 
 function findNearestSnap(x: number, y: number) {
@@ -189,8 +190,19 @@ export default function FloatingVideoCall() {
                 },
                 animatedStyle,
             ]}>
-                {/* ── Video area (placeholder) ── */}
+                {/* ── Remote/Local Video stream area ── */}
                 <View style={{ flex: 1, backgroundColor: '#18181C', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                    {isConnected ? (
+                        <RtcSurfaceView canvas={{ uid: state.remoteUids[0] }} style={{ flex: 1, width: '100%', height: '100%' }} />
+                    ) : (
+                        state.localUid && !state.isCameraOff ? (
+                            <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1, width: '100%', height: '100%' }} />
+                        ) : (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                <Text style={{ color: '#fff', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>Đang chờ</Text>
+                            </View>
+                        )
+                    )}
 
                     {/* Status + timer row */}
                     <View style={{
@@ -214,52 +226,8 @@ export default function FloatingVideoCall() {
                         </View>
                     )}
 
-                    {/* Center: maximize icon */}
-                    <View style={{
-                        width: 44, height: 44, borderRadius: 22,
-                        backgroundColor: 'rgba(255,255,255,0.07)',
-                        borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)',
-                        alignItems: 'center', justifyContent: 'center', marginBottom: 5,
-                    }}>
-                        <Maximize2 size={18} color="rgba(255,255,255,0.75)" />
-                    </View>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 8, color: 'rgba(255,255,255,0.38)', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                        Nhấn để mở rộng
-                    </Text>
+
                 </View>
-
-                {/* ── Action buttons (2 rows, bottom) ── */}
-
-                {/* Row 1: Thu nhỏ / Mở rộng — yellow, 1 confirm */}
-                <Pressable
-                    onPress={handleMaximize}
-                    style={({ pressed }) => ({
-                        height: 34,
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        backgroundColor: pressed ? 'rgba(251,191,36,0.85)' : 'rgba(251,191,36,0.15)',
-                        borderTopWidth: 1, borderTopColor: '#FBBF24',
-                    })}
-                >
-                    <Pause size={11} color="#FBBF24" strokeWidth={2.5} />
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                        Mở rộng
-                    </Text>
-                </Pressable>
-
-                {/* Row 2: Kết thúc phiên — red, 2 confirms */}
-                <Pressable
-                    onPress={triggerEndCall}
-                    style={({ pressed }) => ({
-                        height: 32,
-                        flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5,
-                        backgroundColor: pressed ? '#CC2F26' : '#FF3B30',
-                    })}
-                >
-                    <PhoneOff size={11} color="white" strokeWidth={2.5} />
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                        Kết thúc phiên
-                    </Text>
-                </Pressable>
             </Animated.View>
         </GestureDetector>
     );
