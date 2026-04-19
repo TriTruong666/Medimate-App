@@ -6,12 +6,11 @@ import { useRouter } from "expo-router";
 import {
   ChevronRight,
   Crown,
-  HelpCircle,
+  FileText,
   Info,
   LogOut,
   Shield,
-  Users,
-  FileText
+  Users
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -55,12 +54,12 @@ const MENU_ITEMS = [
     route: "/(manager)/(settings)/transaction_history" as const,
     onlyUser: true,
   },
-  {
-    icon: HelpCircle,
-    label: "Trợ giúp & Hỗ trợ",
-    subtitle: "Câu hỏi thường gặp",
-    color: "#87CEFA",
-  },
+  // {
+  //   icon: HelpCircle,
+  //   label: "Trợ giúp & Hỗ trợ",
+  //   subtitle: "Câu hỏi thường gặp",
+  //   color: "#87CEFA",
+  // },
   {
     icon: Info,
     label: "Về Medimate",
