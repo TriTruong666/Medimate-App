@@ -18,10 +18,9 @@ import {
   Check,
   FileText,
   Pill,
-  Plus,
   Sparkles,
   User as UserIcon,
-  X,
+  X
 } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -510,7 +509,7 @@ export default function ScanPrescriptionScreen() {
             </View>
 
             {/* Add Manual Button */}
-            <Pressable
+            {/* <Pressable
               onPress={openAddMedicine}
               className="bg-white border-2 border-dashed border-black/30 rounded-[24px] py-6 flex-row items-center justify-center gap-x-2 active:bg-gray-50 active:opacity-80"
             >
@@ -518,7 +517,7 @@ export default function ScanPrescriptionScreen() {
               <Text className="font-space-bold text-gray-500 uppercase tracking-wider">
                 Bổ sung thêm thuốc khác
               </Text>
-            </Pressable>
+            </Pressable> */}
           </ScrollView>
 
           <View style={{ position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "#F9F6FC", paddingHorizontal: 24, paddingBottom: 40, paddingTop: 16, borderTopWidth: 2, borderTopColor: "rgba(0,0,0,0.05)" }}>

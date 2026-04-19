@@ -2,6 +2,7 @@
 import { BaseResponse } from "@/types/APIResponse";
 import {
     AddMedicineRequest,
+    CreateEmptyPrescriptionRequest,
     Prescription,
     ScanPrescriptionResponse,
     UpdateMedicineRequest,
@@ -126,6 +127,18 @@ export async function explainDrugInteraction(data: {
 }): Promise<BaseResponse<any>> {
     try {
         const res = await axiosClient.post(`/api/v1/drug-interactions/explain`, data);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
+
+export async function createEmptyPrescription(
+    memberId: string,
+): Promise<BaseResponse<Prescription>> {
+    try {
+        const res = await axiosClient.post(`/api/v1/prescriptions/member/${memberId}/empty`, {});
         return res.data;
     } catch (error: any) {
         if (error.response?.data) return error.response.data;
