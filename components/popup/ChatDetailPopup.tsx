@@ -20,6 +20,7 @@ import {
     View
 } from "react-native";
 import { getMessages, sendMessage } from "../../apis/chat.api";
+import { useChatSignalR } from "../../hooks/useSignalR";
 import { useToast } from "../../stores/toastStore";
 
 // ─── Types ───────────────────────────────────────────────────
@@ -44,12 +45,7 @@ interface ChatDetailPopupProps {
 
 // ─── Mock Messages ───────────────────────────────────────────
 const MOCK_MESSAGES: ChatMessage[] = [
-    { id: '1', text: 'Chào bác sĩ, em muốn hỏi về tình trạng răng khôn ạ.', sender: 'me', time: '09:10' },
-    { id: '2', text: 'Chào bạn! Bạn có thể mô tả triệu chứng cụ thể hơn không?', sender: 'other', time: '09:12' },
-    { id: '3', text: 'Dạ em bị đau ở hàm dưới bên phải, đặc biệt khi ăn nhai. Có sưng nhẹ ở nướu.', sender: 'me', time: '09:15' },
-    { id: '4', text: 'Trường hợp này có thể là răng khôn đang mọc lệch. Bạn nên chụp X-quang nhé.', sender: 'other', time: '09:18' },
-    { id: '5', text: 'Dạ được ạ, em rảnh buổi sáng ạ.', sender: 'me', time: '09:20' },
-    { id: '6', text: 'Hệ thống sẽ ghi nhận lịch hẹn khám của bạn vào sáng thứ 7 nhé.', sender: 'other', time: '09:22' },
+
 ];
 
 /**
@@ -74,32 +70,34 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
     const [timeLeft, setTimeLeft] = useState<string | null>(null);
     const flatListRef = useRef<FlatList>(null);
     const toast = useToast();
+    // Ref lưu fetchMsgs function để SignalR có thể gọi mà không cần re-subscribe
+    const fetchMsgsRef = useRef<() => Promise<void>>(async () => {});
 
     React.useEffect(() => {
         if (!startedAt || isCompleted) return;
-        
+
         const startTime = new Date(startedAt).getTime();
         const endTime = startTime + 125 * 60 * 1000;
 
         const updateTimer = () => {
             const now = Date.now();
             const diff = endTime - now;
-            
+
             if (diff <= 0) {
                 setTimeLeft("Đã hết giờ");
                 return false;
             }
-            
+
             const h = Math.floor(diff / (1000 * 60 * 60));
             const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
             const s = Math.floor((diff % (1000 * 60)) / 1000);
-            
+
             const timeStr = [
                 h > 0 ? h.toString().padStart(2, '0') : null,
                 m.toString().padStart(2, '0'),
                 s.toString().padStart(2, '0')
             ].filter(Boolean).join(':');
-            
+
             setTimeLeft(timeStr);
             return true;
         };
@@ -114,6 +112,7 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
 
     React.useEffect(() => {
         if (!sessionId) return;
+
         const fetchMsgs = async () => {
             setIsLoading(true);
             try {
@@ -123,7 +122,7 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                     const mapped: ChatMessage[] = sorted.map(m => ({
                         id: m.messageId,
                         text: m.content || "",
-                        sender: m.senderType === 1 ? "me" : "other", // 1 is User, 2 is Doctor
+                        sender: m.senderType === 1 ? "me" : "other", // 1 = User, 2 = Doctor
                         time: new Date(m.sendAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }),
                         attachmentUrl: m.attachmentUrl,
                     }));
@@ -134,14 +133,26 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                 setIsLoading(false);
             }
         };
+
+        // Lưu ref để SignalR handler có thể gọi
+        fetchMsgsRef.current = fetchMsgs;
+
+        // Fetch lần đầu khi mở popup
         fetchMsgs();
 
-        let interval: any;
-        if (!isCompleted) {
-            interval = setInterval(fetchMsgs, 3000);
+        // Không còn polling — tin mới sẽ được nhận qua SignalR
+    }, [sessionId]);
+
+    // ⎯⎯ Kết nối SignalR realtime — nhận tin nhắn mới theo sessionId ⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+    useChatSignalR(sessionId, (data) => {
+        // Nếu tin do chính mình gửi (senderType=1=User) thì optimistic message đã có sẵn, không fetch
+        // Nếu là tin từ bác sĩ (senderType=2) đầy phải fetch lại mới có nội dung đầy đủ
+        const senderType = data?.senderType ?? data?.SenderType ?? data?.Type;
+        const isFromMe = senderType === 1; // 1 = User (member)
+        if (!isFromMe) {
+            fetchMsgsRef.current();
         }
-        return () => { if (interval) clearInterval(interval); }
-    }, [sessionId, isCompleted]);
+    });
 
     const handleSend = async () => {
         if (!inputText.trim()) return;
