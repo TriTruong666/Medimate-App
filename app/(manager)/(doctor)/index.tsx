@@ -13,7 +13,7 @@ import { ActivityIndicator, Dimensions, Image, Pressable, RefreshControl, Scroll
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
 import { useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
-import { useGetDoctors } from "../../../hooks/useDoctor";
+import { useGetDoctors, useGetDoctorReviews } from "../../../hooks/useDoctor";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -50,6 +50,57 @@ const SPECIALTY_BG_COLORS = [
     '#FFD1D1', '#D1EFFF', '#D1FFD1', '#FFF4D1', '#E4D1FF',
     '#FFE4D1', '#D1FFF4', '#F4D1FF', '#D1FFFF', '#FFD1F4'
 ];
+
+function DoctorListItem({ doc, index }: { doc: any, index: number }) {
+    const router = useRouter();
+    const color = CARD_COLORS[index % CARD_COLORS.length];
+    
+    // GET DYNAMIC RATINGS
+    const { data: reviews } = useGetDoctorReviews(doc.doctorId);
+    const computedTotalReviews = reviews ? reviews.length : (doc.totalReviews || 0);
+    const computedAverage = reviews && reviews.length > 0
+        ? (reviews.reduce((acc: number, r: any) => acc + r.score, 0) / reviews.length)
+        : (doc.averageRating || 0);
+
+    return (
+        <Pressable
+            onPress={() => router.push({ pathname: "/(manager)/(doctor)/doctor_detail", params: { id: doc.doctorId } } as any)}
+            className="bg-white border-2 border-black rounded-[28px] p-4 flex-row items-center mb-4 shadow-sm active:translate-x-1 active:translate-y-1 active:shadow-none"
+        >
+            <View
+                className="w-20 h-20 rounded-2xl border-2 border-black items-center justify-center overflow-hidden"
+                style={{ backgroundColor: color }}
+            >
+                <Image source={{ uri: doc.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} className="w-16 h-16" />
+            </View>
+
+            <View className="flex-1 ml-4 py-1">
+                <View className="flex-row justify-between items-start">
+                    <View className="flex-1 mr-2">
+                        <Text className="text-base font-space-bold text-black leading-tight uppercase" numberOfLines={1}>{doc.fullName}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
+                            <View style={{ backgroundColor: SPECIALTY_BG_COLORS[index % SPECIALTY_BG_COLORS.length], paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>{doc.specialty}</Text>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                <View className="flex-row items-center justify-between mt-auto pt-2">
+                    <View className="flex-row items-center gap-x-1">
+                        <Star size={14} color="#FFD700" fill="#FFD700" />
+                        <Text className="text-xs font-space-bold text-black">{computedAverage.toFixed(1)}</Text>
+                        <Text className="text-[10px] font-space-medium text-black/30">({computedTotalReviews})</Text>
+                    </View>
+
+                    <View className="bg-[#B3354B]/10 px-3 py-1 rounded-lg">
+                        <Text className="text-[#B3354B] font-space-bold text-[10px] uppercase">Khám ngay</Text>
+                    </View>
+                </View>
+            </View>
+        </Pressable>
+    );
+}
 
 export default function DoctorScreen() {
     const router = useRouter();
@@ -284,48 +335,9 @@ export default function DoctorScreen() {
                             </Text>
                         </View>
                     ) : (
-                        filteredDoctors.map((doc, index) => {
-                            const color = CARD_COLORS[index % CARD_COLORS.length];
-                            return (
-                                <Pressable
-                                    key={doc.doctorId}
-                                    onPress={() => router.push({ pathname: "/(manager)/(doctor)/doctor_detail", params: { id: doc.doctorId } } as any)}
-                                    className="bg-white border-2 border-black rounded-[28px] p-4 flex-row items-center mb-4 shadow-sm active:translate-x-1 active:translate-y-1 active:shadow-none"
-                                >
-                                    <View
-                                        className="w-20 h-20 rounded-2xl border-2 border-black items-center justify-center overflow-hidden"
-                                        style={{ backgroundColor: color }}
-                                    >
-                                        <Image source={{ uri: doc.avatarUrl || 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png' }} className="w-16 h-16" />
-                                    </View>
-
-                                    <View className="flex-1 ml-4 py-1">
-                                        <View className="flex-row justify-between items-start">
-                                            <View className="flex-1 mr-2">
-                                                <Text className="text-base font-space-bold text-black leading-tight uppercase" numberOfLines={1}>{doc.fullName}</Text>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 }}>
-                                                    <View style={{ backgroundColor: SPECIALTY_BG_COLORS[index % SPECIALTY_BG_COLORS.length], paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }}>
-                                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: '#000' }}>{doc.specialty}</Text>
-                                                    </View>
-                                                </View>
-                                            </View>
-                                        </View>
-
-                                        <View className="flex-row items-center justify-between mt-auto pt-2">
-                                            <View className="flex-row items-center gap-x-1">
-                                                <Star size={14} color="#FFD700" fill="#FFD700" />
-                                                <Text className="text-xs font-space-bold text-black">{doc.averageRating.toFixed(1)}</Text>
-                                                <Text className="text-[10px] font-space-medium text-black/30">({doc.totalReviews})</Text>
-                                            </View>
-
-                                            <View className="bg-[#B3354B]/10 px-3 py-1 rounded-lg">
-                                                <Text className="text-[#B3354B] font-space-bold text-[10px] uppercase">Khám ngay</Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </Pressable>
-                            );
-                        })
+                        filteredDoctors.map((doc, index) => (
+                            <DoctorListItem key={doc.doctorId} doc={doc} index={index} />
+                        ))
                     )}
                 </View>
 

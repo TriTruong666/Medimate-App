@@ -117,3 +117,18 @@ export async function deletePrescriptionMedicine(medicineId: string): Promise<Ba
         throw error;
     }
 }
+
+// Giải thích nguyên nhân tương tác thuốc bằng AI
+export async function explainDrugInteraction(data: {
+    prescriptionId: string;
+    newDrugName: string;
+    conflicts: any[];
+}): Promise<BaseResponse<any>> {
+    try {
+        const res = await axiosClient.post(`/api/v1/drug-interactions/explain`, data);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
