@@ -74,3 +74,11 @@ export type UpdateMedicineRequest = {
     quantity?: number;
     instructions?: string;
 };
+
+export interface CreateEmptyPrescriptionRequest {
+    hospitalName?: string;
+    doctorName?: string;
+    prescriptionDate: string; // ISO format: "2026-04-19T..."
+    diagnosis?: string;
+    notes?: string;
+}

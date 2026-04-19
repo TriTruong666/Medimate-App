@@ -15,15 +15,24 @@ import type {
     IRtcEngine,
     RtcConnection,
 } from 'react-native-agora';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { cancelNoShowSession, endSession, joinSession } from '../../../apis/session.api';
+import { getVideoCallToken } from '../../../apis/videoCall.api';
+import { useToast } from '../../../stores/toastStore';
+import {
+    getGlobalAgoraEngine,
+    setGlobalAgoraEngine,
+    useVideoCallActions,
+} from '../../../stores/videoCallStore';
 
 let ChannelProfileType: any = {};
 let ClientRoleType: any = {};
 let createAgoraRtcEngine: any = () => ({
-    initialize: () => {}, registerEventHandler: () => {}, enableVideo: () => {},
-    startPreview: () => {}, joinChannel: () => {}, muteLocalAudioStream: () => {},
-    muteLocalVideoStream: () => {}, switchCamera: () => {}
+    initialize: () => { }, registerEventHandler: () => { }, enableVideo: () => { },
+    startPreview: () => { }, joinChannel: () => { }, muteLocalAudioStream: () => { },
+    muteLocalVideoStream: () => { }, switchCamera: () => { }
 });
-let RtcSurfaceView: any = ({ style }: any) => <View style={[style, { backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' }]}><Text style={{color: 'white'}}>Mock Agora View</Text></View>;
+let RtcSurfaceView: any = ({ style }: any) => <View style={[style, { backgroundColor: '#333', alignItems: 'center', justifyContent: 'center' }]}><Text style={{ color: 'white' }}>Mock Agora View</Text></View>;
 
 try {
     const agora = require('react-native-agora');
@@ -34,15 +43,6 @@ try {
 } catch (e) {
     console.warn('react-native-agora not linked. Mocking for dev.');
 }
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { cancelNoShowSession, endSession, joinSession } from '../../../apis/session.api';
-import { getVideoCallToken } from '../../../apis/videoCall.api';
-import { useToast } from '../../../stores/toastStore';
-import {
-    getGlobalAgoraEngine,
-    setGlobalAgoraEngine,
-    useVideoCallActions,
-} from '../../../stores/videoCallStore';
 
 const AGORA_APP_ID = process.env.EXPO_PUBLIC_AGORA_APP_ID || 'dummy_app_id';
 
@@ -472,7 +472,7 @@ export default function VideoCallScreen() {
                     onJoinChannelSuccess: () => { if (isMounted) setHasJoined(true); },
                     onUserJoined: (_: RtcConnection, uid: number) => { if (isMounted) setRemoteUids(p => p.includes(uid) ? p : [...p, uid]); },
                     onUserOffline: (_: RtcConnection, uid: number) => { if (isMounted) setRemoteUids(p => p.filter(u => u !== uid)); },
-                    onError: (err, msg) => { console.error('Agora Error', err, msg); },
+                    onError: (err: any, msg: string) => { console.error('Agora Error', err, msg); },
                 });
                 engine.enableVideo();
                 engine.startPreview();
@@ -580,102 +580,101 @@ export default function VideoCallScreen() {
                     </View>
                 )}
 
-                    {!isCameraOff
-                        ? agoraEngineRef.current
-                            ? <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
-                            : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>Bạn</Text></View>
-                        : <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
-                            <Camera size={20} color="#666" />
-                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Đã tắt</Text>
-                        </View>
-                    }
-                </View>
-
-                {/* ─────────────────────────────────────────────────────────── */}
-                {/* ── TOP ACTION BAR (Bọc UI cho Thu Nhỏ và Kết Thúc) ── */}
-                {/* ─────────────────────────────────────────────────────────── */}
-                <View style={{
-                    position: 'absolute', top: 20, left: 16, right: 16, zIndex: 50,
-                    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-                    backgroundColor: 'rgba(14,14,20,0.85)', paddingHorizontal: 16, paddingVertical: 12,
-                    borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
-                    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8
-                }}>
-                    {/* Kết thúc phiên */}
-                    <Pressable
-                        onPress={() => { setEndStep(1); setEndDialog(true); }}
-                        style={({ pressed }) => ({
-                            flexDirection: 'row', alignItems: 'center', gap: 6,
-                            paddingHorizontal: 12, paddingVertical: 8,
-                            backgroundColor: pressed ? '#CC2F26' : 'rgba(255,59,48,0.15)',
-                            borderRadius: 14, borderWidth: 1.5, borderColor: '#FF3B30'
-                        })}
-                    >
-                        <PhoneOff size={14} color="#FF3B30" strokeWidth={2.5} />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FF3B30' }}>
-                            Kết thúc
-                        </Text>
-                    </Pressable>
-
-                    {/* Hủy No-Show — chỉ hiển khi bác sĩ chưa vào */}
-                    {!isConnected && hasJoined && (
-                        <Pressable
-                            onPress={() => { setNoShowStep(1); setNoShowDialog(true); }}
-                            style={({ pressed }) => ({
-                                flexDirection: 'row', alignItems: 'center', gap: 6,
-                                paddingHorizontal: 12, paddingVertical: 8,
-                                backgroundColor: pressed ? 'rgba(234,179,8,0.3)' : 'rgba(234,179,8,0.15)',
-                                borderRadius: 14, borderWidth: 1.5, borderColor: '#EAB308'
-                            })}
-                        >
-                            <AlertTriangle size={14} color="#EAB308" strokeWidth={2.5} />
-                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#EAB308' }}>
-                                Bác sĩ vắng
-                            </Text>
-                        </Pressable>
-                    )}
-
-                    {/* Thu nhỏ */}
-                    <Pressable
-                        onPress={() => setPauseDialog(true)}
-                        style={({ pressed }) => ({
-                            flexDirection: 'row', alignItems: 'center', gap: 6,
-                            paddingHorizontal: 12, paddingVertical: 8,
-                            backgroundColor: pressed ? 'rgba(251,191,36,0.3)' : 'rgba(251,191,36,0.15)',
-                            borderRadius: 14, borderWidth: 1.5, borderColor: '#FBBF24'
-                        })}
-                    >
-                        <Minimize2 size={14} color="#FBBF24" strokeWidth={2.5} />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FBBF24' }}>
-                            Thu nhỏ
-                        </Text>
-                    </Pressable>
-                </View>
-
-                {/* ── Status + Timer ── */}
-                <View style={{ position: 'absolute', top: 90, left: 24, zIndex: 10 }}>
-                    <View style={{
-                        paddingHorizontal: 10, paddingVertical: 5,
-                        backgroundColor: 'rgba(0,0,0,0.5)',
-                        borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
-                        flexDirection: 'row', alignItems: 'center', gap: 5,
-                    }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isConnected ? '#22C55E' : '#F59E0B' }} />
-                        <Text style={{ color: '#fff', fontFamily: 'SpaceGrotesk_700Bold', letterSpacing: 1.2, fontSize: 9, textTransform: 'uppercase' }}>
-                            {isConnected ? (remoteUids.length > 1 ? '3 người' : 'Đang tư vấn') : 'Đang chờ'}
-                        </Text>
+                {!isCameraOff
+                    ? agoraEngineRef.current
+                        ? <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
+                        : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>Bạn</Text></View>
+                    : <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Camera size={20} color="#666" />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Đã tắt</Text>
                     </View>
-                    <CallTimer running={hasJoined && isConnected} />
-                </View>
+                }
+            </View>
 
-                {/* ── Self PiP (top-right) moved below header ── */}
+            {/* ─────────────────────────────────────────────────────────── */}
+            {/* ── TOP ACTION BAR (Bọc UI cho Thu Nhỏ và Kết Thúc) ── */}
+            {/* ─────────────────────────────────────────────────────────── */}
+            <View style={{
+                position: 'absolute', top: 20, left: 16, right: 16, zIndex: 50,
+                flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                backgroundColor: 'rgba(14,14,20,0.85)', paddingHorizontal: 16, paddingVertical: 12,
+                borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 10, elevation: 8
+            }}>
+                {/* Kết thúc phiên (User không có quyền tắt hẳn, chỉ thu nhỏ) */}
+                <Pressable
+                    style={({ pressed }) => ({
+                        flexDirection: 'row', alignItems: 'center', gap: 6,
+                        paddingHorizontal: 12, paddingVertical: 8,
+                        backgroundColor: pressed ? '#CC2F26' : 'rgba(255,59,48,0.15)',
+                        borderRadius: 14, borderWidth: 1.5, borderColor: '#FF3B30'
+                    })}
+                >
+                    <PhoneOff size={14} color="#FF3B30" strokeWidth={2.5} />
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FF3B30' }}>
+                        Thoát Call
+                    </Text>
+                </Pressable>
+
+                {/* Hủy No-Show — chỉ hiển khi bác sĩ chưa vào */}
+                {!isConnected && hasJoined && (
+                    <Pressable
+                        onPress={() => { setNoShowStep(1); setNoShowDialog(true); }}
+                        style={({ pressed }) => ({
+                            flexDirection: 'row', alignItems: 'center', gap: 6,
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            backgroundColor: pressed ? 'rgba(234,179,8,0.3)' : 'rgba(234,179,8,0.15)',
+                            borderRadius: 14, borderWidth: 1.5, borderColor: '#EAB308'
+                        })}
+                    >
+                        <AlertTriangle size={14} color="#EAB308" strokeWidth={2.5} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#EAB308' }}>
+                            Bác sĩ vắng
+                        </Text>
+                    </Pressable>
+                )}
+
+                {/* Thu nhỏ */}
+                <Pressable
+                    onPress={() => setPauseDialog(true)}
+                    style={({ pressed }) => ({
+                        flexDirection: 'row', alignItems: 'center', gap: 6,
+                        paddingHorizontal: 12, paddingVertical: 8,
+                        backgroundColor: pressed ? 'rgba(251,191,36,0.3)' : 'rgba(251,191,36,0.15)',
+                        borderRadius: 14, borderWidth: 1.5, borderColor: '#FBBF24'
+                    })}
+                >
+                    <Minimize2 size={14} color="#FBBF24" strokeWidth={2.5} />
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FBBF24' }}>
+                        Thu nhỏ
+                    </Text>
+                </Pressable>
+            </View>
+
+            {/* ── Status + Timer ── */}
+            <View style={{ position: 'absolute', top: 90, left: 24, zIndex: 10 }}>
                 <View style={{
-                    position: 'absolute', top: 90, right: 16,
-                    width: 110, height: 156, borderRadius: 22,
-                    backgroundColor: '#2C2C2E',
-                    borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
-                    overflow: 'hidden', zIndex: 10
+                    paddingHorizontal: 10, paddingVertical: 5,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    borderRadius: 999, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+                    flexDirection: 'row', alignItems: 'center', gap: 5,
                 }}>
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isConnected ? '#22C55E' : '#F59E0B' }} />
+                    <Text style={{ color: '#fff', fontFamily: 'SpaceGrotesk_700Bold', letterSpacing: 1.2, fontSize: 9, textTransform: 'uppercase' }}>
+                        {isConnected ? (remoteUids.length > 1 ? '3 người' : 'Đang tư vấn') : 'Đang chờ'}
+                    </Text>
+                </View>
+                <CallTimer running={hasJoined && isConnected} />
+            </View>
+
+            {/* ── Self PiP (top-right) moved below header ── */}
+            <View style={{
+                position: 'absolute', top: 90, right: 16,
+                width: 110, height: 156, borderRadius: 22,
+                backgroundColor: '#2C2C2E',
+                borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
+                overflow: 'hidden', zIndex: 10
+            }}>
 
                 {/* ─────────────────────────────────────────────────────────── */}
                 {/* ── BOTTOM DOCK — giữa bên dưới ── */}

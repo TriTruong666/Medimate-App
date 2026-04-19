@@ -1,3 +1,4 @@
+import { addMedicineToPrescription } from "@/apis/prescription.api";
 import { PopupContainer } from "@/components/popup/PopupContainer";
 import { useGetPrescriptionDetail, useUpdatePrescription } from "@/hooks/usePrescription";
 import { usePopup } from "@/stores/popupStore";
@@ -85,46 +86,46 @@ export default function EditPrescriptionScreen() {
         }
     }, [prescriptionDetail]);
 
+    // Hàm parse ngày an toàn hơn (dùng chung)
+    const formatToISODate = (dateStr: string) => {
+        try {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+                // Tạo ngày theo giờ địa phương để tránh bị lệch ngày khi về UTC
+                return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0).toISOString();
+            }
+            return new Date().toISOString();
+        } catch {
+            return new Date().toISOString();
+        }
+    };
+
+    // Xây dựng request body cho updatePrescription dựa trên danh sách thuốc hiện tại
+    const buildUpdateRequest = (medicinesList: MedicineData[]): UpsertPrescriptionRequest => ({
+        prescriptionCode: prescriptionData.prescriptionCode,
+        hospitalName: prescriptionData.hospitalName,
+        doctorName: prescriptionData.doctorName,
+        prescriptionDate: formatToISODate(prescriptionData.prescriptionDate),
+        notes: prescriptionData.notes,
+        status: prescriptionDetail?.status || "Active",
+        images: [],
+        medicines: medicinesList.map(m => ({
+            prescriptionMedicineId: m.prescriptionMedicineId.startsWith('new-') ? null : m.prescriptionMedicineId,
+            medicineName: m.medicineName,
+            dosage: m.dosage,
+            unit: m.unit,
+            quantity: m.quantity,
+            instructions: m.instructions
+        })),
+    });
+
     const handleSavePrescription = () => {
         if (prescriptionData.medicines.length === 0) {
             toast.warning("Chưa có thuốc", "Vui lòng thêm ít nhất 1 loại thuốc.");
             return;
         }
 
-        // Hàm parse ngày an toàn hơn
-        const formatToISODate = (dateStr: string) => {
-            try {
-                const parts = dateStr.split('/');
-                if (parts.length === 3) {
-                    // Tạo ngày theo giờ địa phương để tránh bị lệch ngày khi về UTC
-                    return new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]), 12, 0, 0).toISOString();
-                }
-                return new Date().toISOString();
-            } catch {
-                return new Date().toISOString();
-            }
-        };
-
-        const requestData: UpsertPrescriptionRequest = {
-            prescriptionCode: prescriptionData.prescriptionCode,
-            hospitalName: prescriptionData.hospitalName,
-            doctorName: prescriptionData.doctorName,
-            prescriptionDate: formatToISODate(prescriptionData.prescriptionDate),
-            notes: prescriptionData.notes,
-            status: prescriptionDetail?.status || "Active", // Luôn gửi status
-            images: [],
-            medicines: prescriptionData.medicines.map(m => ({
-                // QUAN TRỌNG: 
-                // Nếu ID bắt đầu bằng 'new-', gửi null để Backend biết đây là thuốc mới cần INSERT
-                // Nếu không, gửi ID gốc để Backend UPDATE
-                prescriptionMedicineId: m.prescriptionMedicineId.startsWith('new-') ? null : m.prescriptionMedicineId,
-                medicineName: m.medicineName,
-                dosage: m.dosage,
-                unit: m.unit,
-                quantity: m.quantity,
-                instructions: m.instructions
-            })),
-        };
+        const requestData = buildUpdateRequest(prescriptionData.medicines);
 
         updatePrescription(
             { id: prescriptionId, data: requestData },
@@ -147,12 +148,78 @@ export default function EditPrescriptionScreen() {
     const openAddMedicine = () => {
         popup.open({
             type: "medicine_detail",
-            onSave: (newMed) => {
-                setPrescriptionData((prev) => ({
-                    ...prev,
-                    medicines: [...prev.medicines, newMed],
-                }));
-                toast.success("Đã thêm", `Đã bổ sung ${newMed.medicineName}`);
+            onSave: async (newMed) => {
+                // Đóng medicine popup trước
+                popup.close();
+
+                toast.info("Đang kiểm tra...", "Kiểm tra tương tác thuốc...");
+
+                const res = await addMedicineToPrescription(prescriptionId, {
+                    medicineName: newMed.medicineName,
+                    dosage: newMed.dosage,
+                    unit: newMed.unit,
+                    quantity: newMed.quantity,
+                    instructions: newMed.instructions
+                });
+
+                if (res.success) {
+                    // Không có tương tác - thêm thành công, lấy ID thật từ DB
+                    toast.success("Thành công", `Đã thêm thuốc ${newMed.medicineName}.`);
+                    setPrescriptionData((prev) => ({
+                        ...prev,
+                        medicines: [...prev.medicines, { ...newMed, prescriptionMedicineId: res.data?.prescriptionMedicineId || newMed.prescriptionMedicineId }],
+                    }));
+                } else if (res.code === 409) {
+                    // Có tương tác thuốc - mở DrugInteractionPopup
+                    const conflictData = res.data as any;
+                    popup.open({
+                        type: "drug_interaction",
+                        data: {
+                            conflicts: conflictData?.conflicts ?? [],
+                            newDrugName: conflictData?.newDrugName ?? newMed.medicineName,
+                            prescriptionId: conflictData?.prescriptionId ?? prescriptionId,
+                            // Callback khi user muốn bỏ qua cảnh báo tương tác
+                            onIgnoreAndContinue: () => {
+                                // Thêm thuốc vào local state với ID tạm
+                                const medWithTempId = {
+                                    ...newMed,
+                                    prescriptionMedicineId: `new-${Math.random().toString(36).substring(7)}`,
+                                };
+                                const updatedMedicines = [...prescriptionData.medicines, medWithTempId];
+
+                                setPrescriptionData((prev) => ({
+                                    ...prev,
+                                    medicines: updatedMedicines,
+                                }));
+
+                                // Gọi updatePrescription ngay để lưu thuốc kể cả có tương tác
+                                const requestData = buildUpdateRequest(updatedMedicines);
+                                updatePrescription(
+                                    { id: prescriptionId, data: requestData },
+                                    {
+                                        onSuccess: (updateRes) => {
+                                            if (updateRes.success) {
+                                                toast.success("Đã lưu", `Đã thêm ${newMed.medicineName} bỏ qua cảnh báo tương tác.`);
+                                                // KHÔNG gọi popup.close() ở đây!
+                                                // DrugInteractionPopup đã được đóng bởi onClose() khi user nhấn nút.
+                                                // Nếu gọi popup.close() ở đây, có thể đóng nhầm popup của lần add tiếp theo
+                                                // nếu updatePrescription hoàn thành trễ (race condition).
+                                            } else {
+                                                toast.error("Lỗi", updateRes.message || "Không thể lưu thuốc.");
+                                            }
+                                        },
+                                        onError: (err: any) => {
+                                            toast.error("Lỗi", err?.message || "Không thể lưu thuốc.");
+                                        }
+                                    }
+                                );
+                            }
+                        }
+                    });
+                } else {
+                    // Lỗi khác
+                    toast.error("Lỗi", res.message || "Không thể thêm thuốc.");
+                }
             },
         });
     };
@@ -414,7 +481,7 @@ export default function EditPrescriptionScreen() {
                         <Check size={24} color={prescriptionData.medicines.length > 0 ? "black" : "#666"} strokeWidth={3} />
                     )}
                     <Text className={`text-lg font-space-bold uppercase ${prescriptionData.medicines.length > 0 ? "text-black" : "text-gray-500"}`}>
-                        {isPending ? "Đang lưu..." : "Lưu Thay Đổi"}
+                        {isPending ? "Đang lưu..." : "Lưu Thay Đổi Đơn Thuốc"}
                     </Text>
                 </Pressable>
             </View>

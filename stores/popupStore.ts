@@ -21,6 +21,7 @@ export type PopupType =
     | 'view_rating'
     | 'doctor_info'
     | 'preferred_times'
+    | 'drug_interaction'
     | null;
 
 export type PopupConfirmData = {

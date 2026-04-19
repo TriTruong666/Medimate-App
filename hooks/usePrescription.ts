@@ -1,8 +1,8 @@
 // hooks/usePrescription.ts
 import * as PrescriptionApi from "@/apis/prescription.api";
-import { AddMedicineRequest, UpdateMedicineRequest, UpsertPrescriptionRequest } from "@/types/Prescription";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/stores/toastStore";
+import { AddMedicineRequest, CreateEmptyPrescriptionRequest, UpdateMedicineRequest, UpsertPrescriptionRequest } from "@/types/Prescription";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 // --- QUERIES ---
 
@@ -151,5 +151,29 @@ export function useDeletePrescriptionMedicine() {
             }
         },
         onError: (error: any) => toast.error("Lỗi kết nối", error?.message),
+    });
+}
+export function useCreateEmptyPrescription() {
+    const queryClient = useQueryClient();
+    const toast = useToast();
+
+    return useMutation({
+        mutationFn: ({ memberId, data }: { memberId: string; data: CreateEmptyPrescriptionRequest }) =>
+            PrescriptionApi.createEmptyPrescription(memberId),
+
+        onSuccess: (res, variables) => {
+            if (res.success) {
+                toast.success("Thành công", "Đã khởi tạo đơn thuốc.");
+                // Tự động làm mới danh sách đơn thuốc của member này trên UI
+                queryClient.invalidateQueries({
+                    queryKey: ["prescriptions", variables.memberId]
+                });
+            } else {
+                toast.error("Lỗi", res.message || "Không thể tạo đơn thuốc");
+            }
+        },
+        onError: (error: any) => {
+            toast.error("Lỗi kết nối", error?.message || "Vui lòng thử lại sau");
+        }
     });
 }
