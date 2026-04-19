@@ -1,9 +1,9 @@
 import AIChatBubble from "@/components/AIChatBubble";
 import { LogCard } from "@/components/MedicineCards";
+import { useGetFamilyMedicationDashboard } from "@/hooks/data/useMedicationDashboard";
 import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
 import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
 import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
-import { useGetFamilyMedicationDashboard } from "@/hooks/data/useMedicationDashboard";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -11,10 +11,10 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import {
     Calendar,
     ChevronRight as CardArrow,
+    CheckCircle,
     ChevronDown, ChevronLeft, ChevronRight,
-    CheckCircle, Moon, Pill, Sun, Sunrise, TrendingUp, Users, X, XCircle
+    Moon, Pill, Sun, Sunrise, TrendingUp, Users, X, XCircle
 } from "lucide-react-native";
-import { Image as RNImage } from "react-native";
 import React, { useMemo, useState } from "react";
 import {
     ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View
@@ -466,9 +466,9 @@ function FamilyAdherenceDashboard({ familyId }: { familyId: string }) {
 
             {/* Summary stats */}
             <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-                <StatChip icon={<CheckCircle size={13} color="#16A34A" strokeWidth={2.5}/>} label="Đã uống" value={dashboard.totalTaken} color="#DCFCE7" textColor="#166534" />
-                <StatChip icon={<XCircle size={13} color="#DC2626" strokeWidth={2.5}/>} label="Bỏ lỡ" value={dashboard.totalMissed} color="#FEE2E2" textColor="#991B1B" />
-                <StatChip icon={<Pill size={13} color="#9370DB" strokeWidth={2.5}/>} label="Tổng" value={dashboard.totalScheduled} color="#F3E8FF" textColor="#6B21A8" />
+                <StatChip icon={<CheckCircle size={13} color="#16A34A" strokeWidth={2.5} />} label="Đã uống" value={dashboard.totalTaken} color="#DCFCE7" textColor="#166534" />
+                <StatChip icon={<XCircle size={13} color="#DC2626" strokeWidth={2.5} />} label="Bỏ lỡ" value={dashboard.totalMissed} color="#FEE2E2" textColor="#991B1B" />
+                <StatChip icon={<Pill size={13} color="#9370DB" strokeWidth={2.5} />} label="Tổng" value={dashboard.totalScheduled} color="#F3E8FF" textColor="#6B21A8" />
             </View>
 
             {/* Member stats */}
@@ -484,7 +484,7 @@ function FamilyAdherenceDashboard({ familyId }: { familyId: string }) {
                                 {member.avatarUrl
                                     ? <Image source={{ uri: member.avatarUrl }} style={{ width: 30, height: 30, borderRadius: 10 }} />
                                     : <View style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center' }}>
-                                        <Users size={14} color="#94A3B8" strokeWidth={2}/>
+                                        <Users size={14} color="#94A3B8" strokeWidth={2} />
                                     </View>
                                 }
                                 <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 12, color: '#0F172A', flex: 1 }} numberOfLines={1}>{member.memberName}</Text>
@@ -615,7 +615,7 @@ export default function ManagerHomeScreen() {
                                     opacity: isPast ? 0.45 : 1,
                                 }}
                             >
-                                <Text style={{
+                                <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 9,
                                     marginBottom: 4, textTransform: 'uppercase',
                                     color: isSelected ? '#9CA3AF' : '#94A3B8',
@@ -627,7 +627,7 @@ export default function ManagerHomeScreen() {
                                     alignItems: 'center', justifyContent: 'center',
                                     backgroundColor: isToday && !isSelected ? '#FEF9C3' : 'transparent',
                                 }}>
-                                    <Text style={{
+                                    <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                         fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16,
                                         color: isSelected ? '#fff' : isPast ? '#94A3B8' : '#000',
                                     }}>
@@ -667,7 +667,7 @@ export default function ManagerHomeScreen() {
                                 elevation: selectedTab === tab ? 3 : 0,
                             }}
                         >
-                            <Text style={{
+                            <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                 fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12,
                                 color: selectedTab === tab ? '#fff' : '#6B7280',
                             }}>

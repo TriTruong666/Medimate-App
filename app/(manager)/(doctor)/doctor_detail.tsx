@@ -399,7 +399,7 @@ export default function DoctorDetailScreen() {
                                                 opacity: disabled ? 0.35 : 1,
                                             }}
                                         >
-                                            <Text style={{
+                                            <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                                 fontFamily: 'SpaceGrotesk_700Bold',
                                                 fontSize: 9,
                                                 marginBottom: 4,
