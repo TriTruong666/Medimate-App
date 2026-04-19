@@ -57,25 +57,32 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                 </ScrollView>
 
                 <View style={{ padding: 20, borderTopWidth: 2, borderTopColor: "#000", backgroundColor: "#fff", flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
+                    {/* Nút Sửa Lại Đơn */}
                     <Pressable
-                        onPress={onClose}
+                        onPress={() => {
+                            if (interactionData?.onEditAgain) {
+                                interactionData.onEditAgain();
+                            } else {
+                                onClose(); // Fallback dự phòng
+                            }
+                        }}
                         style={{ flex: 1, minWidth: "40%", paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#fff", alignItems: "center" }}
                     >
                         <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#000" }}>Sửa lại đơn</Text>
                     </Pressable>
-                    
+
                     {interactionData?.onIgnoreAndContinue && (
                         <Pressable
                             onPress={() => {
-                                onClose();
-                                interactionData.onIgnoreAndContinue();
+                                if (interactionData.onIgnoreAndContinue) {
+                                    interactionData.onIgnoreAndContinue();
+                                }
                             }}
                             style={{ flex: 1, minWidth: "40%", paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", alignItems: "center" }}
                         >
                             <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#B91C1C" }}>Bỏ qua cảnh báo</Text>
                         </Pressable>
                     )}
-
                     <Pressable
                         disabled={isExplaining || !!explanationResult}
                         onPress={async () => {
