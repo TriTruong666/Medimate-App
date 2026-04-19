@@ -115,6 +115,11 @@ export default function DoctorDetailScreen() {
     }, [refetchDoctor, refetchReviews, refetchAvail, refetchSlots, selectedDateItem]);
 
     const reviews = reviewsData || [];
+    const computedTotalReviews = reviews.length;
+    const computedAverage = computedTotalReviews > 0 
+        ? (reviews.reduce((acc: number, r: any) => acc + r.score, 0) / computedTotalReviews) 
+        : (doctor?.averageRating || 0);
+
     const slots = Array.isArray(slotsData) ? slotsData : [];
     const loading = isDoctorLoading || isReviewsLoading || isAvailLoading;
 
@@ -260,14 +265,14 @@ export default function DoctorDetailScreen() {
                             </View>
                             <View className="w-[1px] h-8 bg-black/10" />
                             <View className="items-center">
-                                <Text className="text-base font-space-bold text-black">{doctor?.totalReviews}</Text>
+                                <Text className="text-base font-space-bold text-black">{computedTotalReviews}</Text>
                                 <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter">Đánh giá</Text>
                             </View>
                             <View className="w-[1px] h-8 bg-black/10" />
                             <View className="items-center">
                                 <View className="flex-row items-center gap-x-1">
                                     <Star size={14} color="#FFD700" fill="#FFD700" />
-                                    <Text className="text-base font-space-bold text-black">{doctor?.averageRating.toFixed(1)}</Text>
+                                    <Text className="text-base font-space-bold text-black">{computedAverage.toFixed(1)}</Text>
                                 </View>
                                 <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter">Sao</Text>
                             </View>
@@ -394,7 +399,7 @@ export default function DoctorDetailScreen() {
                                                 opacity: disabled ? 0.35 : 1,
                                             }}
                                         >
-                                            <Text style={{
+                                            <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                                 fontFamily: 'SpaceGrotesk_700Bold',
                                                 fontSize: 9,
                                                 marginBottom: 4,
@@ -548,11 +553,11 @@ export default function DoctorDetailScreen() {
                     <View className="px-5">
                         <View className="bg-[#FFF4D1] border-2 border-black rounded-[24px] p-5 mb-6 flex-row items-center justify-between">
                             <View>
-                                <Text className="text-3xl font-space-bold text-black">{doctor?.averageRating.toFixed(1)}</Text>
+                                <Text className="text-3xl font-space-bold text-black">{computedAverage.toFixed(1)}</Text>
                                 <Text className="text-xs font-space-medium text-black/40">Trên 5 sao</Text>
                             </View>
                             <View className="flex-row gap-x-1">
-                                {[1, 2, 3, 4, 5].map(s => <Star key={s} size={20} color="#000" fill={s <= (doctor?.averageRating || 0) ? "#000" : "transparent"} />)}
+                                {[1, 2, 3, 4, 5].map(s => <Star key={s} size={20} color="#000" fill={s <= computedAverage ? "#000" : "transparent"} />)}
                             </View>
                         </View>
 

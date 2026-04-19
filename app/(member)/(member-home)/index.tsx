@@ -9,7 +9,10 @@ import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import {
     Calendar,
-    ChevronLeft, ChevronRight, ChevronDown, Pill, Sun, Sunrise, Moon,
+    ChevronDown,
+    ChevronLeft, ChevronRight,
+    Moon,
+    Pill, Sun, Sunrise,
     X
 } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
@@ -369,14 +372,14 @@ export default function MemberHomeScreen() {
                                     backgroundColor: isSelected ? '#000' : 'transparent',
                                 }}
                             >
-                                <Text style={{
+                                <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 9,
                                     marginBottom: 4, textTransform: 'uppercase',
                                     color: isSelected ? '#9CA3AF' : '#94A3B8',
                                 }}>
                                     {formatViDay(d)}
                                 </Text>
-                                <Text style={{
+                                <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                     fontFamily: 'SpaceGrotesk_700Bold', fontSize: 16,
                                     color: isSelected ? '#fff' : '#000',
                                 }}>
@@ -407,7 +410,7 @@ export default function MemberHomeScreen() {
                                 backgroundColor: selectedTab === tab ? '#9370DB' : 'transparent',
                             }}
                         >
-                            <Text style={{
+                            <Text adjustsFontSizeToFit numberOfLines={1} style={{
                                 fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12,
                                 color: selectedTab === tab ? '#fff' : '#6B7280',
                             }}>

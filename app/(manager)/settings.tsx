@@ -5,7 +5,6 @@ import { getDecodedToken } from "@/utils/token";
 import { useRouter } from "expo-router";
 import {
   ChevronRight,
-  HelpCircle,
   Info,
   LogOut,
   Shield,
@@ -41,12 +40,12 @@ const MENU_ITEMS = [
     route: "/(manager)/(password)/change-password" as const,
     onlyUser: true,
   },
-  {
-    icon: HelpCircle,
-    label: "Trợ giúp & Hỗ trợ",
-    subtitle: "Câu hỏi thường gặp",
-    color: "#87CEFA",
-  },
+  // {
+  //   icon: HelpCircle,
+  //   label: "Trợ giúp & Hỗ trợ",
+  //   subtitle: "Câu hỏi thường gặp",
+  //   color: "#87CEFA",
+  // },
   {
     icon: Info,
     label: "Về Medimate",

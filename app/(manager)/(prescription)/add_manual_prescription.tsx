@@ -1,6 +1,8 @@
 import { PopupContainer } from "@/components/popup/PopupContainer";
+import { useCreatePrescription } from "@/hooks/usePrescription";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
+import { UpsertPrescriptionRequest } from "@/types/Prescription";
 import { AntDesign } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -13,18 +15,15 @@ import {
     User as UserIcon,
 } from "lucide-react-native";
 import React, { useState } from "react";
-import { useCreatePrescription } from "@/hooks/usePrescription";
-import { UpsertPrescriptionRequest } from "@/types/Prescription";
 import {
+    ActivityIndicator,
     KeyboardAvoidingView,
-    Modal,
     Platform,
     Pressable,
     ScrollView,
     Text,
     TextInput,
-    View,
-    ActivityIndicator,
+    View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -43,7 +42,7 @@ export default function AddManualPrescriptionScreen() {
     const [showConfirm, setShowConfirm] = useState(false);
 
     const [prescriptionData, setPrescriptionData] = useState({
-        prescriptionCode: "MED-" + Math.random().toString(36).substring(7).toUpperCase(),
+        prescriptionCode: "",
         hospitalName: "",
         doctorName: "",
         prescriptionDate: new Date().toLocaleDateString("vi-VN"),
@@ -63,6 +62,10 @@ export default function AddManualPrescriptionScreen() {
     }, [memberId]);
 
     const handleSavePrescription = () => {
+        if (!prescriptionData.prescriptionCode.trim()) {
+            toast.warning("Thiếu mã đơn", "Vui lòng nhập mã đơn thuốc từ bệnh viện.");
+            return;
+        }
         if (prescriptionData.medicines.length === 0) {
             toast.warning("Chưa có thuốc", "Vui lòng thêm ít nhất 1 loại thuốc.");
             return;
@@ -81,7 +84,7 @@ export default function AddManualPrescriptionScreen() {
             }
             const isoMatch = dateStr.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
             if (isoMatch) {
-                 return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}T00:00:00.000Z`;
+                return `${isoMatch[1]}-${isoMatch[2].padStart(2, "0")}-${isoMatch[3].padStart(2, "0")}T00:00:00.000Z`;
             }
             const parsed = new Date(dateStr);
             if (!isNaN(parsed.getTime())) return parsed.toISOString();
@@ -188,17 +191,30 @@ export default function AddManualPrescriptionScreen() {
                         </Text>
                         <View className="gap-y-5">
                             <View>
-                                <Text className="text-[11px] font-space-bold mb-2 ml-1 uppercase text-gray-400 tracking-widest">
-                                    Mã đơn (Tự động)
-                                </Text>
-                                <View className="flex-row items-center bg-[#F3F4F6] border-2 border-black rounded-2xl px-4 py-3 gap-x-3">
-                                    <View>
-                                        <FileText size={18} color="black" />
-                                    </View>
-                                    <Text className="text-base font-space-bold text-black flex-1">
-                                        {prescriptionData.prescriptionCode}
+                                <View className="flex-row items-center mb-2 ml-1 gap-x-1">
+                                    <Text className="text-[11px] font-space-bold uppercase text-gray-400 tracking-widest">
+                                        Mã đơn bệnh viện
                                     </Text>
+                                    <Text className="text-[11px] font-space-bold text-red-500">*</Text>
                                 </View>
+                                <View className={`flex-row items-center bg-white border-2 rounded-2xl px-4 py-1 h-14 shadow-sm gap-x-3 ${!prescriptionData.prescriptionCode.trim() ? 'border-red-400' : 'border-black'}`}>
+                                    <FileText size={18} color={!prescriptionData.prescriptionCode.trim() ? '#F87171' : 'black'} />
+                                    <TextInput
+                                        value={prescriptionData.prescriptionCode}
+                                        onChangeText={(val) =>
+                                            setPrescriptionData((p) => ({ ...p, prescriptionCode: val }))
+                                        }
+                                        placeholder="VD: BV-2026-0419..."
+                                        placeholderTextColor="#A0A0A0"
+                                        autoCapitalize="characters"
+                                        className="flex-1 font-space-bold text-black text-base p-0"
+                                    />
+                                </View>
+                                {!prescriptionData.prescriptionCode.trim() && (
+                                    <Text className="text-[11px] font-space-medium text-red-400 ml-1 mt-1">
+                                        Bắt buộc — lấy từ tờ đơn thuốc bệnh viện cấp.
+                                    </Text>
+                                )}
                             </View>
 
                             <View>

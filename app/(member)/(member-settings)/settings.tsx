@@ -2,7 +2,7 @@ import { useLogoutUser } from "@/hooks/useAuth";
 import { useGetMemberById } from "@/hooks/useMember";
 import { getDecodedToken } from "@/utils/token";
 import { useRouter } from "expo-router";
-import { ChevronRight, HelpCircle, Info, LogOut, Users } from "lucide-react-native";
+import { ChevronRight, Info, LogOut, Users } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,12 +15,12 @@ const MENU_ITEMS = [
     color: "#A3E6A1",
     route: "/(member)/(family)/family-members" as const,
   },
-  {
-    icon: HelpCircle,
-    label: "Trợ giúp & Hỗ trợ",
-    subtitle: "Câu hỏi thường gặp",
-    color: "#87CEFA",
-  },
+  // {
+  //   icon: HelpCircle,
+  //   label: "Trợ giúp & Hỗ trợ",
+  //   subtitle: "Câu hỏi thường gặp",
+  //   color: "#87CEFA",
+  // },
   {
     icon: Info,
     label: "Về Medimate",

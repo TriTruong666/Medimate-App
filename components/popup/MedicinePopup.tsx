@@ -37,7 +37,7 @@ export const MedicinePopup: React.FC<MedicinePopupProps> = ({
     const [formData, setFormData] = useState<MedicineData>({
         prescriptionMedicineId:
             initialData?.prescriptionMedicineId ||
-            Math.random().toString(36).substring(7),
+            `new-${Math.random().toString(36).substring(7)}`,
         medicineName: initialData?.medicineName || "",
         dosage: initialData?.dosage || "",
         unit: initialData?.unit || "Viên",

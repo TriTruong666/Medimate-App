@@ -5,10 +5,45 @@ import * as signalR from "@microsoft/signalr";
 import { useQueryClient } from "@tanstack/react-query";
 import * as SecureStore from "expo-secure-store";
 import { getDefaultStore, useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus, Platform } from "react-native";
 
 let connection: signalR.HubConnection | null = null;
+
+/**
+ * Lấy connection hiện tại (read-only) để component tự đăng ký listener
+ */
+export function getSignalRConnection() {
+    return connection;
+}
+
+/**
+ * Đăng ký lắng nghe tin nhắn mới theo sessionId cụ thể.
+ * Trả về hàm unsubscribe để gọi trong cleanup của useEffect.
+ *
+ * @param sessionId - ID phiên chat cần lắng nghe
+ * @param callback  - Hàm nhận message data khi có tin mới
+ */
+export function subscribeChatMessages(
+    sessionId: string,
+    callback: (data: any) => void
+): () => void {
+    if (!connection) return () => {};
+
+    const handler = (data: any) => {
+        // So sánh cả 2 dạng field name (camelCase & PascalCase) vì server có thể gửi khác nhau
+        const incomingSessionId = data?.sessionId ?? data?.SessionId ?? data?.ConsultanSessionId ?? data?.consultanSessionId;
+        if (incomingSessionId === sessionId) {
+            callback(data);
+        }
+    };
+
+    connection.on("ReceiveMessage", handler);
+
+    return () => {
+        connection?.off("ReceiveMessage", handler);
+    };
+}
 const base_net_url = process.env.EXPO_PUBLIC_NET_API_URL;
 
 export function useAppSignalR() {
@@ -218,4 +253,27 @@ export function useAppSignalR() {
 export function SignalRInjector() {
     useAppSignalR();
     return null;
+}
+
+/**
+ * Hook tiện ích cho component cần lắng nghe tin nhắn realtime của một session.
+ * Tự động đăng ký/huỷ đăng ký khi sessionId hoặc callback thay đổi.
+ */
+export function useChatSignalR(
+    sessionId: string | undefined,
+    onNewMessage: (data: any) => void
+) {
+    const callbackRef = useRef(onNewMessage);
+    callbackRef.current = onNewMessage; // Luôn dùng bản mới nhất, không cần re-subscribe
+
+    useEffect(() => {
+        if (!sessionId) return;
+
+        // Dùng stable ref để tránh re-subscribe mỗi render
+        const unsubscribe = subscribeChatMessages(sessionId, (data) => {
+            callbackRef.current(data);
+        });
+
+        return unsubscribe;
+    }, [sessionId]); // Chỉ re-subscribe khi sessionId thay đổi
 }

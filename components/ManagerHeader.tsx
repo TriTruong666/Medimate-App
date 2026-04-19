@@ -2,12 +2,12 @@ import { SkeletonPulsar } from "@/components/skeleton/SkeletonPulsar";
 import { useGetMemberById } from "@/hooks/useMember";
 import { useGetUserNotifications } from "@/hooks/useNotification"; // Dùng hook dùng chung mới
 import { useGetMe } from "@/hooks/useUser";
+import { useVideoCallActions } from "@/stores/videoCallStore";
 import { getDecodedToken } from "@/utils/token";
 import { useRouter } from "expo-router";
-import { Bell, MoreHorizontal, Maximize2, PhoneOff } from "lucide-react-native";
+import { Bell } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import { Image, Pressable, Text, View } from "react-native";
-import { useVideoCallActions } from "@/stores/videoCallStore";
 
 interface ManagerHeaderProps {
     subtitle?: string;
@@ -137,9 +137,9 @@ export default function ManagerHeader(_props: ManagerHeaderProps) {
                         )}
                     </Pressable>
 
-                    <Pressable className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5">
+                    {/* <Pressable className="w-12 h-12 rounded-2xl bg-white border-2 border-black items-center justify-center shadow-sm active:translate-y-0.5">
                         <MoreHorizontal size={22} color="#000" strokeWidth={2} />
-                    </Pressable>
+                    </Pressable> */}
                 </View>
             </View>
         </View>

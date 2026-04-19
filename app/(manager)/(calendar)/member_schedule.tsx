@@ -177,7 +177,8 @@ export default function MemberScheduleScreen() {
               {[
                 { label: "Quét QR", icon: <QrCode size={16} color="#000" />, bg: "#DBEAFE", path: "/(manager)/(prescription)/scan_prescription" },
                 { label: "Upload đơn", icon: <FileUp size={16} color="#000" />, bg: "#FEF3C7", path: "/(manager)/(prescription)/upload_prescription" },
-                { label: "Thủ công", icon: <FileText size={16} color="#000" />, bg: "#F3E8FF", path: "/(manager)/(prescription)/add_manual_prescription" }
+                { label: "Thủ công", icon: <FileText size={16} color="#000" />, bg: "#F3E8FF", path: "/(manager)/(prescription)/add_manual_prescription" },
+                { label: "Đơn ngoài", icon: <FileText size={16} color="#FACC15" />, bg: "#FEF9C3", path: "/(manager)/(prescription)/add_empty_prescription" }
               ].map((item, idx) => (
                 <React.Fragment key={idx}>
                   <Pressable

@@ -20,6 +20,7 @@ import RatingPopup from './RatingPopup';
 import ViewRatingPopup from './ViewRatingPopup';
 import { DoctorInfoPopup } from './DoctorInfoPopup';
 import { PreferredTimesPopup } from './PreferredTimesPopup';
+import { DrugInteractionPopup } from './DrugInteractionPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -180,6 +181,13 @@ export const PopupContainer: React.FC = () => {
                     initialTimes={activePopup.data.initialTimes}
                     onClose={handleClose}
                     onSave={activePopup.data.onSave}
+                />
+            )}
+
+            {activePopup.type === 'drug_interaction' && (
+                <DrugInteractionPopup
+                    interactionData={activePopup.data}
+                    onClose={handleClose}
                 />
             )}
         </Modal>

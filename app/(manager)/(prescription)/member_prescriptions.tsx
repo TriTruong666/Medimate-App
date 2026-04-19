@@ -1,6 +1,7 @@
 import { useDeletePrescription, useGetMemberPrescriptions } from "@/hooks/usePrescription";
+import { AntDesign } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Edit3, Trash2 } from "lucide-react-native";
+import { Edit3, Trash2 } from "lucide-react-native";
 import React from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -33,9 +34,9 @@ export default function MemberPrescriptionsScreen() {
             <View className="flex-row items-center justify-between px-5 pt-3 pb-4">
                 <Pressable
                     onPress={() => router.back()}
-                    className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center active:opacity-80"
+                    className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm active:opacity-80"
                 >
-                    <ArrowLeft size={22} color="#000" strokeWidth={2.5} />
+                    <AntDesign name="arrow-left" size={24} color="black" />
                 </Pressable>
                 <Text className="text-xl text-black font-space-bold">
                     Đơn thuốc
@@ -95,7 +96,7 @@ export default function MemberPrescriptionsScreen() {
                                         >
                                             <Edit3 size={14} color="#000" strokeWidth={2.5} />
                                         </Pressable>
-                                        
+
                                         {/* Nút Xoá */}
                                         <Pressable
                                             onPress={() => handleDeletePrescription(pres.prescriptionId, pres.hospitalName || "Đơn thuốc cá nhân")}
@@ -106,7 +107,7 @@ export default function MemberPrescriptionsScreen() {
                                         </Pressable>
                                     </View>
                                 </View>
-                                
+
                                 <View className="bg-gray-50 rounded-xl p-3 border border-gray-200">
                                     <Text className="text-sm font-space-bold text-black mb-1.5">Gồm {pres.medicines?.length || 0} loại thuốc:</Text>
                                     {pres.medicines?.slice(0, 3).map((med, idx) => (
