@@ -646,13 +646,30 @@ export default function AppointmentsScreen() {
                     <ArrowLeft size={22} color="#000" strokeWidth={2.5} />
                 </Pressable>
 
-                <View style={{ alignItems: 'center' }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#000', textTransform: 'uppercase', letterSpacing: -0.5 }}>
+                <View style={{ width: '100%', alignItems: 'center' }}>
+                    <Text
+                        style={{
+                            fontFamily: 'SpaceGrotesk_700Bold',
+                            fontSize: 18,
+                            color: '#000',
+                            textTransform: 'uppercase',
+                            letterSpacing: -0.5,
+                            textAlign: 'center',
+                            marginRight: 40
+                        }}
+                    >
                         Lịch hẹn của bạn
                     </Text>
-                    {/* Realtime sync badge */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: isFetching ? '#F59E0B' : '#22C55E' }} />
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2, marginRight: 30 }}>
+                        <View
+                            style={{
+                                width: 6,
+                                height: 6,
+                                borderRadius: 3,
+                                backgroundColor: isFetching ? '#F59E0B' : '#22C55E'
+                            }}
+                        />
                         <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: '#94A3B8' }}>
                             {isFetching ? 'Đang đồng bộ...' : `Cập nhật lúc ${dayjs(dataUpdatedAt).format('HH:mm:ss')}`}
                         </Text>
