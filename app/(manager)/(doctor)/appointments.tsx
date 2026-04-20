@@ -1,11 +1,11 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { ArrowLeft, Calendar, Check, Clock, Filter, MessageSquare, RefreshCw } from "lucide-react-native";
+import { ArrowLeft, Calendar, Check, Clock, MessageSquare, RefreshCw } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getSessionByAppointmentId } from "../../../apis/session.api";
+import { getSessionByAppointmentId, joinSession } from "../../../apis/session.api";
 import { useCancelAppointment, useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
 import { useGetRatingBySession } from "../../../hooks/useRating";
 import { usePopup } from "../../../stores/popupStore";
@@ -511,6 +511,13 @@ export default function AppointmentsScreen() {
         try {
             const res = await getSessionByAppointmentId(appt.appointmentId);
             if (res.success && res.data) {
+                try {
+                    // Gọi API joinSession trước khi vào màn hình video call
+                    await joinSession(res.data.consultanSessionId, { role: "User" });
+                } catch (e) {
+                    console.warn("Failed to join session API:", e);
+                }
+
                 router.push({
                     pathname: "./video_call",
                     params: { sessionId: res.data.consultanSessionId, appointmentId: appt.appointmentId }
@@ -652,9 +659,9 @@ export default function AppointmentsScreen() {
                     </View>
                 </View>
 
-                <View style={{ width: 48, height: 48, backgroundColor: '#fff', borderWidth: 2, borderColor: '#000', borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
+                {/* <View style={{ width: 48, height: 48, backgroundColor: '#fff', borderWidth: 2, borderColor: '#000', borderRadius: 18, alignItems: 'center', justifyContent: 'center' }}>
                     <Filter size={20} color="#000" />
-                </View>
+                </View> */}
             </View>
 
             {/* Filter tabs */}

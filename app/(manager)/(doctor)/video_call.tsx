@@ -16,7 +16,7 @@ import type {
     RtcConnection,
 } from 'react-native-agora';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { cancelNoShowSession, endSession, joinSession } from '../../../apis/session.api';
+import { cancelNoShowSession, joinSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';
 import { useToast } from '../../../stores/toastStore';
 import {
@@ -506,15 +506,12 @@ export default function VideoCallScreen() {
         updateCallState({ hasJoined, remoteUids, isMuted, isCameraOff });
         minimize();
         router.back();
-        toast.info("Đã thu nhỏ", "Nhấn vào cửa sổ nhỏ để quay lại cuộc gọi bất kỳ lúc nào.");
     };
 
-    // ── End session (2 steps) ────────────────────────────────────────────────────
-    const handleEndStep2 = async () => {
-        try { if (sid) await endSession(sid); } catch (e) { console.error(e); }
+    // ── Immediate End session ────────────────────────────────────────────────────
+    const handleImmediateEnd = () => {
         endCall();
         setEndDialog(false);
-        toast.info("Phiên khám đã kết thúc", "Cảm ơn bạn đã sử dụng MediMate.");
         router.back();
     };
 
@@ -580,22 +577,14 @@ export default function VideoCallScreen() {
                     </View>
                 )}
 
-                {!isCameraOff
-                    ? agoraEngineRef.current
-                        ? <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
-                        : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>Bạn</Text></View>
-                    : <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
-                        <Camera size={20} color="#666" />
-                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Đã tắt</Text>
-                    </View>
-                }
+                {/* Local video has been moved to the Self PiP view */}
             </View>
 
             {/* ─────────────────────────────────────────────────────────── */}
-            {/* ── TOP ACTION BAR (Bọc UI cho Thu Nhỏ và Kết Thúc) ── */}
+            {/* ── MIDDLE-BOTTOM ACTION BAR (Bọc UI cho Thu Nhỏ và Kết Thúc) ── */}
             {/* ─────────────────────────────────────────────────────────── */}
             <View style={{
-                position: 'absolute', top: 20, left: 16, right: 16, zIndex: 50,
+                position: 'absolute', bottom: 120, left: 16, right: 16, zIndex: 50,
                 flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
                 backgroundColor: 'rgba(14,14,20,0.85)', paddingHorizontal: 16, paddingVertical: 12,
                 borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)',
@@ -603,6 +592,7 @@ export default function VideoCallScreen() {
             }}>
                 {/* Kết thúc phiên (User không có quyền tắt hẳn, chỉ thu nhỏ) */}
                 <Pressable
+                    onPress={handleImmediateEnd}
                     style={({ pressed }) => ({
                         flexDirection: 'row', alignItems: 'center', gap: 6,
                         paddingHorizontal: 12, paddingVertical: 8,
@@ -636,7 +626,7 @@ export default function VideoCallScreen() {
 
                 {/* Thu nhỏ */}
                 <Pressable
-                    onPress={() => setPauseDialog(true)}
+                    onPress={handlePauseConfirmed}
                     style={({ pressed }) => ({
                         flexDirection: 'row', alignItems: 'center', gap: 6,
                         paddingHorizontal: 12, paddingVertical: 8,
@@ -652,7 +642,7 @@ export default function VideoCallScreen() {
             </View>
 
             {/* ── Status + Timer ── */}
-            <View style={{ position: 'absolute', top: 90, left: 24, zIndex: 10 }}>
+            <View style={{ position: 'absolute', top: 30, left: 24, zIndex: 10 }}>
                 <View style={{
                     paddingHorizontal: 10, paddingVertical: 5,
                     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -667,80 +657,77 @@ export default function VideoCallScreen() {
                 <CallTimer running={hasJoined && isConnected} />
             </View>
 
-            {/* ── Self PiP (top-right) moved below header ── */}
+            {/* ── Self PiP (top-right) ── */}
             <View style={{
-                position: 'absolute', top: 90, right: 16,
+                position: 'absolute', top: 30, right: 16,
                 width: 110, height: 156, borderRadius: 22,
                 backgroundColor: '#2C2C2E',
                 borderWidth: 2, borderColor: 'rgba(255,255,255,0.18)',
                 overflow: 'hidden', zIndex: 10
             }}>
-
-                {/* ─────────────────────────────────────────────────────────── */}
-                {/* ── BOTTOM DOCK — giữa bên dưới ── */}
-                {/* ─────────────────────────────────────────────────────────── */}
-                <View style={{ position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', gap: 14 }}>
-
-                    {/* Row: Mic | Camera | SwitchCamera */}
-                    <View style={{
-                        flexDirection: 'row', alignItems: 'center', gap: 14,
-                        paddingHorizontal: 20, paddingVertical: 10,
-                        backgroundColor: 'rgba(14,14,20,0.88)',
-                        borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
-                        shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
-                    }}>
-                        {/* Mic */}
-                        <Pressable onPress={toggleMute} style={({ pressed }) => ({
-                            width: 52, height: 52, borderRadius: 26,
-                            alignItems: 'center', justifyContent: 'center',
-                            backgroundColor: isMuted ? '#FF453A' : 'rgba(255,255,255,0.1)',
-                            borderWidth: 1, borderColor: isMuted ? 'transparent' : 'rgba(255,255,255,0.15)',
-                            transform: [{ scale: pressed ? 0.9 : 1 }],
-                        })}>
-                            {isMuted ? <MicOff size={22} color="#fff" /> : <Mic size={22} color="#fff" />}
-                        </Pressable>
-
-                        {/* Camera */}
-                        <Pressable onPress={toggleCamera} style={({ pressed }) => ({
-                            width: 52, height: 52, borderRadius: 26,
-                            alignItems: 'center', justifyContent: 'center',
-                            backgroundColor: isCameraOff ? '#FF453A' : 'rgba(255,255,255,0.1)',
-                            borderWidth: 1, borderColor: isCameraOff ? 'transparent' : 'rgba(255,255,255,0.15)',
-                            transform: [{ scale: pressed ? 0.9 : 1 }],
-                        })}>
-                            <Camera size={22} color="#fff" />
-                        </Pressable>
-
-                        {/* Switch Camera */}
-                        <Pressable onPress={switchCamera} style={({ pressed }) => ({
-                            width: 52, height: 52, borderRadius: 26,
-                            alignItems: 'center', justifyContent: 'center',
-                            backgroundColor: 'rgba(255,255,255,0.1)',
-                            borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-                            transform: [{ scale: pressed ? 0.9 : 1 }],
-                        })}>
-                            <SwitchCamera size={22} color="#fff" />
-                        </Pressable>
+                {!isCameraOff
+                    ? agoraEngineRef.current
+                        ? <RtcSurfaceView canvas={{ uid: 0 }} style={{ flex: 1 }} />
+                        : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><Text style={{ color: '#fff', fontSize: 10, fontFamily: 'SpaceGrotesk_700Bold' }}>Bạn</Text></View>
+                    : <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', alignItems: 'center', justifyContent: 'center' }}>
+                        <Camera size={20} color="#666" />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>Đã tắt</Text>
                     </View>
-
-                </View>
+                }
             </View>
 
-            {/* ── Pause confirm modal ── */}
-            <PauseConfirmModal
-                visible={pauseDialog}
-                onCancel={() => setPauseDialog(false)}
-                onConfirm={handlePauseConfirmed}
-            />
+            {/* ─────────────────────────────────────────────────────────── */}
+            {/* ── BOTTOM DOCK — giữa bên dưới ── */}
+            {/* ─────────────────────────────────────────────────────────── */}
+            <View style={{ position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center', gap: 14 }}>
 
-            {/* ── End session confirm modal (2 steps) ── */}
-            <EndSessionModal
-                visible={endDialog}
-                step={endStep}
-                onCancel={() => { setEndDialog(false); setEndStep(1); }}
-                onStep1={() => setEndStep(2)}
-                onStep2={handleEndStep2}
-            />
+                {/* Row: Mic | Camera | SwitchCamera */}
+                <View style={{
+                    flexDirection: 'row', alignItems: 'center', gap: 14,
+                    paddingHorizontal: 20, paddingVertical: 10,
+                    backgroundColor: 'rgba(14,14,20,0.88)',
+                    borderRadius: 32, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+                    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10,
+                }}>
+                    {/* Mic */}
+                    <Pressable onPress={toggleMute} style={({ pressed }) => ({
+                        width: 52, height: 52, borderRadius: 26,
+                        alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: isMuted ? '#FF453A' : 'rgba(255,255,255,0.1)',
+                        borderWidth: 1, borderColor: isMuted ? 'transparent' : 'rgba(255,255,255,0.15)',
+                        transform: [{ scale: pressed ? 0.9 : 1 }],
+                    })}>
+                        {isMuted ? <MicOff size={22} color="#fff" /> : <Mic size={22} color="#fff" />}
+                    </Pressable>
+
+                    {/* Camera */}
+                    <Pressable onPress={toggleCamera} style={({ pressed }) => ({
+                        width: 52, height: 52, borderRadius: 26,
+                        alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: isCameraOff ? '#FF453A' : 'rgba(255,255,255,0.1)',
+                        borderWidth: 1, borderColor: isCameraOff ? 'transparent' : 'rgba(255,255,255,0.15)',
+                        transform: [{ scale: pressed ? 0.9 : 1 }],
+                    })}>
+                        <Camera size={22} color="#fff" />
+                    </Pressable>
+
+                    {/* Switch Camera */}
+                    <Pressable onPress={switchCamera} style={({ pressed }) => ({
+                        width: 52, height: 52, borderRadius: 26,
+                        alignItems: 'center', justifyContent: 'center',
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+                        transform: [{ scale: pressed ? 0.9 : 1 }],
+                    })}>
+                        <SwitchCamera size={22} color="#fff" />
+                    </Pressable>
+                </View>
+
+            </View>
+
+
+
+
             {/* ── Cancel No-Show confirm modal (2 bước) ── */}
             <CancelNoShowModal
                 visible={noShowDialog}

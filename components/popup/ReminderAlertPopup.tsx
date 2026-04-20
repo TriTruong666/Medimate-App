@@ -295,49 +295,23 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                             </Text>
                         </Pressable>
 
-                        <View style={{ flexDirection: 'row', gap: 12 }}>
-                            {/* Snooze (Hide if past end time) */}
-                            {canSnoozeBtn && (
-                                <Pressable
-                                    onPress={() => handleSnooze(15)}
-                                    disabled={isPending || isSnoozing}
-                                    style={{
-                                        flex: 1, height: 50,
-                                        backgroundColor: '#FEF9C3',
-                                        borderWidth: 2, borderColor: '#CA8A04',
-                                        borderRadius: 16,
-                                        flexDirection: 'row',
-                                        alignItems: 'center', justifyContent: 'center',
-                                        gap: 6,
-                                    }}
-                                >
-                                    <Timer size={16} color="#A16207" strokeWidth={2.5} />
-                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#A16207' }}>
-                                        {isSnoozing ? 'Đang gửi...' : 'Báo lại 15p'}
-                                    </Text>
-                                </Pressable>
-                            )}
-
-                            {/* Skip */}
-                            <Pressable
-                                onPress={handleSkip}
-                                disabled={isPending || isSnoozing}
-                                style={{
-                                    flex: 1, height: 50,
-                                    backgroundColor: '#F3F4F6',
-                                    borderWidth: 2, borderColor: '#D1D5DB',
-                                    borderRadius: 16,
-                                    flexDirection: 'row',
-                                    alignItems: 'center', justifyContent: 'center',
-                                    gap: 6,
-                                }}
-                            >
-                                <SkipForward size={16} color="#6B7280" strokeWidth={2.5} />
-                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#6B7280' }}>
-                                    Bỏ qua (Cancel)
-                                </Text>
-                            </Pressable>
-                        </View>
+                        <Pressable
+                            onPress={onClose}
+                            style={{
+                                height: 50,
+                                backgroundColor: '#F3F4F6',
+                                borderWidth: 2, borderColor: '#D1D5DB',
+                                borderRadius: 16,
+                                flexDirection: 'row',
+                                alignItems: 'center', justifyContent: 'center',
+                                gap: 6,
+                            }}
+                        >
+                            <X size={16} color="#6B7280" strokeWidth={2.5} />
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 14, color: '#6B7280' }}>
+                                Đóng
+                            </Text>
+                        </Pressable>
                     </View>
                 )}
             </Animated.View>
