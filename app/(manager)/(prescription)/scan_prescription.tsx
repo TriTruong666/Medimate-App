@@ -2,7 +2,7 @@ import { PopupContainer } from "@/components/popup/PopupContainer";
 import { useCreatePrescription, useScanPrescription } from "@/hooks/usePrescription";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
-import { PrescriptionMedicine, UpsertPrescriptionRequest } from "@/types/Prescription";
+import { PrescriptionImage, PrescriptionMedicine, UpsertPrescriptionRequest } from "@/types/Prescription";
 import { AntDesign, Feather } from "@expo/vector-icons";
 import {
   CameraCapturedPicture,
@@ -64,6 +64,7 @@ export default function ScanPrescriptionScreen() {
     hospitalName: "",
     prescriptionDate: new Date().toLocaleDateString("vi-VN"),
     notes: "",
+    images: [] as PrescriptionImage[],
     medicines: [] as PrescriptionMedicine[],
   });
 
@@ -136,8 +137,10 @@ export default function ScanPrescriptionScreen() {
 
     try {
       const res = await scanAsync({ memberId, file: photo });
-      if (res.success && res.data?.extractedData) {
+      if (res.success && res.data && res.data.extractedData) {
         const extracted = res.data.extractedData;
+        const scanData = res.data;
+        
         setPrescriptionData(prev => ({
           ...prev,
           prescriptionCode: extracted.prescriptionCode || prev.prescriptionCode,
@@ -145,6 +148,13 @@ export default function ScanPrescriptionScreen() {
           hospitalName: extracted.hospitalName || "",
           prescriptionDate: extracted.prescriptionDate || prev.prescriptionDate,
           notes: extracted.notes || "",
+          images: [
+            {
+              imageUrl: scanData.imageUrl || "",
+              thumbnailUrl: scanData.thumbnailUrl || "",
+              ocrRawData: scanData.rawText || "",
+            }
+          ],
           // QUAN TRỌNG: Gán ID tạm thời cho từng loại thuốc bóc tách được
           medicines: (extracted.medicines || []).map((m, index) => ({
             ...m,
@@ -192,7 +202,7 @@ export default function ScanPrescriptionScreen() {
       doctorName: prescriptionData.doctorName,
       prescriptionDate: formatToISODate(prescriptionData.prescriptionDate),
       notes: prescriptionData.notes,
-      images: [],
+      images: prescriptionData.images,
       medicines: prescriptionData.medicines.map(m => ({
         // Gửi null vì đây là tạo mới hoàn toàn, bỏ ID tạm "temp-..." đi
         prescriptionMedicineId: null,

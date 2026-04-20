@@ -28,7 +28,7 @@ export function subscribeChatMessages(
     sessionId: string,
     callback: (data: any) => void
 ): () => void {
-    if (!connection) return () => {};
+    if (!connection) return () => { };
 
     const handler = (data: any) => {
         // So sánh cả 2 dạng field name (camelCase & PascalCase) vì server có thể gửi khác nhau
@@ -60,7 +60,7 @@ export function useAppSignalR() {
         if (!session) {
             if (connection) {
                 console.log("🔴 [SignalR] Session cleared (logout) — Stopping connection...");
-                connection.stop().catch(() => {});
+                connection.stop().catch(() => { });
                 connection = null;
             }
             if (isMounted) setIsConnected(false);
@@ -156,6 +156,21 @@ export function useAppSignalR() {
                     queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
                 });
 
+                // 💊 Khi đơn thuốc được thêm/sửa/xóa → refresh lịch uống và nhắc nhở ngay lập tức
+                connection.on("PrescriptionUpdated", (data: any) => {
+                    console.log("📋 [SignalR] PrescriptionUpdated:", data);
+                    queryClient.invalidateQueries({ queryKey: ["prescriptions"] });
+                    queryClient.invalidateQueries({ queryKey: ["prescription-detail"] });
+                    queryClient.invalidateQueries({ queryKey: ["member-schedules"] });
+                    queryClient.invalidateQueries({ queryKey: ["family-schedules"] });
+                    queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
+                    queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
+                    queryClient.invalidateQueries({ queryKey: ["schedule-detail"] });
+                    if (data?.action === "DELETED") {
+                        toast.info("Đơn thuốc đã xóa", "Lịch uống thuốc và nhắc nhở đã được cập nhật.");
+                    }
+                });
+
                 connection.on("ForceLogout", async (data: { message?: string } = {}) => {
                     console.log("🔴 [SignalR] ForceLogout — Stopping and clearing session...");
                     if (connection) {
@@ -228,14 +243,14 @@ export function useAppSignalR() {
         };
 
         // Kết nối ngay khi hook mount / session thay đổi
-        startConnection().catch(() => {});
+        startConnection().catch(() => { });
 
         // Kết nối lại khi App quay về Foreground
         const appStateSubscription = AppState.addEventListener("change", (nextAppState: AppStateStatus) => {
             if (nextAppState === "active") {
                 console.log("📱 [SignalR] App về Foreground, kiểm tra kết nối...");
                 if (!connection || connection.state === signalR.HubConnectionState.Disconnected) {
-                    startConnection().catch(() => {});
+                    startConnection().catch(() => { });
                 }
             }
         });

@@ -2,7 +2,7 @@ import { explainDrugInteraction } from "@/apis/prescription.api";
 import { useToast } from "@/stores/toastStore";
 import { AlertTriangle, BrainCircuit, X } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 
 interface DrugInteractionPopupProps {
     interactionData: any;
@@ -74,9 +74,22 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                     {interactionData?.onIgnoreAndContinue && (
                         <Pressable
                             onPress={() => {
-                                if (interactionData.onIgnoreAndContinue) {
-                                    interactionData.onIgnoreAndContinue();
-                                }
+                                Alert.alert(
+                                    "Cảnh báo nguy hiểm",
+                                    "Bạn có chắc là muốn thêm thuốc vào đơn không? Tương tác thuốc có thể gây nguy hiểm, chúng tôi sẽ không chịu trách nhiệm.",
+                                    [
+                                        { text: "Hủy bỏ", style: "cancel" },
+                                        {
+                                            text: "Vẫn thêm",
+                                            style: "destructive",
+                                            onPress: () => {
+                                                if (interactionData.onIgnoreAndContinue) {
+                                                    interactionData.onIgnoreAndContinue();
+                                                }
+                                            }
+                                        }
+                                    ]
+                                );
                             }}
                             style={{ flex: 1, minWidth: "40%", paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#B91C1C", backgroundColor: "#FEF2F2", alignItems: "center" }}
                         >

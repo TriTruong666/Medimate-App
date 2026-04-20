@@ -20,6 +20,7 @@ import {
     ActivityIndicator, Modal, Pressable, ScrollView, Text, View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { usePopup } from "@/stores/popupStore";
 import ManagerHeader from "../../../components/ManagerHeader";
 
 dayjs.extend(isSameOrBefore);
@@ -61,6 +62,7 @@ function getTimeOfDayBg(timeStr?: string): string {
 // ─── ReminderCard nâng cấp: hiển thị đầy đủ medicines ──────────────────────
 function ReminderCard({ item }: { item: any }) {
     const [expanded, setExpanded] = useState(false);
+    const popup = usePopup();
 
     const reminderDateTimeStr = item.reminderTime || undefined;
 
@@ -178,26 +180,47 @@ function ReminderCard({ item }: { item: any }) {
                     )}
                 </View>
 
-                {/* Status badge */}
-                <View style={{
-                    backgroundColor: statusColor,
-                    borderWidth: 1.5, borderColor: statusTextColor + '40',
-                    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5,
-                    flexDirection: 'row', alignItems: 'center', gap: 4,
-                    marginLeft: 8,
-                }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: statusTextColor, textTransform: 'uppercase' }}>
-                        {statusText}
-                    </Text>
-                    {medicines.length > 0 && (
-                        <ChevronDown
-                            size={12}
-                            color={statusTextColor}
-                            strokeWidth={2.5}
-                            style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
-                        />
-                    )}
-                </View>
+                {/* Status badge & Action */}
+                {isWithinWindow && medicines.length > 0 ? (
+                    <Pressable
+                        onPress={() => popup.open({ type: 'reminder_alert', data: item })}
+                        style={{
+                            marginLeft: 8,
+                            backgroundColor: '#16A34A',
+                            paddingHorizontal: 16,
+                            paddingVertical: 10,
+                            borderRadius: 14,
+                            borderWidth: 2,
+                            borderColor: BORDER_COLOR,
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 4
+                        }}
+                    >
+                        <Pill size={14} color="#fff" strokeWidth={2.5} />
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#fff' }}>UỐNG</Text>
+                    </Pressable>
+                ) : (
+                    <View style={{
+                        backgroundColor: statusColor,
+                        borderWidth: 1.5, borderColor: statusTextColor + '40',
+                        borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5,
+                        flexDirection: 'row', alignItems: 'center', gap: 4,
+                        marginLeft: 8,
+                    }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 10, color: statusTextColor, textTransform: 'uppercase' }}>
+                            {statusText}
+                        </Text>
+                        {medicines.length > 0 && (
+                            <ChevronDown
+                                size={12}
+                                color={statusTextColor}
+                                strokeWidth={2.5}
+                                style={{ transform: [{ rotate: expanded ? '180deg' : '0deg' }] }}
+                            />
+                        )}
+                    </View>
+                )}
             </Pressable>
 
             {/* Medicines expand section */}
