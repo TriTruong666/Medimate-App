@@ -1,5 +1,4 @@
 import { useLogMedicationAction } from "@/hooks/useMedicationLog";
-import { useSnoozeReminder } from "@/hooks/useSchedule";
 import dayjs from "dayjs";
 import { Bell, Check, Clock, Moon, Pill, Sun, Sunrise, X } from "lucide-react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -38,7 +37,6 @@ interface ReminderAlertPopupProps {
 
 export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
     const { mutate: logAction, isPending } = useLogMedicationAction();
-    const { mutate: snoozeAction, isPending: isSnoozing } = useSnoozeReminder();
     const [done, setDone] = useState(false);
 
     // ─── Pulse animation cho icon chuông ───
@@ -63,25 +61,25 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
         ).start();
 
         let timeout: ReturnType<typeof setTimeout>;
-        if (data.autoSnooze) {
-            // Tự động Snooze sau 60 giây nếu người dùng không tương tác (Và chưa qua EndTime)
-            const canSnoozeRightNow = data.endTime
-                ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime))
-                : true;
+        // if (data.autoSnooze) {
+        //     // Tự động Snooze sau 60 giây nếu người dùng không tương tác (Và chưa qua EndTime)
+        //     const canSnoozeRightNow = data.endTime
+        //         ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime))
+        //         : true;
 
-            if (canSnoozeRightNow) {
-                timeout = setTimeout(() => {
-                    if (!done && !isPending && !isSnoozing) {
-                        handleSnooze(15);
-                    }
-                }, 60000);
-            }
-        }
+        //     if (canSnoozeRightNow) {
+        //         timeout = setTimeout(() => {
+        //             if (!done && !isPending && !isSnoozing) {
+        //                 handleSnooze(15);
+        //             }
+        //         }, 60000);
+        //     }
+        // }
 
-        return () => {
-            if (timeout) clearTimeout(timeout);
-        };
-    }, [data.autoSnooze, data.endTime, done, isPending, isSnoozing]);
+        // return () => {
+        //     if (timeout) clearTimeout(timeout);
+        // };
+    }, [data.autoSnooze, data.endTime, done, isPending]);
 
     const reminderDayjs = data.reminderTime ? dayjs(data.reminderTime) : dayjs();
     const hour = reminderDayjs.hour();
@@ -117,13 +115,13 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
         });
     };
 
-    const handleSnooze = (minutes: number = 15) => {
-        snoozeAction({ id: data.reminderId, delayMinutes: minutes }, {
-            onSuccess: () => {
-                onClose();
-            }
-        });
-    };
+    // const handleSnooze = (minutes: number = 15) => {
+    //     snoozeAction({ id: data.reminderId, delayMinutes: minutes }, {
+    //         onSuccess: () => {
+    //             onClose();
+    //         }
+    //     });
+    // };
 
     return (
         <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.55)' }}>
@@ -272,7 +270,7 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                         {/* Taken (Full Width) */}
                         <Pressable
                             onPress={handleTaken}
-                            disabled={isPending || isSnoozing}
+                            disabled={isPending}
                             style={{
                                 height: 58,
                                 backgroundColor: '#16A34A',
