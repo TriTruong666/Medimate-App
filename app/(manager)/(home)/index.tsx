@@ -4,6 +4,7 @@ import { useGetFamilyMedicationDashboard } from "@/hooks/data/useMedicationDashb
 import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
 import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
 import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
+import { usePopup } from "@/stores/popupStore";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -20,7 +21,6 @@ import {
     ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { usePopup } from "@/stores/popupStore";
 import ManagerHeader from "../../../components/ManagerHeader";
 
 dayjs.extend(isSameOrBefore);
@@ -184,7 +184,7 @@ function ReminderCard({ item }: { item: any }) {
                 </View>
 
                 {/* Status badge & Action */}
-                {isWithinWindow && medicines.length > 0 ? (
+                {(isWithinWindow && !isTaken && medicines.length > 0) ? (
                     <Pressable
                         onPress={() => popup.open({ type: 'reminder_alert', data: item })}
                         style={{
@@ -204,6 +204,7 @@ function ReminderCard({ item }: { item: any }) {
                         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#fff' }}>UỐNG</Text>
                     </Pressable>
                 ) : (
+                    // Nếu đã uống (Taken) hoặc ngoài khung giờ, hiển thị Badge trạng thái (Đã uống, Đã bỏ lỡ, Sắp tới...)
                     <View style={{
                         backgroundColor: statusColor,
                         borderWidth: 1.5, borderColor: statusTextColor + '40',

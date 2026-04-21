@@ -174,6 +174,10 @@ export function useUpdateReminderAction() {
             if (res.success) {
                 queryClient.invalidateQueries({ queryKey: ["member-reminders"] });
                 queryClient.invalidateQueries({ queryKey: ["family-reminders"] });
+                queryClient.invalidateQueries({ queryKey: ["member-med-logs"] });
+                queryClient.invalidateQueries({ queryKey: ["family-med-logs"] });
+                queryClient.invalidateQueries({ queryKey: ["schedule-stats"] });
+                queryClient.invalidateQueries({ queryKey: ["medication-dashboard"] });
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể cập nhật trạng thái.");
             }

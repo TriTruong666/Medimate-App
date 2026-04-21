@@ -1,10 +1,9 @@
-import dayjs from "dayjs";
-import { Bell, Check, Clock, Moon, Pill, SkipForward, Sunrise, Sun, X, Timer } from "lucide-react-native";
-import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
 import { useLogMedicationAction } from "@/hooks/useMedicationLog";
 import { useSnoozeReminder } from "@/hooks/useSchedule";
-import { usePopup } from "@/stores/popupStore";
+import dayjs from "dayjs";
+import { Bell, Check, Clock, Moon, Pill, Sun, Sunrise, X } from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, ScrollView, Text, View } from "react-native";
 
 const BORDER_COLOR = '#000';
 
@@ -62,12 +61,12 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                 Animated.timing(pulseAnim, { toValue: 1.0, duration: 400, useNativeDriver: true, easing: Easing.inOut(Easing.ease) }),
             ])
         ).start();
-        
+
         let timeout: ReturnType<typeof setTimeout>;
         if (data.autoSnooze) {
             // Tự động Snooze sau 60 giây nếu người dùng không tương tác (Và chưa qua EndTime)
-            const canSnoozeRightNow = data.endTime 
-                ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime)) 
+            const canSnoozeRightNow = data.endTime
+                ? dayjs().add(15, 'minute').isBefore(dayjs(data.endTime))
                 : true;
 
             if (canSnoozeRightNow) {
