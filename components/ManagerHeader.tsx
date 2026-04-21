@@ -95,7 +95,7 @@ export default function ManagerHeader(_props: ManagerHeaderProps) {
                             <SkeletonPulsar className="w-full h-full bg-gray-100" />
                         ) : (
                             <Image
-                                source={{ uri: displayData?.avatarUrl || "https://i.pravatar.cc/100" }}
+                                source={{ uri: displayData?.avatarUrl || "https://tse4.mm.bing.net/th/id/OIP.V0f1oJi7BUElgXaX45v8ygAAAA?rs=1&pid=ImgDetMain&o=7&rm=3" }}
                                 className="w-14 h-14"
                                 resizeMode="cover"
                             />

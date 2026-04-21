@@ -133,7 +133,7 @@ export default function SettingsScreen() {
                 <ActivityIndicator color="#000" />
               ) : (
                 <Image
-                  source={{ uri: displayData?.avatarUrl || "https://i.pravatar.cc/100" }}
+                  source={{ uri: displayData?.avatarUrl || "https://tse4.mm.bing.net/th/id/OIP.V0f1oJi7BUElgXaX45v8ygAAAA?rs=1&pid=ImgDetMain&o=7&rm=3" }}
                   className="w-16 h-16"
                   resizeMode="cover"
                 />

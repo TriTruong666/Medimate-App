@@ -268,75 +268,79 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
             />
 
             {/* Main Chat Sheet */}
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{
-                    height: "90%",
-                    backgroundColor: "#F9F6FC",
-                    borderTopLeftRadius: 32,
-                    borderTopRightRadius: 32,
-                    borderTopWidth: 4,
-                    borderColor: "#000",
-                    overflow: "hidden"
-                }}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                // keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0} // Tùy chỉnh nếu bị lệch
+                style={{ flex: 1, justifyContent: "flex-end" }}
             >
-                {/* 1. Header Area */}
-                <View style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    paddingHorizontal: 20,
-                    paddingTop: 16,
-                    paddingBottom: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "rgba(0,0,0,0.06)",
-                    backgroundColor: "#FFF"
-                }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                        <View style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 2, borderColor: "#000", backgroundColor: "#D9AEF6", overflow: "hidden" }}>
-                            <Image source={{ uri: avatar }} style={{ width: 44, height: 44 }} />
-                        </View>
-                        <View>
-                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 15, color: "#000" }}>{name}</Text>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
-                                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#22C55E" }} />
-                                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 10, color: "rgba(0,0,0,0.4)" }}>Online • {specialty}</Text>
+                {/* Main Chat Sheet: Đặt chiều cao ở đây */}
+                <View
+                    style={{
+                        height: "90%", // Giữ chiều cao 90% màn hình
+                        backgroundColor: "#F9F6FC",
+                        borderTopLeftRadius: 32,
+                        borderTopRightRadius: 32,
+                        borderTopWidth: 4,
+                        borderColor: "#000",
+                        overflow: "hidden"
+                    }}
+                >
+                    {/* 1. Header Area */}
+                    <View style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        paddingHorizontal: 20,
+                        paddingTop: 16,
+                        paddingBottom: 16,
+                        borderBottomWidth: 1,
+                        borderBottomColor: "rgba(0,0,0,0.06)",
+                        backgroundColor: "#FFF"
+                    }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                            <View style={{ width: 44, height: 44, borderRadius: 14, borderWidth: 2, borderColor: "#000", backgroundColor: "#D9AEF6", overflow: "hidden" }}>
+                                <Image source={{ uri: avatar }} style={{ width: 44, height: 44 }} />
+                            </View>
+                            <View>
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 15, color: "#000" }}>{name}</Text>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginTop: 2 }}>
+                                    <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#22C55E" }} />
+                                    <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 10, color: "rgba(0,0,0,0.4)" }}>Online • {specialty}</Text>
+                                </View>
                             </View>
                         </View>
-                    </View>
 
-                    <View style={{ flexDirection: "row", gap: 8 }}>
-                        {!isCompleted && (
-                            <Pressable
-                                onPress={() => {
-                                    onClose();
-                                    router.push({
-                                        pathname: "/(manager)/(doctor)/video_call",
-                                        params: { sessionId, appointmentId }
-                                    } as any);
-                                }}
-                                style={{ width: 36, height: 36, borderRadius: 10, borderWidth: 2, borderColor: "#000", backgroundColor: "#34D399", alignItems: "center", justifyContent: "center" }}
-                            >
-                                <Phone size={16} color="#000" strokeWidth={2.5} />
+                        <View style={{ flexDirection: "row", gap: 8 }}>
+                            {!isCompleted && (
+                                <Pressable
+                                    onPress={() => {
+                                        onClose();
+                                        router.push({
+                                            pathname: "/(manager)/(doctor)/video_call",
+                                            params: { sessionId, appointmentId }
+                                        } as any);
+                                    }}
+                                    style={{ width: 36, height: 36, borderRadius: 10, borderWidth: 2, borderColor: "#000", backgroundColor: "#34D399", alignItems: "center", justifyContent: "center" }}
+                                >
+                                    <Phone size={16} color="#000" strokeWidth={2.5} />
+                                </Pressable>
+                            )}
+                            <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: "#000", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
+                                <X size={16} color="#000" strokeWidth={2.5} />
                             </Pressable>
-                        )}
-                        <Pressable onPress={onClose} style={{ width: 36, height: 36, borderRadius: 18, borderWidth: 2, borderColor: "#000", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
-                            <X size={16} color="#000" strokeWidth={2.5} />
-                        </Pressable>
+                        </View>
                     </View>
-                </View>
 
-                {/* Optional Timer Banner */}
-                {startedAt && timeLeft !== "Đã hết giờ" && (
-                    <View style={{ backgroundColor: "#FEF3C7", paddingVertical: 8, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" }}>
-                        <Text style={{ fontFamily: "SpaceGrotesk_600SemiBold", fontSize: 12, color: "#D97706" }}>
-                            Thời gian chat còn lại: {timeLeft || "Đang tính..."}
-                        </Text>
-                    </View>
-                )}
+                    {/* Timer Banner */}
+                    {startedAt && timeLeft !== "Đã hết giờ" && (
+                        <View style={{ backgroundColor: "#FEF3C7", paddingVertical: 8, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "rgba(0,0,0,0.06)" }}>
+                            <Text style={{ fontFamily: "SpaceGrotesk_600SemiBold", fontSize: 12, color: "#D97706" }}>
+                                Thời gian chat còn lại: {timeLeft || "Đang tính..."}
+                            </Text>
+                        </View>
+                    )}
 
-                {/* 2. Chat History (Fills Flex Space) */}
-                <View style={{ flex: 1 }}>
+                    {/* 2. Chat History */}
                     <FlatList
                         ref={flatListRef}
                         data={messages}
@@ -344,71 +348,66 @@ export const ChatDetailPopup: React.FC<ChatDetailPopupProps> = ({
                         keyExtractor={(item) => item.id}
                         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 15, paddingBottom: 20 }}
                         showsVerticalScrollIndicator={false}
-                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
                     />
-                </View>
 
-                {/* 3. Input Area (Seamless Bottom White) */}
-                {timeLeft === "Đã hết giờ" ? (
-                    <View style={{
-                        backgroundColor: "#FFF",
-                        borderTopWidth: 2,
-                        borderTopColor: "rgba(0,0,0,0.06)",
-                        paddingHorizontal: 16,
-                        paddingVertical: 20,
-                        alignItems: "center"
-                    }}>
-                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "rgba(0,0,0,0.4)", textAlign: "center" }}>
-                            Phòng chat đã tự động đóng khi hết giờ. Bạn không thể gửi thêm tin nhắn.
-                        </Text>
-                    </View>
-                ) : (
-                    <View style={{
-                        backgroundColor: "#FFF",
-                        borderTopWidth: 2,
-                        borderTopColor: "rgba(0,0,0,0.06)",
-                        paddingHorizontal: 16,
-                        paddingTop: 12,
-                        paddingBottom: Platform.OS === "ios" ? 40 : 25,
-                    }}>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                            <Pressable style={{ width: 42, height: 42, borderRadius: 12, borderWidth: 2, borderColor: "rgba(0,0,0,0.05)", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
-                                <Paperclip size={18} color="rgba(0,0,0,0.2)" strokeWidth={2} />
-                            </Pressable>
-
-                            <View style={{ flex: 1, backgroundColor: "#F5F3F8", borderWidth: 2, borderColor: "#000", borderRadius: 18, paddingHorizontal: 15, height: 46, justifyContent: 'center' }}>
-                                <TextInput
-                                    style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#000" }}
-                                    placeholder="Nhập tin nhắn..."
-                                    placeholderTextColor="rgba(0,0,0,0.2)"
-                                    value={inputText}
-                                    onChangeText={setInputText}
-                                    onSubmitEditing={handleSend}
-                                />
-                            </View>
-
-                            <Pressable
-                                onPress={handleSend}
-                                style={{
-                                    width: 46,
-                                    height: 46,
-                                    borderRadius: 14,
-                                    borderWidth: 2,
-                                    borderColor: "#000",
-                                    backgroundColor: inputText.trim() ? "#000" : "#E5E7EB",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    shadowColor: "#000",
-                                    shadowOffset: inputText.trim() ? { width: 3, height: 3 } : { width: 0, height: 0 },
-                                    shadowOpacity: inputText.trim() ? 1 : 0,
-                                    shadowRadius: 0,
-                                }}
-                            >
-                                <Send size={18} color={inputText.trim() ? "#FFF" : "rgba(0,0,0,0.2)"} strokeWidth={2.5} />
-                            </Pressable>
+                    {/* 3. Input Area */}
+                    {timeLeft === "Đã hết giờ" ? (
+                        <View style={{
+                            backgroundColor: "#FFF",
+                            borderTopWidth: 2,
+                            borderTopColor: "rgba(0,0,0,0.06)",
+                            paddingHorizontal: 16,
+                            paddingVertical: 20,
+                            alignItems: "center"
+                        }}>
+                            <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "rgba(0,0,0,0.4)", textAlign: "center" }}>
+                                Phòng chat đã tự động đóng khi hết giờ.
+                            </Text>
                         </View>
-                    </View>
-                )}
+                    ) : (
+                        <View style={{
+                            backgroundColor: "#FFF",
+                            borderTopWidth: 2,
+                            borderTopColor: "rgba(0,0,0,0.06)",
+                            paddingHorizontal: 16,
+                            paddingTop: 12,
+                            paddingBottom: Platform.OS === "ios" ? 34 : 15, // Giảm bớt padding bottom trên Android
+                        }}>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                <Pressable style={{ width: 42, height: 42, borderRadius: 12, borderWidth: 2, borderColor: "rgba(0,0,0,0.05)", backgroundColor: "#FFF", alignItems: "center", justifyContent: "center" }}>
+                                    <Paperclip size={18} color="rgba(0,0,0,0.2)" strokeWidth={2} />
+                                </Pressable>
+
+                                <View style={{ flex: 1, backgroundColor: "#F5F3F8", borderWidth: 2, borderColor: "#000", borderRadius: 18, paddingHorizontal: 15, height: 46, justifyContent: 'center' }}>
+                                    <TextInput
+                                        style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#000" }}
+                                        placeholder="Nhập tin nhắn..."
+                                        placeholderTextColor="rgba(0,0,0,0.2)"
+                                        value={inputText}
+                                        onChangeText={setInputText}
+                                        onSubmitEditing={handleSend}
+                                    />
+                                </View>
+
+                                <Pressable
+                                    onPress={handleSend}
+                                    style={{
+                                        width: 46, height: 46, borderRadius: 14, borderWidth: 2, borderColor: "#000",
+                                        backgroundColor: inputText.trim() ? "#000" : "#E5E7EB",
+                                        alignItems: "center", justifyContent: "center",
+                                        shadowColor: "#000",
+                                        shadowOffset: inputText.trim() ? { width: 3, height: 3 } : { width: 0, height: 0 },
+                                        shadowOpacity: inputText.trim() ? 1 : 0,
+                                        shadowRadius: 0,
+                                    }}
+                                >
+                                    <Send size={18} color={inputText.trim() ? "#FFF" : "rgba(0,0,0,0.2)"} strokeWidth={2.5} />
+                                </Pressable>
+                            </View>
+                        </View>
+                    )}
+                </View>
             </KeyboardAvoidingView>
 
             {/* Image Preview Modal Overlay */}

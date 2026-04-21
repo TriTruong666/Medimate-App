@@ -13,7 +13,7 @@ import { ActivityIndicator, Dimensions, Image, Pressable, RefreshControl, Scroll
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
 import { useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
-import { useGetDoctors, useGetDoctorReviews } from "../../../hooks/useDoctor";
+import { useGetDoctorReviews, useGetDoctors } from "../../../hooks/useDoctor";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -54,7 +54,7 @@ const SPECIALTY_BG_COLORS = [
 function DoctorListItem({ doc, index }: { doc: any, index: number }) {
     const router = useRouter();
     const color = CARD_COLORS[index % CARD_COLORS.length];
-    
+
     // GET DYNAMIC RATINGS
     const { data: reviews } = useGetDoctorReviews(doc.doctorId);
     const computedTotalReviews = reviews ? reviews.length : (doc.totalReviews || 0);
@@ -238,7 +238,7 @@ export default function DoctorScreen() {
                 {/* 3. Ongoing & Upcoming Schedule */}
                 <View className="px-5 mb-8">
                     <View className="flex-row items-center justify-between mb-4">
-                        <Text className="text-xl font-space-bold text-black">Lịch hẹn của bạn ({upcomingAppointments.length})</Text>
+                        <Text className="text-xl font-space-bold text-black ">Lịch hẹn của bạn ({upcomingAppointments.length})</Text>
                         <Pressable onPress={() => router.push("/(manager)/(doctor)/appointments")}>
                             <Text className="text-sm font-space-bold text-[#B3354B]">Xem lịch</Text>
                         </Pressable>
