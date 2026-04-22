@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "medimate-app",
+    "name": "Medimate",
     "slug": "medimate-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -15,7 +15,7 @@
       "package": "com.medimate.app",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/medimate.png"
       },
       "edgeToEdgeEnabled": true,
