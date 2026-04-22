@@ -43,7 +43,18 @@
       "expo-secure-store",
       "expo-dev-client",
       "expo-notifications",
-      "expo-barcode-scanner"
+      "expo-barcode-scanner",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "newArchEnabled": true
+          },
+          "ios": {
+            "newArchEnabled": true
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
