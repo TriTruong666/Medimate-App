@@ -43,7 +43,6 @@
       "expo-secure-store",
       "expo-dev-client",
       "expo-notifications",
-      "expo-barcode-scanner",
       [
         "expo-build-properties",
         {
