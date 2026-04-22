@@ -410,7 +410,7 @@ export default function MemberAppointmentsScreen() {
             const res = await getSessionByAppointmentId(appt.appointmentId);
             if (res.success && res.data) {
                 router.push({
-                    pathname: "/(manager)/(doctor)/video_call",
+                    pathname: "/(member)/(appointment)/video_call",
                     params: { sessionId: res.data.consultanSessionId, appointmentId: appt.appointmentId }
                 } as any);
             } else {
