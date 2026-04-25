@@ -41,7 +41,6 @@ export function useGetMemberAppointments(memberId: string) {
     });
 }
 
-
 // Hook lấy chi tiết 1 appointment (có doctorName, appointmentTime, ...)
 export function useGetAppointmentDetail(appointmentId: string | undefined) {
     return useQuery({
@@ -65,9 +64,8 @@ export function useCreateAppointment() {
         mutationFn: (data: CreateAppointmentRequest) => AppointmentApi.createAppointment(data),
         onSuccess: (res) => {
             if (res.success) {
-                // Làm mới danh sách khung giờ để ẩn khung giờ vừa bị đặt
                 queryClient.invalidateQueries({ queryKey: ["available-slots"] });
-                Alert.alert("Thành công", "Đã đặt lịch hẹn thành công!");
+                queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
             } else {
                 Alert.alert("Lỗi", res.message || "Không thể đặt lịch hẹn.");
             }
@@ -95,3 +93,17 @@ export function useCancelAppointment() {
     });
 }
 
+// Hook hủy slot chưa thanh toán
+export function useDeleteUnpaidAppointment() {
+    const queryClient = useQueryClient();
+    
+    return useMutation({
+        mutationFn: async (appointmentId: string) =>
+            AppointmentApi.deleteUnpaidAppointment(appointmentId),
+        onSuccess: () => {
+            // Cập nhật lại khung giờ trống để người khác có thể đặt
+            queryClient.invalidateQueries({ queryKey: ["available-slots"] });
+            queryClient.invalidateQueries({ queryKey: ["my-appointments"] });
+        },
+    });
+}

@@ -10,7 +10,8 @@ import {
   Info,
   LogOut,
   Shield,
-  Users
+  Users,
+  Building
 } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
 import {
@@ -60,6 +61,14 @@ const MENU_ITEMS = [
   //   subtitle: "Câu hỏi thường gặp",
   //   color: "#87CEFA",
   // },
+  {
+    icon: Building,
+    label: "Tài khoản hoàn tiền",
+    subtitle: "Thiết lập thẻ ngân hàng",
+    color: "#87CEFA",
+    route: "/(manager)/(settings)/bank-account" as const,
+    onlyUser: true,
+  },
   {
     icon: Info,
     label: "Về Medimate",
@@ -205,7 +214,7 @@ export default function SettingsScreen() {
 
         {/* Menu Items List */}
         <View className="bg-white border-2 border-black rounded-[24px] overflow-hidden mb-8 shadow-sm">
-          {MENU_ITEMS.map((item, index) => {
+          {MENU_ITEMS.filter(item => !item.onlyUser || userId).map((item, index, filteredArray) => {
             const IconComp = item.icon;
             return (
               <Pressable
@@ -215,7 +224,7 @@ export default function SettingsScreen() {
                     router.push(item.route as any);
                   }
                 }}
-                className={`flex-row items-center px-5 py-4 active:bg-gray-50 ${index < MENU_ITEMS.length - 1
+                className={`flex-row items-center px-5 py-4 active:bg-gray-50 ${index < filteredArray.length - 1
                   ? "border-b-2 border-black/10"
                   : ""
                   }`}

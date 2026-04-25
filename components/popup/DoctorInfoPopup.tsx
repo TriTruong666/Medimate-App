@@ -22,12 +22,12 @@ export const DoctorInfoPopup: React.FC<DoctorInfoPopupProps> = ({
     const { data: doctor, isLoading } = useGetDoctorDetail(doctorId);
 
     // Dữ liệu hiển thị (kết hợp fallback từ appt nếu đang tải hoặc call api lỗi)
-    const displayAvatar = doctor?.user?.avatarUrl || doctor?.avatarUrl || fallbackAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png';
-    const displayName = doctor?.user?.fullName || doctor?.fullName || fallbackName || `Bác sĩ #${doctorId?.slice(0, 8)}`;
+    const displayAvatar = doctor?.avatarUrl || fallbackAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png';
+    const displayName = doctor?.fullName || fallbackName || `Bác sĩ #${doctorId?.slice(0, 8)}`;
     const displaySpecialty = doctor?.specialty || fallbackSpecialty || 'Chuyên khoa tư vấn';
 
     // Thêm các thông tin nâng cao theo DoctorDetailResponse
-    const clinicName = doctor?.currentHospital || 'Phòng khám Đa khoa MediMate';
+    const clinicName = doctor?.clinicName || 'Phòng khám Đa khoa MediMate';
     const yearsExperience = doctor?.yearsOfExperience || 0;
     const avgRating = doctor?.averageRating || 0;
     const totalReviews = doctor?.totalReviews || 0;

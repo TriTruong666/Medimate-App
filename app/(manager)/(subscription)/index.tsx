@@ -56,12 +56,7 @@ function buildFeatures(pkg: MembershipPackage) {
     { icon: Heart, text: "Theo dõi lịch sử chi tiết", included: true },
     {
       icon: Shield,
-      text: `${pkg.ocrLimit === 0 ? "Không giới hạn" : pkg.ocrLimit + " lượt"} quét đơn thuốc`,
-      included: true,
-    },
-    {
-      icon: Sparkles,
-      text: `${pkg.consultantLimit === 0 ? "Không giới hạn" : pkg.consultantLimit + " lượt"} tư vấn cùng Bác sĩ`,
+      text: `${pkg.ocrLimit === 0 ? "Không giới hạn" : pkg.ocrLimit + " lượt"} quét đơn thuốc (OCR)`,
       included: true,
     },
     {
@@ -363,7 +358,7 @@ export default function SubscriptionScreen() {
                         </Text>
                       </View>
 
-                      {/* Remaining stats */}
+                      {/* Remaining OCR stats */}
                       <View style={{ alignItems: "flex-end", gap: 4 }}>
                         <View
                           style={{
@@ -384,27 +379,6 @@ export default function SubscriptionScreen() {
                           >
                             {item.subscription.remainingOcrCount}/
                             {item.subscription.ocrLimit} OCR
-                          </Text>
-                        </View>
-                        <View
-                          style={{
-                            backgroundColor: "#F9F6FC",
-                            borderWidth: 1.5,
-                            borderColor: "#000",
-                            borderRadius: 10,
-                            paddingHorizontal: 8,
-                            paddingVertical: 3,
-                          }}
-                        >
-                          <Text
-                            style={{
-                              fontFamily: "SpaceGrotesk_700Bold",
-                              fontSize: 10,
-                              color: "#000",
-                            }}
-                          >
-                            {item.subscription.remainingConsultantCount}/
-                            {item.subscription.consultantLimit} Call
                           </Text>
                         </View>
                       </View>

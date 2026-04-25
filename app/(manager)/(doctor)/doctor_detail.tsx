@@ -39,7 +39,7 @@ dayjs.locale('vi');
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const TABS = ['Đặt lịch', 'Thông tin', 'Đánh giá'];
+const TABS = ['Đặt lịch', 'Thông tin'];
 
 const BORDER_COLOR = '#000000';
 const SOFT_PURPLE = '#D9AEF6';
@@ -114,11 +114,7 @@ export default function DoctorDetailScreen() {
         setRefreshing(false);
     }, [refetchDoctor, refetchReviews, refetchAvail, refetchSlots, selectedDateItem]);
 
-    const reviews = reviewsData || [];
-    const computedTotalReviews = reviews.length;
-    const computedAverage = computedTotalReviews > 0 
-        ? (reviews.reduce((acc: number, r: any) => acc + r.score, 0) / computedTotalReviews) 
-        : (doctor?.averageRating || 0);
+    const computedAverage = 0;
 
     const slots = Array.isArray(slotsData) ? slotsData : [];
     const loading = isDoctorLoading || isReviewsLoading || isAvailLoading;
@@ -253,28 +249,20 @@ export default function DoctorDetailScreen() {
                             <View className="flex-1">
                                 <Text className="text-xl font-space-bold text-black leading-tight uppercase">{doctor?.fullName}</Text>
                                 <Text className="text-sm font-space-medium text-black/40 mt-1">{doctor?.specialty}</Text>
-                                <Text className="text-sm font-space-bold text-[#B3354B] mt-2">{doctor?.currentHospital}</Text>
+                                <Text className="text-sm font-space-bold text-[#B3354B] mt-2">{doctor?.clinicName}</Text>
                             </View>
                         </View>
 
                         {/* Stats Row */}
                         <View className="flex-row justify-between bg-gray-50/50 border-2 border-black/5 rounded-2xl p-4">
-                            <View className="items-center">
-                                <Text className="text-base font-space-bold text-black">{doctor?.yearsOfExperience} năm</Text>
-                                <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter">Kinh nghiệm</Text>
+                            <View className="items-center flex-1">
+                                <Text className="text-base font-space-bold text-black">{doctor?.yearsOfExperience || 0} năm</Text>
+                                <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter mt-1">Kinh nghiệm làm việc</Text>
                             </View>
-                            <View className="w-[1px] h-8 bg-black/10" />
-                            <View className="items-center">
-                                <Text className="text-base font-space-bold text-black">{computedTotalReviews}</Text>
-                                <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter">Đánh giá</Text>
-                            </View>
-                            <View className="w-[1px] h-8 bg-black/10" />
-                            <View className="items-center">
-                                <View className="flex-row items-center gap-x-1">
-                                    <Star size={14} color="#FFD700" fill="#FFD700" />
-                                    <Text className="text-base font-space-bold text-black">{computedAverage.toFixed(1)}</Text>
-                                </View>
-                                <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter">Sao</Text>
+                            <View className="w-[1px] h-10 bg-black/10 mx-2" />
+                            <View className="items-center flex-1">
+                                <Text className="text-base font-space-bold text-black">{doctor?.consultationFee ? doctor.consultationFee.toLocaleString('vi-VN') : '0'}đ</Text>
+                                <Text className="text-[10px] font-space-bold text-black/30 uppercase tracking-tighter mt-1">Phí tư vấn</Text>
                             </View>
                         </View>
                     </View>
@@ -469,7 +457,11 @@ export default function DoctorDetailScreen() {
                                     flexWrap: 'wrap',
                                     gap: 8,
                                 }}>
-                                    {slots.map((slot) => {
+                                    {[...slots].sort((a, b) => {
+                                        if (a.time < b.time) return -1;
+                                        if (a.time > b.time) return 1;
+                                        return 0;
+                                    }).map((slot) => {
                                         const isSelected = selectedSlot?.time === slot.time;
                                         const isBooked = slot.isBooked;
                                         return (
@@ -539,44 +531,27 @@ export default function DoctorDetailScreen() {
                             </Text>
                         </View>
 
-                        <View className="flex-row flex-wrap gap-2">
-                            {doctor?.specialty ? (
-                                <View className="bg-[#D1EFFF] border-2 border-black px-4 py-2 rounded-full">
-                                    <Text className="text-xs font-space-bold text-black">{doctor.specialty}</Text>
-                                </View>
-                            ) : null}
-                        </View>
-                    </View>
-                )}
-
-                {selectedTab === 'Đánh giá' && (
-                    <View className="px-5">
-                        <View className="bg-[#FFF4D1] border-2 border-black rounded-[24px] p-5 mb-6 flex-row items-center justify-between">
-                            <View>
-                                <Text className="text-3xl font-space-bold text-black">{computedAverage.toFixed(1)}</Text>
-                                <Text className="text-xs font-space-medium text-black/40">Trên 5 sao</Text>
+                        <View className="bg-white border-2 border-black rounded-[24px] p-6 shadow-sm mb-6">
+                            <Text className="text-lg font-space-bold text-black mb-3">Thông tin công tác</Text>
+                            
+                            <View className="mb-4">
+                                <Text className="text-xs font-space-bold text-black/40 uppercase tracking-wider mb-1">Phòng khám / Bệnh viện</Text>
+                                <Text className="text-base font-space-bold text-black">{doctor?.clinicName || 'Chưa cập nhật'}</Text>
                             </View>
-                            <View className="flex-row gap-x-1">
-                                {[1, 2, 3, 4, 5].map(s => <Star key={s} size={20} color="#000" fill={s <= computedAverage ? "#000" : "transparent"} />)}
-                            </View>
-                        </View>
 
-                        {reviews.length === 0 ? (
-                            <Text className="text-center font-space-medium text-black/40 mt-5">Chưa có đánh giá nào.</Text>
-                        ) : (
-                            reviews.map((rev) => (
-                                <View key={rev.ratingId} className="bg-white border-2 border-black rounded-2xl p-4 mb-4 shadow-sm">
-                                    <View className="flex-row justify-between mb-2 items-center">
-                                        <View className="flex-row items-center gap-x-2">
-                                            <Image source={{ uri: rev.memberAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-6 h-6 rounded-full" />
-                                            <Text className="text-sm font-space-bold text-black">{rev.memberName}</Text>
+                            <View className="mb-4">
+                                <Text className="text-xs font-space-bold text-black/40 uppercase tracking-wider mb-1">Chuyên khoa</Text>
+                                <View className="flex-row flex-wrap mt-1">
+                                    {doctor?.specialty ? (
+                                        <View className="bg-[#D1EFFF] border-2 border-black px-4 py-2 rounded-xl">
+                                            <Text className="text-sm font-space-bold text-black">{doctor.specialty}</Text>
                                         </View>
-                                        <Text className="text-[10px] font-space-medium text-black/30">{dayjs(rev.createdAt).format("DD/MM/YYYY")}</Text>
-                                    </View>
-                                    <Text className="text-xs font-space-medium text-black/60 leading-5">{rev.comment}</Text>
+                                    ) : (
+                                        <Text className="text-base font-space-medium text-black/60">Chưa cập nhật</Text>
+                                    )}
                                 </View>
-                            ))
-                        )}
+                            </View>
+                        </View>
                     </View>
                 )}
             </ScrollView>
