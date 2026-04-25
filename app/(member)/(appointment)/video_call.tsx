@@ -594,16 +594,13 @@ export default function VideoCallScreen() {
                 <Pressable
                     onPress={handleImmediateEnd}
                     style={({ pressed }) => ({
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingHorizontal: 12, paddingVertical: 8,
+                        width: 44, height: 44,
+                        alignItems: 'center', justifyContent: 'center',
                         backgroundColor: pressed ? '#CC2F26' : 'rgba(255,59,48,0.15)',
-                        borderRadius: 14, borderWidth: 1.5, borderColor: '#FF3B30'
+                        borderRadius: 22, borderWidth: 1.5, borderColor: '#FF3B30'
                     })}
                 >
-                    <PhoneOff size={14} color="#FF3B30" strokeWidth={2.5} />
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FF3B30' }}>
-                        Thoát Call
-                    </Text>
+                    <PhoneOff size={18} color="#FF3B30" strokeWidth={2.5} />
                 </Pressable>
 
                 {/* Hủy No-Show — chỉ hiển khi bác sĩ chưa vào */}
@@ -628,16 +625,13 @@ export default function VideoCallScreen() {
                 <Pressable
                     onPress={handlePauseConfirmed}
                     style={({ pressed }) => ({
-                        flexDirection: 'row', alignItems: 'center', gap: 6,
-                        paddingHorizontal: 12, paddingVertical: 8,
+                        width: 44, height: 44,
+                        alignItems: 'center', justifyContent: 'center',
                         backgroundColor: pressed ? 'rgba(251,191,36,0.3)' : 'rgba(251,191,36,0.15)',
-                        borderRadius: 14, borderWidth: 1.5, borderColor: '#FBBF24'
+                        borderRadius: 22, borderWidth: 1.5, borderColor: '#FBBF24'
                     })}
                 >
-                    <Minimize2 size={14} color="#FBBF24" strokeWidth={2.5} />
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#FBBF24' }}>
-                        Thu nhỏ
-                    </Text>
+                    <Minimize2 size={18} color="#FBBF24" strokeWidth={2.5} />
                 </Pressable>
             </View>
 

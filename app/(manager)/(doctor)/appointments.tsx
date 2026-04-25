@@ -1,26 +1,35 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { ArrowLeft, Calendar, Check, Clock, MessageSquare, RefreshCw } from "lucide-react-native";
+import { AlertTriangle, ArrowLeft, Calendar, Check, Clock, MessageSquare, RefreshCw } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { getSessionByAppointmentId, joinSession } from "../../../apis/session.api";
 import { useCancelAppointment, useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
 import { useGetRatingBySession } from "../../../hooks/useRating";
+import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
 import { useToast } from "../../../stores/toastStore";
 import { AppointmentDetailResponse, AppointmentResponse } from "../../../types/Appointment";
 
 dayjs.locale('vi');
 
-const FILTERS = ['Tất cả', 'Sắp tới', 'Đã khám', 'Đã hủy'];
+const FILTERS = ['Tất cả', 'Chờ xác nhận', 'Đã xác nhận', 'Hoàn thành', 'Đã hủy'];
 
 const STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
     Pending: { label: 'Chờ xác nhận', bg: '#FFF4D1' },
-    Approved: { label: 'Sắp tới', bg: '#A3E6A1' },
-    Completed: { label: 'Đã hoàn thành', bg: '#E2E8F0' },
+    Approved: { label: 'Đã xác nhận', bg: '#D1EFFF' },
+    Completed: { label: 'Hoàn thành', bg: '#A3E6A1' },
     Cancelled: { label: 'Đã hủy', bg: '#FFD1D1' },
+};
+
+const PAYMENT_STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
+    Pending:          { label: 'Chờ thanh toán', bg: '#E2E8F0' },
+    Paid:             { label: 'Đã thanh toán',  bg: '#A3E6A1' },
+    Refunded:         { label: 'Đang hoàn tiền',  bg: '#FFF4D1' },
+    RefundCompleted:  { label: 'Đã hoàn tiền',    bg: '#D1EFFF' },
+    Cancelled:        { label: 'Đã hủy',          bg: '#FFD1D1' },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -87,8 +96,8 @@ function AppointmentCard({
 
     // Bác sĩ
     const doctorDisplay = merged.doctorName || `Bác sĩ #${merged.doctorId?.slice(0, 8)}`;
-    const doctorAva = merged.doctorAvatar || merged.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png';
-    const doctorSpec = merged.specialty || merged.doctorSpecialty || 'Chuyên khoa tư vấn';
+    const doctorAva = merged.doctorAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png';
+    const doctorSpec = merged.specialty || 'Chuyên khoa tư vấn';
 
     // Bệnh nhân
     const memberDisplay = merged.memberName || `Bệnh nhân #${merged.memberId?.slice(0, 8)}`;
@@ -122,8 +131,8 @@ function AppointmentCard({
             data: {
                 doctorId: merged.doctorId,
                 name: merged.doctorName || `Bác sĩ #${merged.doctorId?.slice(0, 8)}`,
-                avatar: merged.doctorAvatar || merged.doctorAvatarUrl,
-                specialty: merged.specialty || merged.doctorSpecialty
+                avatar: merged.doctorAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
+                specialty: merged.specialty || 'Chuyên khoa tư vấn'
             }
         });
     };
@@ -144,10 +153,25 @@ function AppointmentCard({
         }}>
             {/* --- Header: Status --- */}
             <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
-                <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 2, borderColor: '#000' }}>
-                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#000', textTransform: 'uppercase' }}>
-                        {statusCfg.label}
-                    </Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', flex: 1, marginRight: 8 }}>
+                    {/* Status Badge */}
+                    <View style={{ backgroundColor: statusCfg.bg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 2, borderColor: '#000' }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#000', textTransform: 'uppercase' }}>
+                            {statusCfg.label}
+                        </Text>
+                    </View>
+                    {/* PaymentStatus Badge */}
+                    {merged.paymentStatus && (() => {
+                        const pCfg = PAYMENT_STATUS_CONFIG[merged.paymentStatus];
+                        if (!pCfg) return null;
+                        return (
+                            <View style={{ backgroundColor: pCfg.bg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 2, borderColor: '#000' }}>
+                                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: '#000', textTransform: 'uppercase' }}>
+                                    {pCfg.label}
+                                </Text>
+                            </View>
+                        );
+                    })()}
                 </View>
                 {isFetching ? (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -165,7 +189,7 @@ function AppointmentCard({
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 20 }}>
                 <Pressable onPress={handleShowDoctorInfo}>
                     <View style={{ width: 64, height: 64, backgroundColor: '#D9AEF6', borderRadius: 20, borderWidth: 2, borderColor: '#000', overflow: 'hidden' }}>
-                        <Image source={{ uri: merged.doctorAvatar || merged.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png' }} style={{ width: '100%', height: '100%' }} />
+                        <Image source={{ uri: merged.doctorAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png' }} style={{ width: '100%', height: '100%' }} />
                     </View>
                 </Pressable>
                 <View style={{ flex: 1 }}>
@@ -269,6 +293,15 @@ function AppointmentCard({
                     )}
                 </View>
             </View>
+
+            {merged.amount !== undefined && merged.amount > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, padding: 16, backgroundColor: '#F0FDF4', borderRadius: 16, borderWidth: 2, borderColor: '#000' }}>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#64748B', textTransform: 'uppercase' }}>Phí khám bệnh</Text>
+                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 18, color: '#000' }}>
+                        {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(merged.amount)}
+                    </Text>
+                </View>
+            )}
 
             {/* --- CTA buttons --- */}
             {(() => {
@@ -451,6 +484,12 @@ export default function AppointmentsScreen() {
     const [cancelApptId, setCancelApptId] = useState<string | null>(null);
     const [cancelReason, setCancelReason] = useState("");
 
+    // Warning modal: user hủy lịch đã thanh toán mà chưa có bank account
+    const [bankWarnVisible, setBankWarnVisible] = useState(false);
+    const [pendingCancelAppt, setPendingCancelAppt] = useState<AppointmentResponse | null>(null);
+
+    const { data: bankAccount } = useGetUserBankAccount();
+
     const popup = usePopup();
 
     const { data: rawAppointments, isLoading: loading, isFetching, dataUpdatedAt } = useGetMyAppointments();
@@ -467,8 +506,8 @@ export default function AppointmentsScreen() {
                     type: 'chat_detail',
                     data: {
                         name: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
-                        avatar: appt.doctorAvatar || appt.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
-                        specialty: appt.specialty || appt.doctorSpecialty || "Nha khoa",
+                        avatar: appt.doctorAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
+                        specialty: appt.specialty || "Nha khoa",
                         sessionId: res.data.consultanSessionId,
                         startedAt: res.data.startedAt,
                         isCompleted: appt.status === 'Completed'
@@ -541,8 +580,8 @@ export default function AppointmentsScreen() {
                     type: 'chat_detail',
                     data: {
                         name: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
-                        avatar: appt.doctorAvatar || appt.doctorAvatarUrl || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
-                        specialty: appt.specialty || appt.doctorSpecialty || "Nha khoa",
+                        avatar: appt.doctorAvatar || 'https://cdn-icons-png.flaticon.com/512/3845/3842326.png',
+                        specialty: appt.specialty || "Nha khoa",
                         sessionId: res.data.consultanSessionId,
                         startedAt: res.data.startedAt,
                         isCompleted: appt.status === 'Completed'
@@ -571,7 +610,7 @@ export default function AppointmentsScreen() {
             data: {
                 sessionId,
                 doctorName: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
-                doctorSpecialty: appt.specialty || appt.doctorSpecialty || '',
+                doctorSpecialty: appt.specialty || '',
             }
         });
     };
@@ -584,7 +623,7 @@ export default function AppointmentsScreen() {
             type: 'view_rating',
             data: {
                 doctorName: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
-                doctorSpecialty: appt.specialty || appt.doctorSpecialty || '',
+                doctorSpecialty: appt.specialty || '',
                 rating: rating
             }
         });
@@ -610,9 +649,27 @@ export default function AppointmentsScreen() {
     };
 
     const handleOpenCancelModal = (appt: AppointmentResponse) => {
+        // Nếu lịch đã thanh toán nhưng chưa có bank account → hiện cảnh báo trước
+        if (appt.paymentStatus === 'Paid' && !bankAccount) {
+            setPendingCancelAppt(appt);
+            setBankWarnVisible(true);
+            return;
+        }
+        // Bình thường: mở modal hủy
         setCancelApptId(appt.appointmentId);
         setCancelReason("");
         setCancelModalVisible(true);
+    };
+
+    // Người dùng đã xác nhận vẫn muốn hủy dù chưa có bank account
+    const handleCancelAnyway = () => {
+        setBankWarnVisible(false);
+        if (pendingCancelAppt) {
+            setCancelApptId(pendingCancelAppt.appointmentId);
+            setCancelReason("");
+            setCancelModalVisible(true);
+            setPendingCancelAppt(null);
+        }
     };
 
     const handleSubmitCancel = () => {
@@ -629,8 +686,9 @@ export default function AppointmentsScreen() {
     };
 
     const filteredAppointments = appointments.filter(appt => {
-        if (filter === 'Sắp tới') return appt.status === 'Approved' || appt.status === 'Pending';
-        if (filter === 'Đã khám') return appt.status === 'Completed';
+        if (filter === 'Chờ xác nhận') return appt.status === 'Pending';
+        if (filter === 'Đã xác nhận') return appt.status === 'Approved';
+        if (filter === 'Hoàn thành') return appt.status === 'Completed';
         if (filter === 'Đã hủy') return appt.status === 'Cancelled';
         return true;
     });
@@ -689,9 +747,10 @@ export default function AppointmentsScreen() {
                         const count = f === 'Tất cả'
                             ? appointments.length
                             : appointments.filter(a =>
-                                f === 'Sắp tới' ? (a.status === 'Approved' || a.status === 'Pending') :
-                                    f === 'Đã khám' ? a.status === 'Completed' :
-                                        a.status === 'Cancelled'
+                                f === 'Chờ xác nhận' ? a.status === 'Pending' :
+                                f === 'Đã xác nhận'  ? a.status === 'Approved' :
+                                f === 'Hoàn thành'   ? a.status === 'Completed' :
+                                    a.status === 'Cancelled'
                             ).length;
                         return (
                             <Pressable
@@ -759,6 +818,60 @@ export default function AppointmentsScreen() {
                     ))
                 )}
             </ScrollView>
+
+            {/* ── Bank Account Warning Modal ─────────────────────────────── */}
+            <Modal visible={bankWarnVisible} animationType="fade" transparent>
+                <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+                    <View style={{ backgroundColor: "#fff", width: "100%", borderRadius: 24, padding: 24, borderWidth: 2, borderColor: "#000" }}>
+                        {/* Icon cảnh báo */}
+                        <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                            <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#FFF4D1', borderWidth: 2, borderColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+                                <AlertTriangle size={32} color="#D97706" strokeWidth={2.5} />
+                            </View>
+                        </View>
+
+                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, marginBottom: 10, color: "#000", textAlign: 'center' }}>
+                            Chưa có tài khoản ngân hàng!
+                        </Text>
+                        <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#64748B", marginBottom: 8, textAlign: 'center', lineHeight: 20 }}>
+                            Lịch hẹn này đã được thanh toán. Khi hủy, hệ thống sẽ hoàn tiền về tài khoản ngân hàng của bạn.
+                        </Text>
+                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#DC2626", marginBottom: 24, textAlign: 'center' }}>
+                            Bạn chưa đăng ký tài khoản ngân hàng để nhận hoàn tiền!
+                        </Text>
+
+                        <View style={{ gap: 10 }}>
+                            {/* Nút chính: đi cập nhật bank account */}
+                            <Pressable
+                                onPress={() => {
+                                    setBankWarnVisible(false);
+                                    setPendingCancelAppt(null);
+                                    router.push('/(manager)/(settings)/bank-account' as any);
+                                }}
+                                style={{ paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#000', alignItems: 'center' }}
+                            >
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#fff" }}>Cập nhật tài khoản ngân hàng</Text>
+                            </Pressable>
+
+                            {/* Nút phụ: vẫn hủy dù chưa có bank */}
+                            <Pressable
+                                onPress={handleCancelAnyway}
+                                style={{ paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#DC2626', alignItems: 'center' }}
+                            >
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#DC2626" }}>Vẫn hủy lịch</Text>
+                            </Pressable>
+
+                            {/* Nút đóng */}
+                            <Pressable
+                                onPress={() => { setBankWarnVisible(false); setPendingCancelAppt(null); }}
+                                style={{ paddingVertical: 12, alignItems: 'center' }}
+                            >
+                                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#94A3B8" }}>Không hủy</Text>
+                            </Pressable>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Cancel Modal */}
             <Modal visible={cancelModalVisible} animationType="fade" transparent>

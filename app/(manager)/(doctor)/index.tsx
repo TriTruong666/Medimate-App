@@ -5,7 +5,6 @@ import {
     Clock,
     Eye,
     Search,
-    Star,
     User
 } from "lucide-react-native";
 import React, { useCallback, useMemo, useState } from "react";
@@ -13,7 +12,7 @@ import { ActivityIndicator, Dimensions, Image, Pressable, RefreshControl, Scroll
 import { SafeAreaView } from "react-native-safe-area-context";
 import ManagerHeader from "../../../components/ManagerHeader";
 import { useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
-import { useGetDoctorReviews, useGetDoctors } from "../../../hooks/useDoctor";
+import { useGetDoctors } from "../../../hooks/useDoctor";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -54,13 +53,8 @@ const SPECIALTY_BG_COLORS = [
 function DoctorListItem({ doc, index }: { doc: any, index: number }) {
     const router = useRouter();
     const color = CARD_COLORS[index % CARD_COLORS.length];
-
-    // GET DYNAMIC RATINGS
-    const { data: reviews } = useGetDoctorReviews(doc.doctorId);
-    const computedTotalReviews = reviews ? reviews.length : (doc.totalReviews || 0);
-    const computedAverage = reviews && reviews.length > 0
-        ? (reviews.reduce((acc: number, r: any) => acc + r.score, 0) / reviews.length)
-        : (doc.averageRating || 0);
+    const fee = doc.consultationFee;
+    const feeDisplay = fee ? fee.toLocaleString('vi-VN') + 'đ' : 'Liên hệ';
 
     return (
         <Pressable
@@ -87,10 +81,10 @@ function DoctorListItem({ doc, index }: { doc: any, index: number }) {
                 </View>
 
                 <View className="flex-row items-center justify-between mt-auto pt-2">
-                    <View className="flex-row items-center gap-x-1">
-                        <Star size={14} color="#FFD700" fill="#FFD700" />
-                        <Text className="text-xs font-space-bold text-black">{computedAverage.toFixed(1)}</Text>
-                        <Text className="text-[10px] font-space-medium text-black/30">({computedTotalReviews})</Text>
+                    {/* Giá khám */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(0,0,0,0.4)' }}>Phí khám</Text>
+                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#B3354B' }}>{feeDisplay}</Text>
                     </View>
 
                     <View className="bg-[#B3354B]/10 px-3 py-1 rounded-lg">
@@ -266,7 +260,7 @@ export default function DoctorScreen() {
                                         <View className="flex-1">
                                             <Text className="text-xs font-space-bold text-black/50 uppercase tracking-tight mb-1">Bác sĩ</Text>
                                             <Text className="text-lg font-space-bold text-black uppercase" numberOfLines={1}>{ongoingAppt.doctorName || "Bác sĩ chưa xác định"}</Text>
-                                            <Text className="text-xs font-space-medium text-black/60 mt-1">{ongoingAppt.doctorSpecialty || "Chuyên khoa tư vấn"}</Text>
+                                            <Text className="text-xs font-space-medium text-black/60 mt-1">{ongoingAppt.specialty || "Chuyên khoa tư vấn"}</Text>
                                         </View>
                                         <Pressable
                                             onPress={() => router.push(`/(manager)/(doctor)/appointments` as any)}

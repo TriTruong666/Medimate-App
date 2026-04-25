@@ -1,35 +1,34 @@
-import { useAtom, useSetAtom } from "jotai";
-import { 
-    Calendar, 
+import dayjs from "dayjs";
+import { router } from "expo-router";
+import { useAtom } from "jotai";
+import {
+    Calendar,
     Check,
+    ChevronLeft,
+    ChevronRight,
     Clock,
-    Star,
     User,
     Users,
-    ChevronRight,
-    ChevronLeft,
     X
 } from "lucide-react-native";
-import React, { useState, useEffect } from "react";
-import { Image, Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import React, { useEffect, useState } from "react";
+import { Image, Pressable, ScrollView, Text, View } from "react-native";
+import { useCreateAppointment } from "../../hooks/useAppointment";
+import { useGetFamilies, useGetFamilyMembers, useGetSubscription } from "../../hooks/useFamily";
 import { popupAtom } from "../../stores/popupStore";
 import { useToast } from "../../stores/toastStore";
 import { BottomSheetBase } from "./BottomSheetBase";
-import { useGetFamilies, useGetFamilyMembers, useGetSubscription } from "../../hooks/useFamily";
-import { createAppointment } from "../../apis/appointment.api";
-import { router } from "expo-router";
-import dayjs from "dayjs";
 
 export default function BookingConfirmPopup() {
     const [popup, setPopup] = useAtom(popupAtom);
     const toast = useToast();
-    
+
     // Appointment info passed via popup.data
     const data = popup?.data;
-    
+
     // Step Control: 'confirm' | 'selectFamily' | 'selectMember'
     const [step, setStep] = useState<'confirm' | 'selectFamily' | 'selectMember'>('confirm');
-    
+
     const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
     const [selectedMember, setSelectedMember] = useState<any | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,6 +36,8 @@ export default function BookingConfirmPopup() {
     const { data: families, isLoading: isLoadingFamilies } = useGetFamilies();
     const { data: members, isLoading: isLoadingMembers } = useGetFamilyMembers(selectedFamilyId || undefined);
     const { data: subscription, isLoading: isLoadingSubscription } = useGetSubscription(selectedFamilyId || undefined);
+
+    const { mutateAsync: createAppointmentMutation } = useCreateAppointment();
 
     // Auto-select personal family member initially if available
     useEffect(() => {
@@ -65,16 +66,30 @@ export default function BookingConfirmPopup() {
                 appointmentTime: data.time
             };
 
-            const res = await createAppointment(reqData);
-            
-            if (res.success) {
+            const res = await createAppointmentMutation(reqData);
+
+            if (res.success && res.data) {
                 toast.success(
-                    "Đặt lịch thành công",
-                    `Lịch hẹn cho ${selectedMember.fullName} đã được xác nhận!`
+                    "Đang chuyển hướng",
+                    "Vui lòng thanh toán để hoàn tất đặt lịch."
                 );
                 setPopup(null);
-                // Navigate to appointments tab to view the new booking
-                router.replace("/(manager)/(doctor)/appointments" as any);
+
+                // Navigate to Payment Webview
+                router.push({
+                    pathname: "/(manager)/(subscription)/payment-webview",
+                    params: {
+                        url: res.data.checkoutUrl,
+                        orderCode: res.data.orderCode.toString(),
+                        appointmentId: res.data.appointment.appointmentId,
+                        planName: `Khám bệnh - Bác sĩ ${data.doctorName}`,
+                        familyName: selectedMember.fullName,
+                        price: res.data.appointment.amount
+                            ? new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(res.data.appointment.amount)
+                            : "200.000 đ",
+                        qrCode: res.data.qrCode // Lấy mã VietQR đúng chuẩn từ response backend
+                    }
+                } as any);
             } else {
                 toast.error("Thất bại", res.message || "Không thể đặt lịch.");
             }
@@ -93,7 +108,7 @@ export default function BookingConfirmPopup() {
     return (
         <BottomSheetBase onClose={() => setPopup(null)}>
             <View style={{ paddingHorizontal: 24, paddingTop: 10, paddingBottom: 25, minHeight: 480 }}>
-                
+
                 {/* ════════════════════════════════════════════════
                     STEP 1: CONFIRMATION VIEW
                     ════════════════════════════════════════════════ */}
@@ -110,7 +125,7 @@ export default function BookingConfirmPopup() {
                                     <Text className="text-[10px] font-space-medium text-black/40 text-left">Gói khám gia đình Premium</Text>
                                 </View>
                             </View>
-                            <Pressable 
+                            <Pressable
                                 onPress={() => setPopup(null)}
                                 className="w-10 h-10 rounded-full border-2 border-black bg-white items-center justify-center shadow-sm"
                             >
@@ -121,7 +136,7 @@ export default function BookingConfirmPopup() {
                         {/* 2. Select Box Row */}
                         <View className="mb-6">
                             <Text className="text-[11px] font-space-bold text-black/60 uppercase mb-2 ml-1 text-left tracking-wider">Người khám</Text>
-                            <Pressable 
+                            <Pressable
                                 onPress={() => setStep('selectFamily')}
                                 className="flex-row items-center bg-white border-2 border-black rounded-[24px] p-4 shadow-sm active:bg-gray-50 active:translate-y-0.5"
                             >
@@ -179,7 +194,7 @@ export default function BookingConfirmPopup() {
                                 </View>
                             </View>
 
-                            <View className="flex-row items-center bg-[#A3E6A1] border-2 border-black rounded-2xl px-4 py-4 shadow-sm">
+                            {/* <View className="flex-row items-center bg-[#A3E6A1] border-2 border-black rounded-2xl px-4 py-4 shadow-sm">
                                 <Check size={20} color="#034B1D" strokeWidth={3.5} />
                                 <View className="ml-3 flex-1">
                                     <Text className="text-[10px] font-space-bold text-black/30 uppercase leading-tight text-left">Phí dịch vụ</Text>
@@ -198,13 +213,13 @@ export default function BookingConfirmPopup() {
                                         <Text className="text-sm font-space-bold text-[#DC2626] text-left uppercase">Chưa có gói dịch vụ</Text>
                                     )}
                                 </View>
-                            </View>
+                            </View> */}
                         </View>
 
                         {/* 4. Action Buttons Step 1 */}
                         <View className="flex-row gap-x-4">
-                            <Pressable 
-                                onPress={() => setPopup(null)} 
+                            <Pressable
+                                onPress={() => setPopup(null)}
                                 disabled={isSubmitting}
                                 className="flex-1 h-14 bg-white border-2 border-black rounded-2xl items-center justify-center active:bg-gray-50 shadow-sm opacity-90"
                             >
@@ -232,7 +247,7 @@ export default function BookingConfirmPopup() {
                     <View className="flex-1">
                         <View className="flex-row items-center justify-between mb-8">
                             <View className="flex-row items-center gap-x-3">
-                                <Pressable 
+                                <Pressable
                                     onPress={() => setStep('confirm')}
                                     className="w-10 h-10 rounded-xl border-2 border-black bg-white items-center justify-center shadow-sm"
                                 >
@@ -278,8 +293,8 @@ export default function BookingConfirmPopup() {
                                 ))
                             )}
                         </ScrollView>
-                        
-                        <Pressable 
+
+                        <Pressable
                             onPress={() => setStep('confirm')}
                             className="h-14 bg-white border-2 border-black rounded-2xl items-center justify-center active:bg-gray-100 shadow-sm"
                         >
@@ -296,7 +311,7 @@ export default function BookingConfirmPopup() {
                         {/* 1. Header Step 2 */}
                         <View className="flex-row items-center justify-between mb-8">
                             <View className="flex-row items-center gap-x-3">
-                                <Pressable 
+                                <Pressable
                                     onPress={() => setStep('confirm')}
                                     className="w-10 h-10 rounded-xl border-2 border-black bg-white items-center justify-center shadow-sm"
                                 >
@@ -316,7 +331,7 @@ export default function BookingConfirmPopup() {
                             ) : members?.map((member: any) => {
                                 const isSelected = selectedMember?.memberId === member.memberId;
                                 return (
-                                    <Pressable 
+                                    <Pressable
                                         key={member.memberId}
                                         onPress={() => toggleMember(member)}
                                         className={`flex-row items-center p-4 rounded-3xl border-2 mb-3 shadow-sm active:translate-y-0.5 ${isSelected ? 'bg-black border-black' : 'bg-white border-black/10'}`}
@@ -343,8 +358,8 @@ export default function BookingConfirmPopup() {
                                 );
                             })}
                         </ScrollView>
-                        
-                        <Pressable 
+
+                        <Pressable
                             onPress={() => setStep('selectFamily')}
                             className="h-14 bg-white border-2 border-black rounded-2xl items-center justify-center active:bg-gray-100 shadow-sm"
                         >

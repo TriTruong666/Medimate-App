@@ -4,6 +4,7 @@ import { useUpdateTransactionStatus } from "@/hooks/useTransaction";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useDeleteUnpaidAppointment } from "../../../hooks/useAppointment";
 import {
     ArrowLeft,
     Copy,
@@ -33,7 +34,7 @@ type Tab = "qr" | "web";
 
 export default function PaymentWebViewScreen() {
     const router = useRouter();
-    const { url, qrCode, planName, familyName, price, orderCode } =
+    const { url, qrCode, planName, familyName, price, orderCode, appointmentId } =
         useLocalSearchParams<{
             url: string;
             qrCode: string;
@@ -41,6 +42,7 @@ export default function PaymentWebViewScreen() {
             familyName: string;
             price: string;
             orderCode: string;
+            appointmentId?: string;
         }>();
 
     const [tab, setTab] = useState<Tab>("qr");
@@ -53,6 +55,7 @@ export default function PaymentWebViewScreen() {
 
     const { mutateAsync: updatePaymentStatus } = useUpdatePaymentStatus();
     const { mutateAsync: updateTransactionStatus } = useUpdateTransactionStatus();
+    const { mutateAsync: cancelUnpaidAppointment } = useDeleteUnpaidAppointment();
 
     // ─── Điều hướng ───
     const navigateToSuccess = useCallback(() => {
@@ -75,13 +78,18 @@ export default function PaymentWebViewScreen() {
         setUpdatingStatus(true);
 
         try {
-            await updatePaymentStatus({ orderCode: orderCodeNum, data: { status: apiStatus } });
-            const infoRes = await getPaymentInfo(orderCodeNum);
-            if (infoRes.success && infoRes.data?.transactionId) {
-                await updateTransactionStatus({
-                    transactionId: infoRes.data.transactionId,
-                    data: { status: apiStatus },
-                });
+            if (result === "cancelled" && appointmentId) {
+                // Hủy trực tiếp slot lịch hẹn để nhả slot trống
+                await cancelUnpaidAppointment(appointmentId);
+            } else {
+                await updatePaymentStatus({ orderCode: orderCodeNum, data: { status: apiStatus } });
+                const infoRes = await getPaymentInfo(orderCodeNum);
+                if (infoRes.success && infoRes.data?.transactionId) {
+                    await updateTransactionStatus({
+                        transactionId: infoRes.data.transactionId,
+                        data: { status: apiStatus },
+                    });
+                }
             }
         } catch (err) {
             console.warn('[payment] force sync error:', err);
@@ -93,7 +101,7 @@ export default function PaymentWebViewScreen() {
                 navigateToCancel();
             }
         }
-    }, [orderCode, updatePaymentStatus, updateTransactionStatus, navigateToSuccess, navigateToCancel]);
+    }, [orderCode, appointmentId, updatePaymentStatus, updateTransactionStatus, cancelUnpaidAppointment, navigateToSuccess, navigateToCancel]);
 
 
     // ─── WebView Intercept (Cỗ máy chạy ngầm) ───

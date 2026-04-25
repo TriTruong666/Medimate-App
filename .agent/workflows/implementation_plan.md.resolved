@@ -1,0 +1,60 @@
+# Kế hoạch Tích hợp Luồng Đặt lịch & Thanh toán (Frontend)
+
+Dựa theo `frontend_spec.md` và các quy tắc từ `api_structure_skill.md` & `complete_page_skill.md`, dưới đây là kế hoạch chi tiết để tích hợp luồng Đặt Lịch & Thanh toán PayOS vào Mobile App.
+
+## Mục tiêu
+Cập nhật dữ liệu từ backend và xây dựng các màn hình cần thiết cho luồng đặt lịch mới (bắt buộc thanh toán) và màn hình chi tiết lịch khám.
+
+---
+
+## Proposed Changes
+
+### 1. Chuẩn bị Cấu trúc Dữ liệu (Types)
+#### [MODIFY] `types/Appointment.ts`
+- Cập nhật `AppointmentResponse` và `AppointmentDetailResponse` với các trường mới: `paymentStatus`, `amount`, `clinicName`, `consultationSessionId`, `recordingUrl`...
+- Bổ sung `AppointmentPaymentResponse` chứa `{ appointment, checkoutUrl, orderCode }`.
+
+### 2. API Client (Services)
+#### [NEW / MODIFY] `apis/appointment.api.ts`
+Thêm các hàm Axios call:
+- `createAppointment(data)`: Trả về `AppointmentPaymentResponse`.
+- `getAppointmentDetail(id)`
+- `cancelUnpaidAppointment(id)`: Gọi `DELETE /api/v1/appointments/{id}/unpaid`.
+- `updatePaymentStatus(id, status)`: Gọi `PUT /api/v1/appointments/{id}/payment-status`.
+
+### 3. React Query Hooks
+#### [NEW / MODIFY] `hooks/data/useAppointmentHook.ts`
+Đăng ký các custom hooks chuẩn:
+- `useCreateAppointment()`: Trả về mutation để trigger call API đặt lịch.
+- `useGetAppointmentDetail(id)`: Lấy chi tiết lịch.
+- `useCancelUnpaidAppointment()`: Gắn với nút hủy/thoát màn hình PayOS.
+
+### 4. Xây dựng Giao diện (UI Screens)
+#### [NEW / MODIFY] Màn hình Booking (Tạo lịch)
+- **Cập nhật luồng Submit**: Sau khi ấn "Đặt lịch", sử dụng `useCreateAppointment`.
+- **Mở WebView PayOS**: Lấy `checkoutUrl` trả về từ API và mở WebView (hoặc Expo WebBrowser).
+
+#### [NEW / MODIFY] Màn hình Xử lý Callback từ PayOS (Success/Cancel)
+- Nhận Deep link callback từ PayOS. 
+- Nếu Cancelled: Gọi hook `useCancelUnpaidAppointment` để trả lại slot cho hệ thống.
+- Nếu Success: Gọi API update `PaymentStatus = Paid` và chuyển hướng sang màn hình thành công.
+
+#### [NEW / MODIFY] Màn hình Chi tiết Lịch hẹn (`AppointmentDetailScreen`)
+- Áp dụng Neo-Brutalism UI theo hướng dẫn.
+- Hiển thị đầy đủ Badge `PaymentStatus` và `Status`.
+- Bổ sung nút: "Hủy lịch" (nếu pending), "Vào phòng khám" (nếu approved), "Xem video ghi hình" (nếu completed).
+
+---
+
+> [!IMPORTANT]
+> **User Review Required**
+> 1. Hiện tại thư mục `app/(member)` có khá nhiều thư mục con. Luồng đặt lịch (Booking) hiện đang nằm ở màn hình nào (vd: bên trong `(appointment)` hay màn profile bác sĩ)? 
+Luồng đặt lịch (Booking) hiện đang nằm ở màn hình (mannager) index chọn bác sĩ, doctor detail chọn thòi gian hẹn
+> 2. Dự án đang sử dụng WebView nhúng thẳng vào màn hình (`react-native-webview`) hay dùng `expo-web-browser` để mở trang thanh toán PayOS?
+webview có thể đọc màn subsciption để xem
+
+## Verification Plan
+1. Chạy app trên môi trường Expo Go (hoặc Simulator).
+2. Thử đặt một lịch hẹn để xem WebView PayOS có bật lên đúng không.
+3. Test hành động "Tắt ngang" hoặc nhấn "Hủy" trên PayOS để kiểm tra logic API Delete Slot chạy đúng.
+4. Test thanh toán thành công để xem có lưu trạng thái "Paid" và hiển thị đầy đủ thông tin ở màn Chi tiết lịch hẹn không.

@@ -4,13 +4,15 @@ export type DoctorDetailResponse = {
     doctorId: string;
     fullName: string;
     specialty: string;
-    currentHospital: string;
+    clinicName: string;
     licenseNumber: string;
     licenseImage: string;
     yearsOfExperience: number;
     bio: string;
     averageRating: number;
     totalReviews: number;
+    clinicId?: string;
+    consultationFee?: number;
     status: string;       // "Active" | "Inactive"
     avatarUrl?: string;
     createdAt: string;
@@ -21,10 +23,12 @@ export type DoctorListItem = {
     doctorId: string;
     fullName: string;
     specialty: string;
-    currentHospital: string;
+    clinicName: string;
     yearsOfExperience: number;
     averageRating: number;
     totalReviews: number;
+    clinicId?: string;
+    consultationFee?: number;
     avatarUrl?: string;
     status: string;
 };
