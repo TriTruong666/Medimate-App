@@ -4,7 +4,6 @@ import { useUpdateTransactionStatus } from "@/hooks/useTransaction";
 import * as FileSystem from "expo-file-system/legacy";
 import * as MediaLibrary from "expo-media-library";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useDeleteUnpaidAppointment } from "../../../hooks/useAppointment";
 import {
     ArrowLeft,
     Copy,
@@ -13,20 +12,23 @@ import {
     QrCode,
     XCircle
 } from "lucide-react-native";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    BackHandler,
     Clipboard,
+    DeviceEventEmitter,
     Pressable,
     ScrollView,
     StyleSheet,
     Text,
-    View,
+    View
 } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView, WebViewNavigation } from "react-native-webview";
+import { useDeleteUnpaidAppointment } from "../../../hooks/useAppointment";
 
 const HANDLED_SCHEMES = ["medimate://", "intent://", "kakao://"];
 
@@ -151,16 +153,32 @@ export default function PaymentWebViewScreen() {
         Alert.alert("✓ Đã sao chép", "Link thanh toán đã được sao chép.");
     };
 
-    const handleCancelConfirmation = () => {
+    const handleAttemptClose = useCallback(() => {
         Alert.alert(
-            "Xác nhận hủy",
-            `Bạn có chắc chắn muốn hủy đơn hàng #${orderCode} không?`,
+            "Cảnh báo!",
+            "Bạn chưa hoàn tất thanh toán. Nếu bạn rời khỏi trang này, giao dịch (và lịch hẹn) sẽ bị hủy.\nBạn có chắc chắn muốn hủy thanh toán không?",
             [
-                { text: "Không", style: "cancel" },
-                { text: "Hủy đơn", style: "destructive", onPress: () => forceSyncPaymentStatus("cancelled") }
+                { text: "Tiếp tục thanh toán", style: "cancel" },
+                { text: "Đồng ý hủy", style: "destructive", onPress: () => forceSyncPaymentStatus("cancelled") }
             ]
         );
-    };
+    }, [forceSyncPaymentStatus]);
+
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener("AttemptLeavePayment", () => {
+            handleAttemptClose();
+        });
+
+        const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+            handleAttemptClose();
+            return true; // Chặn hành vi back mặc định
+        });
+
+        return () => {
+            subscription.remove();
+            backHandler.remove();
+        };
+    }, [handleAttemptClose]);
 
 
     // ─── UPDATING STATUS OVERLAY ───
@@ -177,7 +195,7 @@ export default function PaymentWebViewScreen() {
         <SafeAreaView style={{ flex: 1, backgroundColor: "#F9F6FC" }} edges={["top"]}>
             {/* 1. Header (Luôn hiện) */}
             <View style={s.header}>
-                <Pressable onPress={() => router.back()} style={s.backBtn}><ArrowLeft size={22} color="#000" /></Pressable>
+                <Pressable onPress={handleAttemptClose} style={s.backBtn}><ArrowLeft size={22} color="#000" /></Pressable>
                 <View style={{ flex: 1 }}>
                     <Text style={s.headerTitle}>Thanh toán · {planName}</Text>
                     <Text style={s.headerSub}>Đơn #{orderCode} · {price}</Text>
@@ -229,7 +247,7 @@ export default function PaymentWebViewScreen() {
 
                     {tab === "web" && (
                         <View style={s.webFooter}>
-                            <Pressable onPress={handleCancelConfirmation} style={s.btnDangerSmall}>
+                            <Pressable onPress={handleAttemptClose} style={s.btnDangerSmall}>
                                 <XCircle size={18} color="#EF4444" />
                                 <Text style={s.btnTextDanger}>Hủy đơn #{orderCode}</Text>
                             </Pressable>
@@ -268,7 +286,7 @@ export default function PaymentWebViewScreen() {
                                 <Text style={s.btnTextDark}>Sao chép link PayOS</Text>
                             </Pressable>
 
-                            <Pressable onPress={handleCancelConfirmation} style={s.btnDanger}>
+                            <Pressable onPress={handleAttemptClose} style={s.btnDanger}>
                                 <XCircle size={20} color="#EF4444" />
                                 <Text style={s.btnTextDanger}>Hủy đơn hàng</Text>
                             </Pressable>
