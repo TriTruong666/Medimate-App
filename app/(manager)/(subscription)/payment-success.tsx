@@ -31,8 +31,7 @@ export default function PaymentSuccessScreen() {
 
             <Pressable
                 onPress={() => {
-                    // Dọn dẹp hết stack các trang WebView, sau đó nhảy về Trang Chủ
-                    router.dismissAll();
+                    // Nhảy về Trang Chủ (không dùng dismissAll)
                     router.replace("/(manager)/(home)");
                 }}
                 style={{

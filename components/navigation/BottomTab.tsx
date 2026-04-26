@@ -4,7 +4,7 @@ import { useSegments } from "expo-router";
 import { LucideIcon } from "lucide-react-native";
 import { MotiView } from "moti";
 import React, { memo } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, DeviceEventEmitter } from "react-native";
 
 export interface TabConfig {
   name: string;
@@ -84,7 +84,13 @@ const BottomTabComponent = ({
             ) : (
               <Pressable
                 key="center-btn"
-                onPress={centerButton.onPress}
+                onPress={() => {
+                  if (segments.includes("payment-webview")) {
+                    DeviceEventEmitter.emit("AttemptLeavePayment");
+                    return;
+                  }
+                  centerButton.onPress?.();
+                }}
                 className="items-center justify-center h-16 w-16 bg-[#A3E6A1] rounded-full border-4 border-black shadow-md mt-[-40px] mb-2 active:scale-90"
               >
                 {CenterIcon && (
@@ -102,6 +108,10 @@ const BottomTabComponent = ({
         const IconComponent = tab.icon;
 
         const onPress = () => {
+          if (segments.includes("payment-webview")) {
+             DeviceEventEmitter.emit("AttemptLeavePayment");
+             return;
+          }
           if (routeIndex === -1) return;
           const event = navigation.emit({
             type: "tabPress",

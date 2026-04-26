@@ -26,8 +26,7 @@ export default function PaymentCancelledScreen() {
 
             <Pressable
                 onPress={() => {
-                    // Dọn dẹp luồng màn hình hiện tại và về thẳng Home
-                    router.dismissAll();
+                    // Trở về Home (không dùng dismissAll để tránh lỗi root layout reset)
                     router.replace("/(manager)/(home)");
                 }}
                 style={{
