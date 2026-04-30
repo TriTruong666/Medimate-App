@@ -1,13 +1,12 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { AlertTriangle, ArrowLeft, Calendar, Check, Clock, MessageSquare, RefreshCw } from "lucide-react-native";
+import { AlertTriangle, ArrowLeft, Calendar, Check, Clock, MessageSquare, RefreshCw, Video } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View, Linking } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getSessionByAppointmentId, joinSession } from "../../../apis/session.api";
+import { getSessionByAppointmentId, joinSession, getSessionRecordingUrl } from "../../../apis/session.api";
 import { useCancelAppointment, useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
-import { useGetRatingBySession } from "../../../hooks/useRating";
 import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
 import { useToast } from "../../../stores/toastStore";
@@ -43,8 +42,7 @@ function AppointmentCard({
     onVideo,
     onViewHistory,
     onCancel,
-    onRateDoctor,
-    onViewRating,
+    onViewRecording,
     joiningState,
 }: {
     appt: AppointmentResponse;
@@ -53,8 +51,7 @@ function AppointmentCard({
     onVideo: (a: AppointmentResponse) => void;
     onViewHistory: (a: AppointmentResponse) => void;
     onCancel: (a: AppointmentResponse) => void;
-    onRateDoctor: (a: AppointmentResponse & Partial<AppointmentDetailResponse>, sessionId: string | undefined) => void;
-    onViewRating: (a: AppointmentResponse & Partial<AppointmentDetailResponse>, rating: any) => void;
+    onViewRecording: (a: AppointmentResponse & Partial<AppointmentDetailResponse>, sessionId: string | undefined) => void;
     joiningState: Record<string, boolean>;
 }) {
     // Fetch chi tiết từ API mới cập nhật
@@ -84,12 +81,6 @@ function AppointmentCard({
         });
         return () => { cancelled = true; };
     }, [appt.appointmentId, merged.status]);
-
-    // Query rating status từ API thật (null = chưa đánh giá)
-    const { data: existingRating } = useGetRatingBySession(
-        merged.status === 'Completed' ? sessionId : undefined
-    );
-    const isRated = !!existingRating;
 
     const isJoining = joiningState[appt.appointmentId];
     const statusCfg = STATUS_CONFIG[merged.status] ?? { label: merged.status, bg: '#E2E8F0' };
@@ -396,54 +387,29 @@ function AppointmentCard({
 
                             </Pressable>
 
-                            {/* --- Nút 2: Phần Đánh giá (Nút bấm hoặc Trạng thái đã xong) --- */}
-                            {isRated ? (
-                                <Pressable
-                                    onPress={() => onViewRating(merged, existingRating)}
-                                    style={({ pressed }) => ([
-                                        {
-                                            flexDirection: 'row', alignItems: 'center', height: 58,
-                                            borderRadius: 18, paddingHorizontal: 14,
-                                            borderWidth: 2, borderColor: '#000', backgroundColor: '#A3E6A1',
-                                            shadowColor: '#000', shadowOffset: { width: pressed ? 0 : 4, height: pressed ? 0 : 4 },
-                                            shadowOpacity: 1, shadowRadius: 0, elevation: pressed ? 0 : 4,
-                                            transform: [{ translateY: pressed ? 2 : 0 }]
-                                        }
-                                    ])}
-                                >
-                                    <View style={{ padding: 5, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
-                                        <Check size={20} color="#000" strokeWidth={4} />
-                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
-                                            Bạn đã hoàn tất đánh giá
-                                        </Text>
-                                    </View>
-
-                                </Pressable>
-                            ) : (
-                                <Pressable
-                                    onPress={() => onRateDoctor(merged, sessionId)}
-                                    disabled={isSessionLoading}
-                                    style={({ pressed }) => ([
-                                        {
-                                            flexDirection: 'row', alignItems: 'center', height: 58,
-                                            borderRadius: 18, paddingHorizontal: 14,
-                                            borderWidth: 2, borderColor: '#000', backgroundColor: '#D9AEF6',
-                                            shadowColor: '#000', shadowOffset: { width: pressed ? 0 : 4, height: pressed ? 0 : 4 },
-                                            shadowOpacity: 1, shadowRadius: 0, elevation: pressed ? 0 : 4,
-                                            transform: [{ translateY: pressed ? 2 : 0 }],
-                                            opacity: isSessionLoading ? 0.7 : 1
-                                        }
-                                    ])}
-                                >
-                                    <View style={{ padding: 5, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
-                                        {isSessionLoading ? <ActivityIndicator size="small" color="#000" /> : <Text style={{ fontSize: 18 }}>⭐</Text>}
-                                        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
-                                            {isSessionLoading ? 'Đang tải phiên...' : 'Đánh giá trải nghiệm khám'}
-                                        </Text>
-                                    </View>
-
-                                </Pressable>
-                            )}
+                            {/* --- Nút 2: Xem lại Video Recording Phiên Khám --- */}
+                            <Pressable
+                                onPress={() => onViewRecording(merged, sessionId)}
+                                disabled={isSessionLoading}
+                                style={({ pressed }) => ([
+                                    {
+                                        flexDirection: 'row', alignItems: 'center', height: 58,
+                                        borderRadius: 18, paddingHorizontal: 14,
+                                        borderWidth: 2, borderColor: '#000', backgroundColor: '#D9AEF6',
+                                        shadowColor: '#000', shadowOffset: { width: pressed ? 0 : 4, height: pressed ? 0 : 4 },
+                                        shadowOpacity: 1, shadowRadius: 0, elevation: pressed ? 0 : 4,
+                                        transform: [{ translateY: pressed ? 2 : 0 }],
+                                        opacity: isSessionLoading ? 0.7 : 1
+                                    }
+                                ])}
+                            >
+                                <View style={{ padding: 5, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
+                                    {isSessionLoading ? <ActivityIndicator size="small" color="#000" /> : <Video size={18} color="#000" strokeWidth={2.5} />}
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
+                                        {isSessionLoading ? 'Đang tải phiên...' : 'Xem video phiên khám'}
+                                    </Text>
+                                </View>
+                            </Pressable>
                         </View>
                     );
                 }
@@ -597,7 +563,7 @@ export default function AppointmentsScreen() {
         }
     };
 
-    const handleRateDoctor = (
+    const handleViewRecording = async (
         appt: AppointmentResponse & Partial<AppointmentDetailResponse>,
         sessionId: string | undefined
     ) => {
@@ -605,28 +571,21 @@ export default function AppointmentsScreen() {
             toast.error('Lỗi', 'Thông tin phiên khám chưa sẵn sàng. Vui lòng thử lại sau giây lát.');
             return;
         }
-        popup.open({
-            type: 'rate_doctor',
-            data: {
-                sessionId,
-                doctorName: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
-                doctorSpecialty: appt.specialty || '',
+        
+        try {
+            toast.success("Đang xử lý", "Đang lấy đường dẫn video phiên khám...");
+            const res = await getSessionRecordingUrl(sessionId);
+            if (res.success && res.data) {
+                // Mở browser ngoài để xem video
+                Linking.openURL(res.data).catch(() => {
+                    toast.error("Lỗi", "Không thể mở trình duyệt để xem video.");
+                });
+            } else {
+                toast.error("Không có video", res.message || "Phiên khám này chưa có bản ghi hình hoặc đang trong quá trình xử lý.");
             }
-        });
-    };
-
-    const handleViewRating = (
-        appt: AppointmentResponse & Partial<AppointmentDetailResponse>,
-        rating: any
-    ) => {
-        popup.open({
-            type: 'view_rating',
-            data: {
-                doctorName: appt.doctorName || `Bác sĩ #${appt.doctorId?.slice(0, 8)}`,
-                doctorSpecialty: appt.specialty || '',
-                rating: rating
-            }
-        });
+        } catch (error) {
+            toast.error("Lỗi", "Đã xảy ra lỗi khi tải video ghi hình.");
+        }
     };
 
     const handleJoinSession = async (appt: AppointmentResponse) => {
@@ -691,6 +650,15 @@ export default function AppointmentsScreen() {
         if (filter === 'Hoàn thành') return appt.status === 'Completed';
         if (filter === 'Đã hủy') return appt.status === 'Cancelled';
         return true;
+    }).sort((a, b) => {
+        const dateA = a.appointmentDate?.split("T")[0] || "";
+        const dateB = b.appointmentDate?.split("T")[0] || "";
+        if (dateA !== dateB) {
+            return dateB.localeCompare(dateA);
+        }
+        const timeA = a.appointmentTime || "";
+        const timeB = b.appointmentTime || "";
+        return timeA.localeCompare(timeB);
     });
 
     return (
@@ -811,8 +779,7 @@ export default function AppointmentsScreen() {
                             onVideo={handleVideoSession as any}
                             onViewHistory={handleOpenChatPopup as any}
                             onCancel={handleOpenCancelModal}
-                            onRateDoctor={handleRateDoctor as any}
-                            onViewRating={handleViewRating as any}
+                            onViewRecording={handleViewRecording as any}
                             joiningState={joiningState}
                         />
                     ))

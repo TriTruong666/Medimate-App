@@ -14,6 +14,8 @@ import {
   Star,
   Users,
   Zap,
+  Video,
+  Bot
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -68,6 +70,16 @@ function buildFeatures(pkg: MembershipPackage) {
       icon: Star,
       text: "Hỗ trợ ưu tiên 24/7",
       included: pkg.memberLimit === 0,
+    },
+    {
+      icon: Bot,
+      text: "Cảnh báo tương tác thuốc bằng AI",
+      included: pkg.healthAlertEnabled,
+    },
+    {
+      icon: Video,
+      text: "Xem lại video phiên khám",
+      included: pkg.allowVideoRecordingAccess,
     },
   ];
 }
@@ -585,7 +597,7 @@ export default function SubscriptionScreen() {
                         color: currentColor,
                         badge: "CAO CẤP",
                       },
-                      onConfirm: () => {},
+                      onConfirm: () => { },
                     });
                   }}
                 >

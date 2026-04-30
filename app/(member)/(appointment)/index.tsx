@@ -355,6 +355,15 @@ export default function MemberAppointmentsScreen() {
         if (filter === 'Đã khám') return appt.status === 'Completed';
         if (filter === 'Đã hủy') return appt.status === 'Cancelled';
         return true;
+    }).sort((a, b) => {
+        const dateA = a.appointmentDate?.split("T")[0] || "";
+        const dateB = b.appointmentDate?.split("T")[0] || "";
+        if (dateA !== dateB) {
+            return dateB.localeCompare(dateA);
+        }
+        const timeA = a.appointmentTime || "";
+        const timeB = b.appointmentTime || "";
+        return timeA.localeCompare(timeB);
     });
 
     const handleChatSession = async (appt: any) => {

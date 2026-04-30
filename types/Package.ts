@@ -10,7 +10,8 @@ export type MembershipPackage = {
     durationDays: number;
     memberLimit: number;
     ocrLimit: number;
-    consultantLimit: number;
     description: string;
+    allowVideoRecordingAccess: boolean;
+    healthAlertEnabled: boolean;
     activeSubscriberCount: number;
 };

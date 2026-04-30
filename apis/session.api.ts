@@ -51,3 +51,13 @@ export async function attachPrescriptionToSession(sessionId: string, data: Attac
         throw error;
     }
 }
+
+export async function getSessionRecordingUrl(sessionId: string): Promise<BaseResponse<string>> {
+    try {
+        const res = await axiosClient.get(`/api/v1/sessions/${sessionId}/recording`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response?.data) return error.response.data;
+        throw error;
+    }
+}
