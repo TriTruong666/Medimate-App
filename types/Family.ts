@@ -20,9 +20,7 @@ export type SubscriptionData = {
     endDate: string;
     status: "Active" | "Inactive"; // Dựa trên Swagger
     remainingOcrCount: number;
-    remainingConsultantCount: number;
     ocrLimit: number;
-    consultantLimit: number;
 };
 
 export type UpdateFamilyRequest = {

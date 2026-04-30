@@ -133,7 +133,16 @@ export default function DoctorScreen() {
         });
     }, [doctors, search, selectedSpecialty]);
 
-    const upcomingAppointments = appointments.filter(a => a.status === 'Approved' || a.status === 'Pending');
+    const upcomingAppointments = appointments.filter(a => a.status === 'Approved' || a.status === 'Pending').sort((a, b) => {
+        const dateA = a.appointmentDate?.split("T")[0] || "";
+        const dateB = b.appointmentDate?.split("T")[0] || "";
+        if (dateA !== dateB) {
+            return dateB.localeCompare(dateA);
+        }
+        const timeA = a.appointmentTime || "";
+        const timeB = b.appointmentTime || "";
+        return timeA.localeCompare(timeB);
+    });
     const ongoingApptRaw = upcomingAppointments[0];
     const upcomingAppt = upcomingAppointments.length > 1 ? upcomingAppointments[1] : null;
 

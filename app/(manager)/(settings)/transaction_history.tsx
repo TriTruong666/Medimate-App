@@ -3,7 +3,7 @@ import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
 import { ArrowDownRight, ArrowLeft, ArrowUpRight, FileText, RefreshCcw } from "lucide-react-native";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, Text, View, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useGetTransactionDetail, useGetTransactionsByUserId } from "@/hooks/useTransaction";
@@ -124,6 +124,16 @@ export default function TransactionHistoryScreen() {
                                     <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B' }}>Phương thức:</Text>
                                     <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 13, color: '#000' }}>{detailData.paymentMethod || 'PayOS'}</Text>
                                 </View>
+                                {detailData.gatewayResponse && (detailData.gatewayResponse.startsWith('http') || detailData.gatewayResponse.startsWith('https')) && (
+                                    <View style={{ marginTop: 8 }}>
+                                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#64748B', marginBottom: 8 }}>Ảnh chứng từ / Hoàn tiền:</Text>
+                                        <Image
+                                            source={{ uri: detailData.gatewayResponse }}
+                                            style={{ width: '100%', height: 250, borderRadius: 12 }}
+                                            resizeMode="cover"
+                                        />
+                                    </View>
+                                )}
                             </View>
                         ) : (
                             <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 12, color: '#EF4444', textAlign: 'center' }}>Không tải được chi tiết giao dịch.</Text>
