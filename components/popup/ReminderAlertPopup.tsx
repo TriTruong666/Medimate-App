@@ -31,6 +31,10 @@ interface ReminderAlertPopupProps {
         }>;
         autoSnooze?: boolean;
         endTime?: string;
+        // Thêm field xác nhận
+        takenByUserId?: string;   // ID người đang đăng nhập (người sẽ xác nhận)
+        takenByName?: string;     // Tên người đã xác nhận (khi reminder đã được uống từ trước)
+        status?: string;          // Trạng thái hiện tại của reminder
     };
     onClose: () => void;
 }
@@ -38,6 +42,7 @@ interface ReminderAlertPopupProps {
 export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
     const { mutate: logAction, isPending } = useLogMedicationAction();
     const [done, setDone] = useState(false);
+    const [confirmedByName, setConfirmedByName] = useState<string | null>(null);
 
     // ─── Pulse animation cho icon chuông ───
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -95,10 +100,12 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
             reminderId: data.reminderId,
             status: 'Taken',
             actualTime: new Date().toISOString(),
+            takenByUserId: data.takenByUserId ?? null,
         }, {
             onSuccess: () => {
                 setDone(true);
-                setTimeout(onClose, 1200);
+                setConfirmedByName(null); // Sẽ hiển thị từ data.takenByName nếu có hoặc mặc định "Bạn"
+                setTimeout(onClose, 1500);
             }
         });
     };
@@ -261,6 +268,46 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
                         <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#9CA3AF' }}>
                             Uống thuốc theo lịch đã cài đặt.
                         </Text>
+                    </View>
+                )}
+
+                {/* Badge: Đã được xác nhận bởi ai (khi đã uống từ trước) */}
+                {data.status === 'Taken' && data.takenByName && !done && (
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10,
+                        backgroundColor: '#F0FFF4', borderWidth: 2, borderColor: '#A3E6A1',
+                        borderRadius: 16, padding: 14, marginTop: 8,
+                    }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#A3E6A1', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 18 }}>✅</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#166534' }}>Đã được xác nhận</Text>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#166534' }}>
+                                Bởi <Text style={{ fontFamily: 'SpaceGrotesk_700Bold' }}>{data.takenByName}</Text>
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Badge: Vừa xác nhận (khi done = true ngay trong phiên này) */}
+                {done && (
+                    <View style={{
+                        flexDirection: 'row', alignItems: 'center', gap: 10,
+                        backgroundColor: '#F0FFF4', borderWidth: 2, borderColor: '#A3E6A1',
+                        borderRadius: 16, padding: 14, marginTop: 8,
+                    }}>
+                        <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#A3E6A1', alignItems: 'center', justifyContent: 'center' }}>
+                            <Text style={{ fontSize: 18 }}>✅</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 12, color: '#166534' }}>Đã xác nhận uống thuốc</Text>
+                            {data.memberName && (
+                                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 13, color: '#166534' }}>
+                                    Cho <Text style={{ fontFamily: 'SpaceGrotesk_700Bold' }}>{data.memberName}</Text>
+                                </Text>
+                            )}
+                        </View>
                     </View>
                 )}
 

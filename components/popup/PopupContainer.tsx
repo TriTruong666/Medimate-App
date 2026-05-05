@@ -3,24 +3,23 @@ import React from 'react';
 import { Modal } from 'react-native';
 import { activePopupAtom } from '../../stores/popupStore';
 import { AssignMemberPopup } from './AssignMemberPopup';
-import { ConfirmPopup } from './ConfirmPopup';
-import { CreateFamilyPopup } from './CreateFamilyPopup';
-import { EditFamilyPopup } from './EditFamilyPopup';
-import { HealthConditionPopup } from './HealthConditionPopup';
-import { HealthProfilePopup } from './HealthProfilePopup';
-import { MedicinePopup } from './MedicinePopup';
-import { SelectFamilyMemberPopup } from './SelectFamilyMemberPopup';
 import BookingConfirmPopup from "./BookingConfirmPopup";
 import { ChatDetailPopup } from './ChatDetailPopup';
 import { CheckoutPopup } from './CheckoutPopup';
-import { SuccessPaymentPopup } from './SuccessPaymentPopup';
-import { ReminderAlertPopup } from './ReminderAlertPopup';
+import { ConfirmPopup } from './ConfirmPopup';
+import { CreateFamilyPopup } from './CreateFamilyPopup';
+import { EditFamilyPopup } from './EditFamilyPopup';
 import { GuardianInvitePopup } from './GuardianInvitePopup';
-import RatingPopup from './RatingPopup';
-import ViewRatingPopup from './ViewRatingPopup';
+import { HealthConditionPopup } from './HealthConditionPopup';
+import { HealthProfilePopup } from './HealthProfilePopup';
+import { MedicinePopup } from './MedicinePopup';
+import { ReminderAlertPopup } from './ReminderAlertPopup';
+import { SelectFamilyMemberPopup } from './SelectFamilyMemberPopup';
+import { SuccessPaymentPopup } from './SuccessPaymentPopup';
+
 import { DoctorInfoPopup } from './DoctorInfoPopup';
-import { PreferredTimesPopup } from './PreferredTimesPopup';
 import { DrugInteractionPopup } from './DrugInteractionPopup';
+import { PreferredTimesPopup } from './PreferredTimesPopup';
 
 export const PopupContainer: React.FC = () => {
     const [activePopup, setActivePopup] = useAtom(activePopupAtom);
@@ -157,13 +156,6 @@ export const PopupContainer: React.FC = () => {
                 />
             )}
 
-            {activePopup.type === 'rate_doctor' && (
-                <RatingPopup />
-            )}
-
-            {activePopup.type === 'view_rating' && (
-                <ViewRatingPopup />
-            )}
 
             {activePopup.type === 'doctor_info' && (
                 <DoctorInfoPopup

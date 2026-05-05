@@ -16,8 +16,9 @@ import type {
     RtcConnection,
 } from 'react-native-agora';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { cancelNoShowSession, joinSession } from '../../../apis/session.api';
+import { cancelNoShowSession, joinSession, endSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';
+import { getSignalRConnection } from '../../../hooks/useSignalR';
 import { useToast } from '../../../stores/toastStore';
 import {
     getGlobalAgoraEngine,
@@ -156,11 +157,10 @@ function PauseConfirmModal({ visible, onCancel, onConfirm }: {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// End Session Confirm Modal (2 steps)
+// Doctor Request End Modal
 // ─────────────────────────────────────────────────────────────────────────────
-function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
-    visible: boolean; step: 1 | 2;
-    onCancel: () => void; onStep1: () => void; onStep2: () => void;
+function DoctorRequestEndModal({ visible, onCancel, onConfirm }: {
+    visible: boolean; onCancel: () => void; onConfirm: () => void;
 }) {
     const scaleAnim = useRef(new Animated.Value(0.88)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -175,68 +175,49 @@ function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
             scaleAnim.setValue(0.88);
             opacityAnim.setValue(0);
         }
-    }, [visible, step]);
-
-    const isStep1 = step === 1;
+    }, [visible]);
 
     return (
         <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
             <Animated.View style={{
-                flex: 1, backgroundColor: 'rgba(0,0,0,0.78)',
+                flex: 1, backgroundColor: 'rgba(0,0,0,0.72)',
                 justifyContent: 'center', alignItems: 'center', padding: 28,
                 opacity: opacityAnim,
             }}>
                 <Animated.View style={{
                     backgroundColor: '#18181C', borderRadius: 28, padding: 26,
-                    width: '100%', borderWidth: 2, borderColor: isStep1 ? 'rgba(255,59,48,0.3)' : 'rgba(220,38,38,0.5)',
+                    width: '100%', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)',
                     transform: [{ scale: scaleAnim }],
                 }}>
-                    {/* Step progress */}
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', marginBottom: 20 }}>
-                        {[1, 2].map(s => (
-                            <View key={s} style={{
-                                height: 4, width: s === step ? 36 : 16, borderRadius: 2,
-                                backgroundColor: s <= step ? '#FF3B30' : 'rgba(255,255,255,0.15)',
-                            }} />
-                        ))}
-                        <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.35)', marginLeft: 2 }}>
-                            {step}/2
-                        </Text>
-                    </View>
-
-                    {/* Icon */}
                     <View style={{
                         width: 68, height: 68, borderRadius: 34,
-                        backgroundColor: isStep1 ? 'rgba(255,59,48,0.12)' : 'rgba(220,38,38,0.2)',
-                        borderWidth: 2, borderColor: isStep1 ? '#FF3B30' : '#DC2626',
+                        backgroundColor: 'rgba(255,59,48,0.15)',
+                        borderWidth: 2, borderColor: '#FF3B30',
                         alignItems: 'center', justifyContent: 'center',
                         alignSelf: 'center', marginBottom: 18,
                     }}>
-                        <Text style={{ fontSize: 32 }}>{isStep1 ? '📋' : '⚠️'}</Text>
+                        <Text style={{ fontSize: 30 }}>⚠️</Text>
                     </View>
 
                     <Text style={{
                         fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#fff',
                         textAlign: 'center', marginBottom: 10,
-                    }}>
-                        {isStep1 ? 'Kết thúc phiên khám?' : 'Xác nhận lần cuối'}
-                    </Text>
+                    }}>Bác sĩ muốn kết thúc</Text>
+
                     <Text style={{
                         fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14,
-                        color: 'rgba(255,255,255,0.48)', textAlign: 'center',
+                        color: 'rgba(255,255,255,0.6)', textAlign: 'center',
                         lineHeight: 21, marginBottom: 26,
                     }}>
-                        {isStep1
-                            ? 'Hành động này sẽ đóng phiên tư vấn và không thể tiếp tục. Bạn có chắc muốn kết thúc?'
-                            : 'Đây là xác nhận CUỐI CÙNG. Dữ liệu phiên sẽ được lưu lại và phòng khám đóng hoàn toàn.'}
+                        Bác sĩ đã yêu cầu kết thúc phiên tư vấn. Bạn có đồng ý kết thúc ngay bây giờ không?
                     </Text>
 
                     <View style={{ gap: 10 }}>
                         <Pressable
-                            onPress={isStep1 ? onStep1 : onStep2}
+                            onPress={onConfirm}
                             style={({ pressed }) => ({
                                 height: 52, borderRadius: 16,
-                                backgroundColor: isStep1 ? '#FF3B30' : '#DC2626',
+                                backgroundColor: '#FF3B30',
                                 alignItems: 'center', justifyContent: 'center',
                                 flexDirection: 'row', gap: 8,
                                 opacity: pressed ? 0.82 : 1,
@@ -244,7 +225,7 @@ function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
                         >
                             <PhoneOff size={18} color="#fff" strokeWidth={2.5} />
                             <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#fff' }}>
-                                {isStep1 ? 'Có, tôi muốn kết thúc' : '🔴 Kết thúc phiên ngay'}
+                                Đồng ý kết thúc
                             </Text>
                         </Pressable>
                         <Pressable
@@ -258,7 +239,7 @@ function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
                             })}
                         >
                             <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
-                                {isStep1 ? 'Quay lại cuộc gọi' : 'Huỷ bỏ'}
+                                Từ chối
                             </Text>
                         </Pressable>
                     </View>
@@ -267,6 +248,119 @@ function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
         </Modal>
     );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// End Session Confirm Modal (2 steps)
+// ─────────────────────────────────────────────────────────────────────────────
+// function EndSessionModal({ visible, step, onCancel, onStep1, onStep2 }: {
+//     visible: boolean; step: 1 | 2;
+//     onCancel: () => void; onStep1: () => void; onStep2: () => void;
+// }) {
+//     const scaleAnim = useRef(new Animated.Value(0.88)).current;
+//     const opacityAnim = useRef(new Animated.Value(0)).current;
+
+//     useEffect(() => {
+//         if (visible) {
+//             Animated.parallel([
+//                 Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, tension: 80, friction: 9 }),
+//                 Animated.timing(opacityAnim, { toValue: 1, duration: 160, useNativeDriver: true }),
+//             ]).start();
+//         } else {
+//             scaleAnim.setValue(0.88);
+//             opacityAnim.setValue(0);
+//         }
+//     }, [visible, step]);
+
+//     const isStep1 = step === 1;
+
+//     return (
+//         <Modal visible={visible} transparent animationType="none" onRequestClose={onCancel}>
+//             <Animated.View style={{
+//                 flex: 1, backgroundColor: 'rgba(0,0,0,0.78)',
+//                 justifyContent: 'center', alignItems: 'center', padding: 28,
+//                 opacity: opacityAnim,
+//             }}>
+//                 <Animated.View style={{
+//                     backgroundColor: '#18181C', borderRadius: 28, padding: 26,
+//                     width: '100%', borderWidth: 2, borderColor: isStep1 ? 'rgba(255,59,48,0.3)' : 'rgba(220,38,38,0.5)',
+//                     transform: [{ scale: scaleAnim }],
+//                 }}>
+//                     {/* Step progress */}
+//                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'center', marginBottom: 20 }}>
+//                         {[1, 2].map(s => (
+//                             <View key={s} style={{
+//                                 height: 4, width: s === step ? 36 : 16, borderRadius: 2,
+//                                 backgroundColor: s <= step ? '#FF3B30' : 'rgba(255,255,255,0.15)',
+//                             }} />
+//                         ))}
+//                         <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 10, color: 'rgba(255,255,255,0.35)', marginLeft: 2 }}>
+//                             {step}/2
+//                         </Text>
+//                     </View>
+
+//                     {/* Icon */}
+//                     <View style={{
+//                         width: 68, height: 68, borderRadius: 34,
+//                         backgroundColor: isStep1 ? 'rgba(255,59,48,0.12)' : 'rgba(220,38,38,0.2)',
+//                         borderWidth: 2, borderColor: isStep1 ? '#FF3B30' : '#DC2626',
+//                         alignItems: 'center', justifyContent: 'center',
+//                         alignSelf: 'center', marginBottom: 18,
+//                     }}>
+//                         <Text style={{ fontSize: 32 }}>{isStep1 ? '📋' : '⚠️'}</Text>
+//                     </View>
+
+//                     <Text style={{
+//                         fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, color: '#fff',
+//                         textAlign: 'center', marginBottom: 10,
+//                     }}>
+//                         {isStep1 ? 'Kết thúc phiên khám?' : 'Xác nhận lần cuối'}
+//                     </Text>
+//                     <Text style={{
+//                         fontFamily: 'SpaceGrotesk_500Medium', fontSize: 14,
+//                         color: 'rgba(255,255,255,0.48)', textAlign: 'center',
+//                         lineHeight: 21, marginBottom: 26,
+//                     }}>
+//                         {isStep1
+//                             ? 'Hành động này sẽ đóng phiên tư vấn và không thể tiếp tục. Bạn có chắc muốn kết thúc?'
+//                             : 'Đây là xác nhận CUỐI CÙNG. Dữ liệu phiên sẽ được lưu lại và phòng khám đóng hoàn toàn.'}
+//                     </Text>
+
+//                     <View style={{ gap: 10 }}>
+//                         <Pressable
+//                             onPress={isStep1 ? onStep1 : onStep2}
+//                             style={({ pressed }) => ({
+//                                 height: 52, borderRadius: 16,
+//                                 backgroundColor: isStep1 ? '#FF3B30' : '#DC2626',
+//                                 alignItems: 'center', justifyContent: 'center',
+//                                 flexDirection: 'row', gap: 8,
+//                                 opacity: pressed ? 0.82 : 1,
+//                             })}
+//                         >
+//                             <PhoneOff size={18} color="#fff" strokeWidth={2.5} />
+//                             <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#fff' }}>
+//                                 {isStep1 ? 'Có, tôi muốn kết thúc' : '🔴 Kết thúc phiên ngay'}
+//                             </Text>
+//                         </Pressable>
+//                         <Pressable
+//                             onPress={onCancel}
+//                             style={({ pressed }) => ({
+//                                 height: 50, borderRadius: 16,
+//                                 backgroundColor: 'rgba(255,255,255,0.07)',
+//                                 borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)',
+//                                 alignItems: 'center', justifyContent: 'center',
+//                                 opacity: pressed ? 0.65 : 1,
+//                             })}
+//                         >
+//                             <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 14, color: 'rgba(255,255,255,0.7)' }}>
+//                                 {isStep1 ? 'Quay lại cuộc gọi' : 'Huỷ bỏ'}
+//                             </Text>
+//                         </Pressable>
+//                     </View>
+//                 </Animated.View>
+//             </Animated.View>
+//         </Modal>
+//     );
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Cancel No-Show Modal (2 bước xác nhận)
@@ -383,24 +477,24 @@ function CancelNoShowModal({ visible, step, onCancel, onStep1, onStep2 }: {
 }
 
 // ─── Call Timer ───────────────────────────────────────────────────────────────
-function CallTimer({ running }: { running: boolean }) {
-    const [secs, setSecs] = useState(0);
-    useEffect(() => {
-        if (!running) return;
-        const iv = setInterval(() => setSecs(s => s + 1), 1000);
-        return () => clearInterval(iv);
-    }, [running]);
-    if (!running) return null;
-    const hh = Math.floor(secs / 3600);
-    const mm = Math.floor((secs % 3600) / 60);
-    const ss = secs % 60;
-    const p = (n: number) => n.toString().padStart(2, '0');
-    return (
-        <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.6)', letterSpacing: 1.5, marginTop: 3 }}>
-            {hh > 0 ? `${p(hh)}:${p(mm)}:${p(ss)}` : `${p(mm)}:${p(ss)}`}
-        </Text>
-    );
-}
+// function CallTimer({ running }: { running: boolean }) {
+//     const [secs, setSecs] = useState(0);
+//     useEffect(() => {
+//         if (!running) return;
+//         const iv = setInterval(() => setSecs(s => s + 1), 1000);
+//         return () => clearInterval(iv);
+//     }, [running]);
+//     if (!running) return null;
+//     const hh = Math.floor(secs / 3600);
+//     const mm = Math.floor((secs % 3600) / 60);
+//     const ss = secs % 60;
+//     const p = (n: number) => n.toString().padStart(2, '0');
+//     return (
+//         <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 11, color: 'rgba(255,255,255,0.6)', letterSpacing: 1.5, marginTop: 3 }}>
+//             {hh > 0 ? `${p(hh)}:${p(mm)}:${p(ss)}` : `${p(mm)}:${p(ss)}`}
+//         </Text>
+//     );
+// }
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function VideoCallScreen() {
@@ -420,6 +514,9 @@ export default function VideoCallScreen() {
     const [noShowDialog, setNoShowDialog] = useState(false);
     const [noShowStep, setNoShowStep] = useState<1 | 2>(1);
     const [isCancellingNoShow, setIsCancellingNoShow] = useState(false);
+    
+    const [doctorRequestEndDialog, setDoctorRequestEndDialog] = useState(false);
+    const [isEndingSession, setIsEndingSession] = useState(false);
 
     const agoraEngineRef = useRef<IRtcEngine | null>(getGlobalAgoraEngine());
     const sid = typeof sessionId === 'string' ? sessionId : (sessionId?.[0] || '');
@@ -445,6 +542,29 @@ export default function VideoCallScreen() {
             updateCallState({ hasJoined, remoteUids, isMuted, isCameraOff });
         }
     }, [hasJoined, remoteUids, isMuted, isCameraOff]);
+
+    // ── SignalR Events (Auto-End and Doctor Request) ──
+    useEffect(() => {
+        const connection = getSignalRConnection();
+        if (!connection || !sid) return;
+
+        const handleNotification = (notif: any) => {
+            if (notif?.referenceId === sid) {
+                if (notif?.type === 'SESSION_REQUEST_END') {
+                    setDoctorRequestEndDialog(true);
+                } else if (notif?.type === 'SESSION_ENDED') {
+                    toast.info("Phiên đã kết thúc", "Bác sĩ hoặc hệ thống đã kết thúc phiên khám.");
+                    endCall();
+                    router.back();
+                }
+            }
+        };
+
+        connection.on("ReceiveNotification", handleNotification);
+        return () => {
+            connection.off("ReceiveNotification", handleNotification);
+        };
+    }, [sid]);
 
     useEffect(() => {
         let isMounted = true;
@@ -529,6 +649,24 @@ export default function VideoCallScreen() {
             toast.error("Lỗi", "Không thể hủy phiên. Vui lòng thử lại.");
         } finally {
             setIsCancellingNoShow(false);
+        }
+    };
+
+    // ── Accept Doctor's End Request ──────────────────────────────────────────
+    const handleAcceptEndSession = async () => {
+        if (isEndingSession) return;
+        setIsEndingSession(true);
+        try {
+            if (sid) await endSession(sid);
+            setDoctorRequestEndDialog(false);
+            endCall();
+            toast.success("Đã kết thúc", "Phiên khám đã kết thúc thành công.");
+            router.back();
+        } catch (e) {
+            console.error(e);
+            toast.error("Lỗi", "Không thể kết thúc phiên khám.");
+        } finally {
+            setIsEndingSession(false);
         }
     };
 
@@ -648,7 +786,6 @@ export default function VideoCallScreen() {
                         {isConnected ? (remoteUids.length > 1 ? '3 người' : 'Đang tư vấn') : 'Đang chờ'}
                     </Text>
                 </View>
-                <CallTimer running={hasJoined && isConnected} />
             </View>
 
             {/* ── Self PiP (top-right) ── */}
@@ -729,6 +866,13 @@ export default function VideoCallScreen() {
                 onCancel={() => { setNoShowDialog(false); setNoShowStep(1); }}
                 onStep1={() => setNoShowStep(2)}
                 onStep2={handleNoShowStep2}
+            />
+
+            {/* ── Doctor Request End Modal ── */}
+            <DoctorRequestEndModal
+                visible={doctorRequestEndDialog}
+                onCancel={() => setDoctorRequestEndDialog(false)}
+                onConfirm={handleAcceptEndSession}
             />
         </SafeAreaView>
     );

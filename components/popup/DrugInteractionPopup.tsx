@@ -1,6 +1,6 @@
 import { explainDrugInteraction } from "@/apis/prescription.api";
 import { useToast } from "@/stores/toastStore";
-import { AlertTriangle, BrainCircuit, X } from "lucide-react-native";
+import { AlertTriangle, BrainCircuit, Crown, X } from "lucide-react-native";
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, Text, View } from "react-native";
 
@@ -13,12 +13,41 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
     const toast = useToast();
     const [explanationResult, setExplanationResult] = useState<string | null>(null);
     const [isExplaining, setIsExplaining] = useState(false);
+    // Trạng thái cần nâng cấp gói (backend trả 403)
+    const [needsUpgrade, setNeedsUpgrade] = useState(false);
 
     if (!interactionData) return null;
+
+    const handleExplain = async () => {
+        setIsExplaining(true);
+        setNeedsUpgrade(false);
+        try {
+            const res = await explainDrugInteraction(interactionData);
+            if (res.success) {
+                setExplanationResult(res.data);
+            } else if (res.code === 403 || (res as any).status === 403) {
+                // Backend trả về 403 → user chưa có gói HealthAlertEnabled
+                setNeedsUpgrade(true);
+            } else {
+                toast.error("Lỗi", "Không thể lấy giải thích lúc này.");
+            }
+        } catch (err: any) {
+            // Axios throw lỗi 403 vào catch block
+            const status = err?.response?.status ?? err?.response?.data?.code;
+            if (status === 403) {
+                setNeedsUpgrade(true);
+            } else {
+                toast.error("Lỗi kết nối", "Không thể lấy giải thích lúc này.");
+            }
+        }
+        setIsExplaining(false);
+    };
 
     return (
         <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
             <View style={{ backgroundColor: "#fff", borderWidth: 2.5, borderColor: "#000", borderRadius: 28, width: "100%", maxHeight: "85%", shadowColor: "#000", shadowOffset: { width: 6, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6, overflow: "hidden" }}>
+
+                {/* ── Header ── */}
                 <View style={{ backgroundColor: "#FEF2F2", padding: 20, borderBottomWidth: 2, borderBottomColor: "#000", flexDirection: "row", alignItems: "center", gap: 12 }}>
                     <View style={{ backgroundColor: "#FFF", padding: 8, borderRadius: 16, borderWidth: 2, borderColor: "#000" }}>
                         <AlertTriangle size={24} color="#DC2626" />
@@ -31,10 +60,14 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                         <X size={24} color="#000" />
                     </Pressable>
                 </View>
+
+                {/* ── Body ── */}
                 <ScrollView style={{ padding: 20 }}>
                     <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 14, color: "#374151", marginBottom: 16, lineHeight: 22 }}>
-                        Cảnh báo: Thuốc trong đơn có sự tương tác với nhau hoặc với thuốc đang sử dụng.
+                        Cảnh báo: Thuốc thêm vào đơn có thể gây ra sự tương tác với nhau hoặc với thuốc đang sử dụng.
                     </Text>
+
+                    {/* Danh sách xung đột */}
                     {(interactionData?.conflicts || []).map((c: any, index: number) => (
                         <View key={index} style={{ backgroundColor: "#F9FAFB", borderWidth: 2, borderColor: "#E5E7EB", borderRadius: 16, padding: 16, marginBottom: 12 }}>
                             <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -42,10 +75,10 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                                 <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, color: "#000" }}>⚡</Text>
                                 <Text style={{ flex: 1, fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#DC2626", textAlign: "right" }}>{c.conflictingDrugName}</Text>
                             </View>
-                            <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#4B5563", lineHeight: 20 }}>{c.description}</Text>
                         </View>
                     ))}
 
+                    {/* Kết quả AI (khi đã có gói & đã giải thích thành công) */}
                     {explanationResult ? (
                         <View style={{ marginTop: 8, marginBottom: 20, backgroundColor: "#EEF2FF", padding: 16, borderRadius: 16, borderWidth: 2, borderColor: "#4F46E5" }}>
                             <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#4F46E5", marginBottom: 8 }}>🤖 AI Giải thích:</Text>
@@ -54,8 +87,26 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                             </Text>
                         </View>
                     ) : null}
+
+                    {/* Thông báo cần nâng cấp gói (khi API trả 403) */}
+                    {needsUpgrade ? (
+                        <View style={{ marginTop: 8, marginBottom: 20, backgroundColor: "#FFFBEB", padding: 16, borderRadius: 16, borderWidth: 2, borderColor: "#F59E0B", flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                            <Crown size={22} color="#D97706" />
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#92400E", marginBottom: 6 }}>
+                                    Tính năng dành cho gói cao cấp
+                                </Text>
+                                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#78350F", lineHeight: 20 }}>
+                                    Để xem lời giải thích chi tiết từ AI về tương tác thuốc, bạn cần đăng ký gói có bật tính năng{" "}
+                                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold" }}>Cảnh báo sức khoẻ AI</Text>.{"\n\n"}
+                                    Vui lòng liên hệ quản trị viên hoặc nâng cấp gói thành viên của gia đình bạn.
+                                </Text>
+                            </View>
+                        </View>
+                    ) : null}
                 </ScrollView>
 
+                {/* ── Actions ── */}
                 <View style={{ padding: 20, borderTopWidth: 2, borderTopColor: "#000", backgroundColor: "#fff", flexDirection: "row", gap: 12, flexWrap: "wrap" }}>
                     {/* Nút Sửa Lại Đơn */}
                     <Pressable
@@ -63,7 +114,7 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                             if (interactionData?.onEditAgain) {
                                 interactionData.onEditAgain();
                             } else {
-                                onClose(); // Fallback dự phòng
+                                onClose();
                             }
                         }}
                         style={{ flex: 1, minWidth: "40%", paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#fff", alignItems: "center" }}
@@ -71,6 +122,7 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                         <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#000" }}>Sửa lại đơn</Text>
                     </Pressable>
 
+                    {/* Nút Bỏ qua cảnh báo */}
                     {interactionData?.onIgnoreAndContinue && (
                         <Pressable
                             onPress={() => {
@@ -96,23 +148,39 @@ export const DrugInteractionPopup: React.FC<DrugInteractionPopupProps> = ({ inte
                             <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#B91C1C" }}>Bỏ qua cảnh báo</Text>
                         </Pressable>
                     )}
-                    <Pressable
-                        disabled={isExplaining || !!explanationResult}
-                        onPress={async () => {
-                            setIsExplaining(true);
-                            const res = await explainDrugInteraction(interactionData);
-                            if (res.success) {
-                                setExplanationResult(res.data);
-                            } else {
-                                toast.error("Lỗi", "Không thể lấy giải thích lúc này.");
-                            }
-                            setIsExplaining(false);
-                        }}
-                        style={{ flex: 1, minWidth: "90%", paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#EEF2FF", alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8, opacity: (isExplaining || explanationResult) ? 0.6 : 1 }}
-                    >
-                        {isExplaining ? <ActivityIndicator color="#4F46E5" /> : <BrainCircuit size={20} color="#4F46E5" />}
-                        <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#4F46E5" }}>{isExplaining ? "Đang phân tích..." : (explanationResult ? "Đã phân tích" : "AI Giải thích")}</Text>
-                    </Pressable>
+
+                    {/* Nút AI Giải thích — chỉ hiện khi chưa có kết quả và chưa biết cần nâng cấp */}
+                    {!explanationResult && !needsUpgrade && (
+                        <Pressable
+                            disabled={isExplaining}
+                            onPress={handleExplain}
+                            style={{
+                                flex: 1, minWidth: "90%", paddingVertical: 14, borderRadius: 16,
+                                borderWidth: 2, borderColor: "#000", backgroundColor: "#EEF2FF",
+                                alignItems: "center", flexDirection: "row", justifyContent: "center",
+                                gap: 8, opacity: isExplaining ? 0.6 : 1
+                            }}
+                        >
+                            {isExplaining ? <ActivityIndicator color="#4F46E5" /> : <BrainCircuit size={20} color="#4F46E5" />}
+                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#4F46E5" }}>
+                                {isExplaining ? "Đang phân tích..." : "AI Giải thích tương tác"}
+                            </Text>
+                        </Pressable>
+                    )}
+
+                    {/* Thay thế nút AI bằng badge vàng khi cần nâng cấp gói */}
+                    {needsUpgrade && (
+                        <View style={{
+                            flex: 1, minWidth: "90%", paddingVertical: 14, borderRadius: 16,
+                            borderWidth: 2, borderColor: "#F59E0B", backgroundColor: "#FFFBEB",
+                            alignItems: "center", flexDirection: "row", justifyContent: "center", gap: 8
+                        }}>
+                            <Crown size={18} color="#D97706" />
+                            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#92400E" }}>
+                                Cần gói cao cấp để dùng AI
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
         </View>

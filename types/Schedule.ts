@@ -67,6 +67,8 @@ export type ReminderResponse = {
     reminderTime: string;
     endTime?: string | null;
     status: string; // "Pending", "Taken", "Skipped"...
+    takenByUserId?: string | null;  // ID người đã nhấn xác nhận đã uống
+    takenByName?: string | null;    // Tên hiển thị của người đã xác nhận
     medicines: ScheduleDetailItemResponse[]; // Nhắc nhở giờ chứa MẢNG các thuốc cần uống
 };
 
@@ -74,6 +76,7 @@ export type UpdateReminderActionRequest = {
     status: string;
     notes?: string | null;
     actualTime?: string | null;
+    takenByUserId?: string | null; // ID người xác nhận (chuyển từ frontend)
 };
 
 export type UpdatePreferredTimesRequest = {

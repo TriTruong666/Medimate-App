@@ -6,6 +6,7 @@ export type MedicationLogActionRequest = {
     status: string; // VD: "Taken" (Đã uống), "Skipped" (Bỏ qua), "Missed" (Quên)
     actualTime?: string | null; // Thời gian thực tế (ISO String), có thể null nếu Skipped/Missed
     notes?: string | null;
+    takenByUserId?: string | null; // ID người thực hiện xác nhận (có thể là chủ hộ cho member uống)
 };
 
 // Dữ liệu chi tiết của 1 bản ghi lịch sử

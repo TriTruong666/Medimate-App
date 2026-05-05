@@ -1,4 +1,6 @@
 import { PopupContainer } from "@/components/popup/PopupContainer";
+import { useGetFamilyById, useGetSubscription } from "@/hooks/useFamily";
+import { useGetMemberById } from "@/hooks/useMember";
 import { useCreatePrescription, useScanPrescription } from "@/hooks/usePrescription";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
@@ -45,7 +47,11 @@ export default function ScanPrescriptionScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<ScanStep>("camera");
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showOcrConfirm, setShowOcrConfirm] = useState(false);
   const { memberId } = useLocalSearchParams<{ memberId: string }>();
+
+  const { data: member } = useGetMemberById(memberId);
+  const { data: subscription } = useGetSubscription(member?.familyId);
 
   React.useEffect(() => {
     if (!memberId) {
@@ -131,7 +137,12 @@ export default function ScanPrescriptionScreen() {
     }
   };
 
+  const handleOcrPress = () => {
+    setShowOcrConfirm(true);
+  };
+
   const handleConfirmPhoto = async () => {
+    setShowOcrConfirm(false);
     if (!memberId) return;
     setStep("analyzing");
 
@@ -559,7 +570,7 @@ export default function ScanPrescriptionScreen() {
 
           {/* Confirmation Modal */}
           {showConfirm && (
-            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24, zIndex: 50 }}>
               <View style={{ backgroundColor: "#FFFBEB", borderWidth: 2.5, borderColor: "#000", borderRadius: 28, padding: 28, width: "100%", shadowColor: "#000", shadowOffset: { width: 6, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6 }}>
                 <Text style={{ fontSize: 26, textAlign: "center", marginBottom: 8 }}>🤖</Text>
                 <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, color: "#000", textAlign: "center", marginBottom: 10 }}>Xác nhận trước khi lưu</Text>
@@ -626,7 +637,7 @@ export default function ScanPrescriptionScreen() {
               </Text>
             </Pressable>
             <Pressable
-              onPress={handleConfirmPhoto}
+              onPress={handleOcrPress}
               className="flex-1 bg-[#A3E6A1] py-4 rounded-2xl border-2 border-black flex-row items-center justify-center shadow-md gap-x-2 active:translate-y-0.5"
             >
               <Sparkles size={18} color="black" />
@@ -635,6 +646,48 @@ export default function ScanPrescriptionScreen() {
               </Text>
             </Pressable>
           </View>
+
+          {/* OCR Confirmation Modal */}
+          {showOcrConfirm && (
+            <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24, zIndex: 50 }}>
+              <View style={{ backgroundColor: "#FFFBEB", borderWidth: 2.5, borderColor: "#000", borderRadius: 28, padding: 28, width: "100%", shadowColor: "#000", shadowOffset: { width: 6, height: 6 }, shadowOpacity: 1, shadowRadius: 0, elevation: 6 }}>
+                <Text style={{ fontSize: 26, textAlign: "center", marginBottom: 8 }}>🔍</Text>
+                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, color: "#000", textAlign: "center", marginBottom: 10 }}>Trích xuất OCR (AI)</Text>
+                
+                <View style={{ backgroundColor: "#FEF3C7", borderWidth: 2, borderColor: "#F59E0B", borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                  <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#92400E", marginBottom: 4 }}>Cảnh báo:</Text>
+                  <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#78350F", lineHeight: 18 }}>Nếu hình ảnh quá mờ hoặc chói sáng, AI có thể nhận diện sai lệch thông tin thuốc.</Text>
+                </View>
+
+                <View style={{ backgroundColor: "#F3F4F6", borderWidth: 2, borderColor: "#000", borderRadius: 12, padding: 12, marginBottom: 24, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={{ fontFamily: "SpaceGrotesk_600SemiBold", fontSize: 14, color: "#374151" }}>Lượt OCR còn lại:</Text>
+                  <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 16, color: subscription?.remainingOcrCount && subscription.remainingOcrCount > 0 ? "#059669" : "#DC2626" }}>
+                    {subscription?.remainingOcrCount ?? 0} lượt
+                  </Text>
+                </View>
+
+                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#6B7280", textAlign: "center", marginBottom: 16 }}>
+                  (Thao tác này sẽ <Text style={{ fontFamily: "SpaceGrotesk_700Bold", color: "#DC2626" }}>trừ 1 lượt</Text> quét OCR của gia đình)
+                </Text>
+
+                <View style={{ flexDirection: "row", gap: 12 }}>
+                  <Pressable
+                    onPress={() => setShowOcrConfirm(false)}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: "#fff", alignItems: "center" }}
+                  >
+                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>Hủy</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleConfirmPhoto}
+                    disabled={!subscription?.remainingOcrCount || subscription.remainingOcrCount <= 0}
+                    style={{ flex: 1, paddingVertical: 14, borderRadius: 16, borderWidth: 2, borderColor: "#000", backgroundColor: (!subscription?.remainingOcrCount || subscription.remainingOcrCount <= 0) ? "#D1D5DB" : "#A3E6A1", alignItems: "center" }}
+                  >
+                    <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 14, color: "#000" }}>Xác nhận</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          )}
         </View>
       );
     }

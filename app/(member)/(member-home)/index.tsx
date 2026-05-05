@@ -59,8 +59,8 @@ function getTimeOfDayBg(timeStr?: string): string {
     return '#EDE9FE'; // tím nhạt - tối
 }
 
-// ─── ReminderCard nâng cấp: hiển thị đầy đủ medicines ──────────────────────
-function ReminderCard({ item }: { item: any }) {
+// ─── ReminderCard: hỗ trợ takenByUserId ───────────────────────────────────────────────
+function ReminderCard({ item, currentUserId }: { item: any; currentUserId?: string }) {
     const [expanded, setExpanded] = useState(false);
     const popup = usePopup();
 
@@ -183,7 +183,7 @@ function ReminderCard({ item }: { item: any }) {
                 {/* Status badge & Action */}
                 {(isWithinWindow && !isTaken && medicines.length > 0) ? (
                     <Pressable
-                        onPress={() => popup.open({ type: 'reminder_alert', data: item })}
+                        onPress={() => popup.open({ type: 'reminder_alert', data: { ...item, takenByUserId: currentUserId } })}
                         style={{
                             marginLeft: 8,
                             backgroundColor: '#16A34A',
@@ -284,6 +284,7 @@ function ReminderCard({ item }: { item: any }) {
 export default function MemberHomeScreen() {
     const today = dayjs();
     const [memberId, setMemberId] = useState<string | undefined>();
+    const [currentUserId, setCurrentUserId] = useState<string | undefined>();
     const [isLoaded, setIsLoaded] = useState(false);
     const [selectedTab, setSelectedTab] = useState(TABS[0]);
 
@@ -294,7 +295,10 @@ export default function MemberHomeScreen() {
 
     useEffect(() => {
         getDecodedToken().then(t => {
-            if (t) setMemberId(t.MemberId);
+            if (t) {
+                setMemberId(t.MemberId);
+                setCurrentUserId(t.Id); // Ghi lại ID người đăng nhập
+            }
             setIsLoaded(true);
         });
     }, []);
@@ -451,7 +455,7 @@ export default function MemberHomeScreen() {
                             {loadingRems ? (
                                 <ActivityIndicator size="small" color="#9370DB" />
                             ) : reminders?.length ? (
-                                reminders.map((r: any) => <ReminderCard key={r.reminderId} item={r} />)
+                                reminders.map((r: any) => <ReminderCard key={r.reminderId} item={r} currentUserId={currentUserId} />)
                             ) : (
                                 <View style={{ alignItems: 'center', marginTop: 30 }}>
                                     <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#9CA3AF' }}>Không có lịch nhắc nào hôm nay.</Text>

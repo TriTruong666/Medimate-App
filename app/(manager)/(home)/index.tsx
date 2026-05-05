@@ -5,6 +5,7 @@ import { useGetFamilies, useGetFamilyMembers } from "@/hooks/useFamily";
 import { useGetFamilyMedicationLogs } from "@/hooks/useMedicationLog";
 import { useGetMemberDailyReminders } from "@/hooks/useSchedule";
 import { usePopup } from "@/stores/popupStore";
+import { getDecodedToken } from "@/utils/token";
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
@@ -16,7 +17,7 @@ import {
     ChevronDown, ChevronLeft, ChevronRight,
     Moon, Pill, Sun, Sunrise, TrendingUp, Users, X, XCircle
 } from "lucide-react-native";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
     ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, View
 } from "react-native";
@@ -58,8 +59,8 @@ function getTimeOfDayBg(timeStr?: string): string {
     return '#EDE9FE'; // tím nhạt - tối
 }
 
-// ─── ReminderCard nâng cấp: hiển thị đầy đủ medicines ──────────────────────
-function ReminderCard({ item }: { item: any }) {
+// ─── ReminderCard: hỗ trợ takenByUserId để ghi lại ai đã cho uống ──────────
+function ReminderCard({ item, currentUserId }: { item: any; currentUserId?: string }) {
     const [expanded, setExpanded] = useState(false);
     const popup = usePopup();
 
@@ -186,7 +187,7 @@ function ReminderCard({ item }: { item: any }) {
                 {/* Status badge & Action */}
                 {(isWithinWindow && !isTaken && medicines.length > 0) ? (
                     <Pressable
-                        onPress={() => popup.open({ type: 'reminder_alert', data: item })}
+                        onPress={() => popup.open({ type: 'reminder_alert', data: { ...item, takenByUserId: currentUserId } })}
                         style={{
                             marginLeft: 8,
                             backgroundColor: '#16A34A',
@@ -285,7 +286,7 @@ function ReminderCard({ item }: { item: any }) {
 }
 
 // ─── Member Reminder Row (lazy-loaded on expand) ─────────────────────────────
-function MemberReminderRow({ member, date }: { member: any; date: string }) {
+function MemberReminderRow({ member, date, currentUserId }: { member: any; date: string; currentUserId?: string }) {
     const [expanded, setExpanded] = useState(false);
     const { data: reminders, isLoading } = useGetMemberDailyReminders(
         expanded ? member.memberId : undefined,
@@ -331,7 +332,7 @@ function MemberReminderRow({ member, date }: { member: any; date: string }) {
             {expanded && !isLoading && (
                 <View style={{ paddingLeft: 12, paddingTop: 8 }}>
                     {reminders?.length ? (
-                        reminders.map((r: any) => <ReminderCard key={r.reminderId} item={r} />)
+                        reminders.map((r: any) => <ReminderCard key={r.reminderId} item={r} currentUserId={currentUserId} />)
                     ) : (
                         <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#9CA3AF', fontSize: 13, paddingVertical: 8, paddingLeft: 4 }}>
                             Không có lịch nhắc nào.
@@ -344,7 +345,7 @@ function MemberReminderRow({ member, date }: { member: any; date: string }) {
 }
 
 // ─── Family Accordion ────────────────────────────────────────────────────────
-function FamilyReminderAccordion({ family, date }: { family: any; date: string }) {
+function FamilyReminderAccordion({ family, date, currentUserId }: { family: any; date: string; currentUserId?: string }) {
     const [expanded, setExpanded] = useState(true);
     const { data: members, isLoading } = useGetFamilyMembers(expanded ? family.familyId : undefined);
 
@@ -385,7 +386,7 @@ function FamilyReminderAccordion({ family, date }: { family: any; date: string }
                     {isLoading
                         ? <ActivityIndicator size="small" color="#000" />
                         : members?.length
-                            ? members.map((m: any) => <MemberReminderRow key={m.memberId} member={m} date={date} />)
+                            ? members.map((m: any) => <MemberReminderRow key={m.memberId} member={m} date={date} currentUserId={currentUserId} />)
                             : <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#9CA3AF', fontSize: 13 }}>Không tìm thấy thành viên.</Text>
                     }
                 </View>
@@ -539,7 +540,14 @@ function StatChip({ icon, label, value, color, textColor }: { icon: React.ReactN
 export default function ManagerHomeScreen() {
     const [selectedTab, setSelectedTab] = useState(TABS[0]);
     const [selectedFamilyId, setSelectedFamilyId] = useState<string | null>(null);
+    const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
     const today = dayjs();
+
+    useEffect(() => {
+        getDecodedToken().then(decoded => {
+            if (decoded?.Id) setCurrentUserId(decoded.Id);
+        });
+    }, []);
 
     // --- Date state (same pattern as doctor_detail) ---
     const [selectedDateStr, setSelectedDateStr] = useState(today.format('YYYY-MM-DD'));
@@ -715,7 +723,7 @@ export default function ManagerHomeScreen() {
                                 </View>
                                 : activeFamilies.map((family: any) => (
                                     <View key={family.familyId} style={{ marginBottom: 16 }}>
-                                        <FamilyReminderAccordion family={family} date={selectedDateStr} />
+                                        <FamilyReminderAccordion family={family} date={selectedDateStr} currentUserId={currentUserId} />
                                     </View>
                                 ))
                         }
