@@ -5,17 +5,15 @@ import { MembershipPackage } from "@/types/Package";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
   ArrowLeft,
+  Bot,
   Check,
   Clock,
   Crown,
   Heart,
   Shield,
   Sparkles,
-  Star,
   Users,
-  Zap,
-  Video,
-  Bot
+  Video
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
 import {
@@ -60,16 +58,6 @@ function buildFeatures(pkg: MembershipPackage) {
       icon: Shield,
       text: `${pkg.ocrLimit === 0 ? "Không giới hạn" : pkg.ocrLimit + " lượt"} quét đơn thuốc (OCR)`,
       included: true,
-    },
-    {
-      icon: Zap,
-      text: "Báo cáo sức khỏe nâng cao",
-      included: pkg.memberLimit === 0 || pkg.memberLimit > 5,
-    },
-    {
-      icon: Star,
-      text: "Hỗ trợ ưu tiên 24/7",
-      included: pkg.memberLimit === 0,
     },
     {
       icon: Bot,

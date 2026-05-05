@@ -16,10 +16,29 @@ const ITEM_HEIGHT = 52;
 const VISIBLE_ITEMS = 5;
 const PICKER_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 
-// Tạo mảng giờ và phút
-const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
-const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+// ─── Mốc giờ theo backend GetBlockNameConvention ───────────────────────────
+// Sáng:   0 ≤ h < 11  (00:00 – 10:59)
+// Trưa:  11 ≤ h < 14  (11:00 – 13:59)
+// Chiều: 14 ≤ h < 18  (14:00 – 17:59)
+// Tối:   18 ≤ h ≤ 23  (18:00 – 23:59)
+const ALL_MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+function makeHours(min: number, max: number) {
+    return Array.from({ length: max - min + 1 }, (_, i) => String(i + min).padStart(2, '0'));
+}
+const MORNING_HOURS = makeHours(0, 10);
+const NOON_HOURS = makeHours(11, 13);
+const AFTERNOON_HOURS = makeHours(14, 17);
+const EVENING_HOURS = makeHours(18, 23);
 
+// Clamp giờ vào đúng khoảng rồi trả về index trong mảng
+function clampedIndex(hour: number, hourItems: string[]): number {
+    const minH = parseInt(hourItems[0], 10);
+    const maxH = parseInt(hourItems[hourItems.length - 1], 10);
+    const clamped = Math.max(minH, Math.min(hour, maxH));
+    return clamped - minH;
+}
+
+// ─── DrumPicker ────────────────────────────────────────────────────────────
 interface DrumPickerProps {
     items: string[];
     initialIndex: number;
@@ -29,15 +48,16 @@ interface DrumPickerProps {
 
 const DrumPicker: React.FC<DrumPickerProps> = ({ items, initialIndex, onSelect, label }) => {
     const scrollRef = useRef<ScrollView>(null);
+    const safeInit = Math.max(0, Math.min(initialIndex, items.length - 1));
+    const [selectedIndex, setSelectedIndex] = useState(safeInit);
 
     const onMomentumScrollEnd = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
         const y = e.nativeEvent.contentOffset.y;
         const index = Math.round(y / ITEM_HEIGHT);
         const clamped = Math.max(0, Math.min(index, items.length - 1));
+        setSelectedIndex(clamped);
         onSelect(clamped);
     }, [items, onSelect]);
-
-    const [selectedIndex, setSelectedIndex] = useState(initialIndex);
 
     return (
         <View style={{ alignItems: 'center', flex: 1 }}>
@@ -52,12 +72,10 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ items, initialIndex, onSelect, 
                 {label}
             </Text>
             <View style={{ height: PICKER_HEIGHT, overflow: 'hidden', width: 72 }}>
-                {/* Selection Indicator */}
                 <View style={{
                     position: 'absolute',
                     top: ITEM_HEIGHT * 2,
-                    left: 0,
-                    right: 0,
+                    left: 0, right: 0,
                     height: ITEM_HEIGHT,
                     backgroundColor: 'rgba(163,230,161,0.25)',
                     borderTopWidth: 2,
@@ -73,27 +91,12 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ items, initialIndex, onSelect, 
                     nestedScrollEnabled={true}
                     snapToInterval={ITEM_HEIGHT}
                     decelerationRate="fast"
-                    contentOffset={{ x: 0, y: initialIndex * ITEM_HEIGHT }}
-                    onMomentumScrollEnd={(e) => {
-                        const y = e.nativeEvent.contentOffset.y;
-                        const index = Math.round(y / ITEM_HEIGHT);
-                        const clamped = Math.max(0, Math.min(index, items.length - 1));
-                        setSelectedIndex(clamped);
-                        onSelect(clamped);
-                    }}
-                    contentContainerStyle={{
-                        paddingVertical: ITEM_HEIGHT * 2
-                    }}
+                    contentOffset={{ x: 0, y: safeInit * ITEM_HEIGHT }}
+                    onMomentumScrollEnd={onMomentumScrollEnd}
+                    contentContainerStyle={{ paddingVertical: ITEM_HEIGHT * 2 }}
                 >
                     {items.map((item, i) => (
-                        <View
-                            key={i}
-                            style={{
-                                height: ITEM_HEIGHT,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
+                        <View key={i} style={{ height: ITEM_HEIGHT, alignItems: 'center', justifyContent: 'center' }}>
                             <Text style={{
                                 fontFamily: 'SpaceGrotesk_700Bold',
                                 fontSize: i === selectedIndex ? 28 : 20,
@@ -104,30 +107,29 @@ const DrumPicker: React.FC<DrumPickerProps> = ({ items, initialIndex, onSelect, 
                         </View>
                     ))}
                 </ScrollView>
-                {/* Top fade */}
-                <View style={{
-                    position: 'absolute', top: 0, left: 0, right: 0,
-                    height: ITEM_HEIGHT * 2,
-                    backgroundColor: 'transparent',
-                    pointerEvents: 'none'
-                }} />
             </View>
         </View>
     );
 };
 
+// ─── TimeSlotPicker ────────────────────────────────────────────────────────
 interface TimeSlotPickerProps {
     label: string;
     icon: React.ReactNode;
     accentColor: string;
-    initialHour: number;
-    initialMinute: number;
-    onHourChange: (h: number) => void;
+    hourItems: string[];
+    initialHourIndex: number;
+    initialMinuteIndex: number;
+    onHourIndexChange: (idx: number) => void;
     onMinuteChange: (m: number) => void;
+    rangeHint: string;
 }
 
 const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
-    label, icon, accentColor, initialHour, initialMinute, onHourChange, onMinuteChange
+    label, icon, accentColor,
+    hourItems, initialHourIndex, initialMinuteIndex,
+    onHourIndexChange, onMinuteChange,
+    rangeHint,
 }) => (
     <View style={{
         backgroundColor: '#fff',
@@ -142,8 +144,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
         shadowRadius: 0,
         elevation: 3,
     }}>
-        {/* Header */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, gap: 10 }}>
             <View style={{
                 width: 36, height: 36, borderRadius: 10,
                 backgroundColor: accentColor,
@@ -152,15 +153,19 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
             }}>
                 {icon}
             </View>
-            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }}>{label}</Text>
+            <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 15, color: '#000' }}>{label}</Text>
+                <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', fontSize: 11, color: '#94A3B8', marginTop: 1 }}>
+                    Khoảng cho phép: {rangeHint}
+                </Text>
+            </View>
         </View>
 
-        {/* Drum rollers */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, marginTop: 8 }}>
             <DrumPicker
-                items={HOURS}
-                initialIndex={initialHour}
-                onSelect={onHourChange}
+                items={hourItems}
+                initialIndex={initialHourIndex}
+                onSelect={onHourIndexChange}
                 label="Giờ"
             />
             <Text style={{
@@ -171,8 +176,8 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
                 paddingHorizontal: 4,
             }}>:</Text>
             <DrumPicker
-                items={MINUTES}
-                initialIndex={initialMinute}
+                items={ALL_MINUTES}
+                initialIndex={initialMinuteIndex}
                 onSelect={onMinuteChange}
                 label="Phút"
             />
@@ -180,6 +185,7 @@ const TimeSlotPicker: React.FC<TimeSlotPickerProps> = ({
     </View>
 );
 
+// ─── Main Popup ────────────────────────────────────────────────────────────
 interface PreferredTimesPopupProps {
     memberId: string;
     initialTimes?: {
@@ -212,16 +218,23 @@ export const PreferredTimesPopup: React.FC<PreferredTimesPopupProps> = ({
     const afternoon = parseHM(initialTimes?.afternoonTime);
     const evening = parseHM(initialTimes?.eveningTime);
 
-    const [morningH, setMorningH] = useState(morning.h || 8);
+    // Index trong mỗi mảng giờ giới hạn (default hợp lệ nếu không có initialTimes)
+    const [morningHIdx, setMorningHIdx] = useState(clampedIndex(morning.h || 8, MORNING_HOURS));
     const [morningM, setMorningM] = useState(morning.m);
-    const [noonH, setNoonH] = useState(noon.h || 12);
+    const [noonHIdx, setNoonHIdx] = useState(clampedIndex(noon.h || 12, NOON_HOURS));
     const [noonM, setNoonM] = useState(noon.m);
-    const [afternoonH, setAfternoonH] = useState(afternoon.h || 17);
+    const [afternoonHIdx, setAfternoonHIdx] = useState(clampedIndex(afternoon.h || 15, AFTERNOON_HOURS));
     const [afternoonM, setAfternoonM] = useState(afternoon.m);
-    const [eveningH, setEveningH] = useState(evening.h || 20);
+    const [eveningHIdx, setEveningHIdx] = useState(clampedIndex(evening.h || 20, EVENING_HOURS));
     const [eveningM, setEveningM] = useState(evening.m);
 
     const { mutate: updateTimes, isPending } = useUpdatePreferredTimes();
+
+    // Giờ thực = offset từ đầu mảng
+    const morningH = parseInt(MORNING_HOURS[morningHIdx], 10);
+    const noonH = parseInt(NOON_HOURS[noonHIdx], 10);
+    const afternoonH = parseInt(AFTERNOON_HOURS[afternoonHIdx], 10);
+    const eveningH = parseInt(EVENING_HOURS[eveningHIdx], 10);
 
     const fmt = (h: number, m: number) =>
         `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
@@ -307,37 +320,45 @@ export const PreferredTimesPopup: React.FC<PreferredTimesPopupProps> = ({
                         label="Buổi sáng"
                         icon={<Sun size={18} color="#000" strokeWidth={2.5} />}
                         accentColor="#FEF9C3"
-                        initialHour={morningH}
-                        initialMinute={morningM}
-                        onHourChange={setMorningH}
+                        hourItems={MORNING_HOURS}
+                        initialHourIndex={morningHIdx}
+                        initialMinuteIndex={morningM}
+                        onHourIndexChange={setMorningHIdx}
                         onMinuteChange={setMorningM}
+                        rangeHint="00:00 – 10:59"
                     />
                     <TimeSlotPicker
                         label="Buổi trưa"
                         icon={<Coffee size={18} color="#000" strokeWidth={2.5} />}
                         accentColor="#FED7AA"
-                        initialHour={noonH}
-                        initialMinute={noonM}
-                        onHourChange={setNoonH}
+                        hourItems={NOON_HOURS}
+                        initialHourIndex={noonHIdx}
+                        initialMinuteIndex={noonM}
+                        onHourIndexChange={setNoonHIdx}
                         onMinuteChange={setNoonM}
+                        rangeHint="11:00 – 13:59"
                     />
                     <TimeSlotPicker
                         label="Buổi chiều"
                         icon={<Sunset size={18} color="#000" strokeWidth={2.5} />}
                         accentColor="#C7D2FE"
-                        initialHour={afternoonH}
-                        initialMinute={afternoonM}
-                        onHourChange={setAfternoonH}
+                        hourItems={AFTERNOON_HOURS}
+                        initialHourIndex={afternoonHIdx}
+                        initialMinuteIndex={afternoonM}
+                        onHourIndexChange={setAfternoonHIdx}
                         onMinuteChange={setAfternoonM}
+                        rangeHint="14:00 – 17:59"
                     />
                     <TimeSlotPicker
                         label="Buổi tối"
                         icon={<Moon size={18} color="#000" strokeWidth={2.5} />}
                         accentColor="#E9D5FF"
-                        initialHour={eveningH}
-                        initialMinute={eveningM}
-                        onHourChange={setEveningH}
+                        hourItems={EVENING_HOURS}
+                        initialHourIndex={eveningHIdx}
+                        initialMinuteIndex={eveningM}
+                        onHourIndexChange={setEveningHIdx}
                         onMinuteChange={setEveningM}
+                        rangeHint="18:00 – 23:59"
                     />
                 </ScrollView>
 

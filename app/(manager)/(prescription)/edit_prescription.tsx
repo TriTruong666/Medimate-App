@@ -42,7 +42,7 @@ export default function EditPrescriptionScreen() {
     const popup = usePopup();
 
     const [prescriptionData, setPrescriptionData] = useState({
-        prescriptionCode: "MED-" + Math.random().toString(36).substring(7).toUpperCase(),
+        prescriptionCode: "",
         hospitalName: "",
         doctorName: "",
         prescriptionDate: new Date().toLocaleDateString("vi-VN"),
@@ -69,7 +69,7 @@ export default function EditPrescriptionScreen() {
     React.useEffect(() => {
         if (prescriptionDetail) {
             setPrescriptionData({
-                prescriptionCode: prescriptionDetail.prescriptionCode || ("MED-" + Math.random().toString(36).substring(7).toUpperCase()),
+                prescriptionCode: prescriptionDetail.prescriptionCode || "",
                 hospitalName: prescriptionDetail.hospitalName || "",
                 doctorName: prescriptionDetail.doctorName || "",
                 prescriptionDate: prescriptionDetail.prescriptionDate ? new Date(prescriptionDetail.prescriptionDate).toLocaleDateString("vi-VN") : new Date().toLocaleDateString("vi-VN"),

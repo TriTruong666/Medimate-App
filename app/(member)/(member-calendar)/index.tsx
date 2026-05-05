@@ -31,6 +31,7 @@ export default function MemberCalendarScreen() {
 
   // 1. Lấy thông tin Member hiện tại từ Token & Profile
   const [memberId, setMemberId] = useState<string | undefined>(undefined);
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>(undefined);
   const [loadingToken, setLoadingToken] = useState(true);
 
   useEffect(() => {
@@ -39,6 +40,7 @@ export default function MemberCalendarScreen() {
         const decoded = await getDecodedToken();
         if (decoded) {
           setMemberId(decoded.MemberId);
+          setCurrentUserId(decoded.Id); // Lưu ID user hiện đang đăng nhập
         }
       } finally {
         setLoadingToken(false);
@@ -305,6 +307,7 @@ export default function MemberCalendarScreen() {
                   color={index % 3 === 0 ? "#FFD700" : index % 3 === 1 ? MINT_GREEN : SOFT_PURPLE}
                   selectedDateStr={selectedDateStr}
                   now={now}
+                  currentUserId={currentUserId}
                   onStatusUpdate={refetchReminders}
                 />
               ))
@@ -324,6 +327,7 @@ function TimelineItem({
   color,
   selectedDateStr,
   now,
+  currentUserId,
   onStatusUpdate
 }: {
   reminder: ReminderResponse;
@@ -332,10 +336,24 @@ function TimelineItem({
   color: string;
   selectedDateStr: string;
   now: dayjs.Dayjs;
+  currentUserId?: string;
   onStatusUpdate: () => void;
 }) {
   const isTaken = reminder.status === "Taken";
   const { mutate: updateStatus, isPending: updating } = useUpdateReminderAction();
+
+  const handleConfirmTaken = () => {
+    updateStatus({
+      id: reminder.reminderId,
+      data: {
+        status: "Taken",
+        actualTime: dayjs().format("HH:mm:ss"),
+        takenByUserId: currentUserId ?? null,
+      }
+    }, {
+      onSuccess: () => onStatusUpdate()
+    });
+  };
 
   // Xử lý an toàn chuỗi reminderTime (Có T hoặc không có T)
   const extractTimeAndHourMinute = (timeStr: string) => {
@@ -425,29 +443,48 @@ function TimelineItem({
         </View>
 
         {/* ACTIONS AREA */}
-        {/* <View style={{ marginTop: 14, gap: 8 }}>
+        <View style={{ marginTop: 14, gap: 8 }}>
+          {/* Người đã xác nhận - Hiển thị khi đã uống */}
+          {isTaken && reminder.takenByName && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#A3E6A1", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 16 }}>✅</Text>
+              <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#166534" }}>
+                Xác nhận bởi <Text style={{ fontFamily: "SpaceGrotesk_700Bold" }}>{reminder.takenByName}</Text>
+              </Text>
+            </View>
+          )}
+
+          {/* Nút xác nhận - Chỉ hiện nếu chưa uống */}
           {!isTaken && (
             <Pressable
-              onPress={() => {
-                updateStatus({
-                  id: reminder.reminderId,
-                  data: { status: "Taken", actualTime: dayjs().format("HH:mm:ss") }
-                }, {
-                  onSuccess: () => onStatusUpdate()
-                });
-              }}
+              onPress={handleConfirmTaken}
               disabled={updating}
-              style={{ backgroundColor: "#000", paddingVertical: 12, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#000", opacity: updating ? 0.6 : 1 }}
+              style={{
+                backgroundColor: "#000",
+                paddingVertical: 14,
+                borderRadius: 14,
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+                borderWidth: 2,
+                borderColor: "#000",
+                opacity: updating ? 0.6 : 1
+              }}
             >
               {updating ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, textTransform: "uppercase" }}>Xác nhận đã uống</Text>
+                <>
+                  <Text style={{ fontSize: 16 }}>💊</Text>
+                  <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, textTransform: "uppercase", letterSpacing: 0.5 }}>Xác nhận đã uống</Text>
+                </>
               )}
             </Pressable>
           )}
-        </View> */}
+        </View>
       </View>
     </View>
   );
 }
+

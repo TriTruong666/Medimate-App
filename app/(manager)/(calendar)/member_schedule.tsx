@@ -1,6 +1,6 @@
 import { PopupContainer } from "@/components/popup/PopupContainer";
 import { useGetMemberById } from "@/hooks/useMember";
-import { useGetMemberDailyReminders, useGetMemberSchedules, useUpdateReminderAction } from "@/hooks/useSchedule";
+import { useGetMemberDailyReminders, useGetMemberSchedules } from "@/hooks/useSchedule";
 import { usePopup } from "@/stores/popupStore";
 import { ReminderResponse } from "@/types/Schedule";
 import dayjs from "dayjs";
@@ -332,7 +332,6 @@ export default function MemberScheduleScreen() {
                   color={index % 3 === 0 ? "#FFD700" : index % 3 === 1 ? MINT_GREEN : SOFT_PURPLE}
                   selectedDateStr={selectedDateStr}
                   now={now}
-                  onStatusUpdate={refetchReminders}
                 />
               ))
             )}
@@ -351,7 +350,6 @@ function TimelineItem({
   color,
   selectedDateStr,
   now,
-  onStatusUpdate
 }: {
   reminder: ReminderResponse;
   index: number;
@@ -359,10 +357,8 @@ function TimelineItem({
   color: string;
   selectedDateStr: string;
   now: dayjs.Dayjs;
-  onStatusUpdate: () => void;
 }) {
   const isTaken = reminder.status === "Taken";
-  const { mutate: updateStatus, isPending: updating } = useUpdateReminderAction();
 
   // Xử lý an toàn chuỗi reminderTime (Có T hoặc không có T)
   const extractTimeAndHourMinute = (timeStr: string) => {
@@ -451,13 +447,23 @@ function TimelineItem({
           })}
         </View>
 
-        {/* ACTIONS AREA */}
+        {/* ACTIONS AREA - Chỉ hiển thị thông tin, không có nút uống (thác tác nằm ở trang Reminder) */}
         <View style={{ marginTop: 14, gap: 8 }}>
-          {/* NÚT NHẮC NHỞ (Chỉ hiện trong 15p trước giờ uống & chưa uống) */}
+          {/* Hiển thị người đã xác nhận (readonly) */}
+          {isTaken && reminder.takenByName && (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#F0FFF4", borderWidth: 1.5, borderColor: "#A3E6A1", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+              <Text style={{ fontSize: 16 }}>✅</Text>
+              <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 12, color: "#166534" }}>
+                Xác nhận bởi <Text style={{ fontFamily: "SpaceGrotesk_700Bold" }}>{reminder.takenByName}</Text>
+              </Text>
+            </View>
+          )}
+
+          {/* Nút nhắc nhở (chỉ hiện 15p trước giờ uống) */}
           {showNotifyButton && (
             <Pressable
               style={{
-                backgroundColor: "#FEF9C3", // Vàng nhạt cảnh báo
+                backgroundColor: "#FEF9C3",
                 paddingVertical: 12,
                 borderRadius: 14,
                 borderWidth: 2,
@@ -477,28 +483,6 @@ function TimelineItem({
               <Text style={{ color: "#000", fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, textTransform: "uppercase" }}>Gửi lời nhắc ngay</Text>
             </Pressable>
           )}
-
-          {/* NÚT XÁC NHẬN (Luôn hiện nếu chưa uống) */}
-          {/* {!isTaken && (
-            <Pressable 
-              onPress={() => {
-                updateStatus({
-                  id: reminder.reminderId,
-                  data: { status: "Taken", actualTime: dayjs().format("HH:mm:ss") }
-                }, {
-                  onSuccess: () => onStatusUpdate()
-                });
-              }}
-              disabled={updating}
-              style={{ backgroundColor: "#000", paddingVertical: 12, borderRadius: 14, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#000", opacity: updating ? 0.6 : 1 }}
-            >
-              {updating ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={{ color: "#fff", fontFamily: "SpaceGrotesk_700Bold", fontSize: 12, textTransform: "uppercase" }}>Xác nhận đã uống</Text>
-              )}
-            </Pressable>
-          )} */}
         </View>
       </View>
     </View>
