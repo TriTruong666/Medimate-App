@@ -347,7 +347,7 @@ function TimelineItem({
       id: reminder.reminderId,
       data: {
         status: "Taken",
-        actualTime: dayjs().format("HH:mm:ss"),
+        actualTime: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
         takenByUserId: currentUserId ?? null,
       }
     }, {

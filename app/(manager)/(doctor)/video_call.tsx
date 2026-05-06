@@ -552,8 +552,8 @@ export default function VideoCallScreen() {
             if (notif?.referenceId === sid) {
                 if (notif?.type === 'SESSION_REQUEST_END') {
                     setDoctorRequestEndDialog(true);
-                } else if (notif?.type === 'SESSION_ENDED') {
-                    toast.info("Phiên đã kết thúc", "Bác sĩ hoặc hệ thống đã kết thúc phiên khám.");
+                } else if (notif?.type === 'SESSION_ENDED' || notif?.type === 'SESSION_TIMEOUT') {
+                    toast.info("Phiên tư vấn kết thúc", "Hệ thống hoặc đối tác đã kết thúc phiên khám.");
                     endCall();
                     router.back();
                 }

@@ -11,6 +11,7 @@ import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
 import { useToast } from "../../../stores/toastStore";
 import { AppointmentDetailResponse, AppointmentResponse } from "../../../types/Appointment";
+import { VideoViewerModal } from "../../../components/video/VideoViewerModal";
 
 dayjs.locale('vi');
 
@@ -454,6 +455,9 @@ export default function AppointmentsScreen() {
     const [bankWarnVisible, setBankWarnVisible] = useState(false);
     const [pendingCancelAppt, setPendingCancelAppt] = useState<AppointmentResponse | null>(null);
 
+    // Trạng thái modal video
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
+
     const { data: bankAccount } = useGetUserBankAccount();
 
     const popup = usePopup();
@@ -576,10 +580,8 @@ export default function AppointmentsScreen() {
             toast.success("Đang xử lý", "Đang lấy đường dẫn video phiên khám...");
             const res = await getSessionRecordingUrl(sessionId);
             if (res.success && res.data) {
-                // Mở browser ngoài để xem video
-                Linking.openURL(res.data).catch(() => {
-                    toast.error("Lỗi", "Không thể mở trình duyệt để xem video.");
-                });
+                // Hiển thị video in-app
+                setVideoUrl(res.data);
             } else {
                 toast.error("Không có video", res.message || "Phiên khám này chưa có bản ghi hình hoặc đang trong quá trình xử lý.");
             }
@@ -885,6 +887,13 @@ export default function AppointmentsScreen() {
                     </View>
                 </View>
             </Modal>
+
+            {/* In-app Video Viewer */}
+            <VideoViewerModal 
+                visible={!!videoUrl} 
+                videoUrl={videoUrl || ""} 
+                onClose={() => setVideoUrl(null)} 
+            />
 
         </SafeAreaView>
     );

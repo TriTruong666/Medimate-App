@@ -99,7 +99,7 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
         logAction({
             reminderId: data.reminderId,
             status: 'Taken',
-            actualTime: new Date().toISOString(),
+            actualTime: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
             takenByUserId: data.takenByUserId ?? null,
         }, {
             onSuccess: () => {
@@ -114,7 +114,7 @@ export function ReminderAlertPopup({ data, onClose }: ReminderAlertPopupProps) {
         logAction({
             reminderId: data.reminderId,
             status: 'Skipped',
-            actualTime: new Date().toISOString(),
+            actualTime: dayjs().format('YYYY-MM-DDTHH:mm:ss'),
         }, {
             onSuccess: () => {
                 onClose();
