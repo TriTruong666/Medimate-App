@@ -647,20 +647,30 @@ export default function AppointmentsScreen() {
     };
 
     const filteredAppointments = appointments.filter(appt => {
-        if (filter === 'Chờ xác nhận') return appt.status === 'Pending';
-        if (filter === 'Đã xác nhận') return appt.status === 'Approved';
-        if (filter === 'Hoàn thành') return appt.status === 'Completed';
+        if (filter === 'Sắp tới') return appt.status === 'Approved' || appt.status === 'Pending';
+        if (filter === 'Đã khám') return appt.status === 'Completed';
         if (filter === 'Đã hủy') return appt.status === 'Cancelled';
         return true;
     }).sort((a, b) => {
+        // 1. Chuẩn hóa dữ liệu ngày và giờ
         const dateA = a.appointmentDate?.split("T")[0] || "";
         const dateB = b.appointmentDate?.split("T")[0] || "";
-        if (dateA !== dateB) {
-            return dateB.localeCompare(dateA);
-        }
         const timeA = a.appointmentTime || "";
         const timeB = b.appointmentTime || "";
-        return timeA.localeCompare(timeB);
+
+        const isUpcoming = filter === 'Sắp tới';
+
+        // 2. So sánh Ngày
+        if (dateA !== dateB) {
+            return isUpcoming
+                ? dateA.localeCompare(dateB) // Sắp tới: Ngày gần nhất (nhỏ nhất) lên đầu
+                : dateB.localeCompare(dateA); // Lịch sử: Ngày mới vừa qua (lớn nhất) lên đầu
+        }
+
+        // 3. Nếu cùng ngày, so sánh Giờ
+        return isUpcoming
+            ? timeA.localeCompare(timeB) // Sắp tới: 6h sáng -> 17h -> 22h
+            : timeB.localeCompare(timeA); // Lịch sử: 22h -> 17h -> 6h sáng
     });
 
     return (

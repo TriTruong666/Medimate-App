@@ -7,12 +7,12 @@ import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getSessionByAppointmentId, getSessionRecordingUrl } from "@/apis/session.api";
+import { VideoViewerModal } from "@/components/video/VideoViewerModal";
 import { useGetAppointmentDetail, useGetMemberAppointments } from "@/hooks/useAppointment";
 import { useGetMemberById } from "@/hooks/useMember";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
 import { getDecodedToken } from "@/utils/token";
-import { VideoViewerModal } from "@/components/video/VideoViewerModal";
 import { Video } from "lucide-react-native";
 
 dayjs.locale('vi');
@@ -385,14 +385,25 @@ export default function MemberAppointmentsScreen() {
         if (filter === 'Đã hủy') return appt.status === 'Cancelled';
         return true;
     }).sort((a, b) => {
+        // 1. Chuẩn hóa dữ liệu ngày và giờ
         const dateA = a.appointmentDate?.split("T")[0] || "";
         const dateB = b.appointmentDate?.split("T")[0] || "";
-        if (dateA !== dateB) {
-            return dateB.localeCompare(dateA);
-        }
         const timeA = a.appointmentTime || "";
         const timeB = b.appointmentTime || "";
-        return timeA.localeCompare(timeB);
+
+        const isUpcoming = filter === 'Sắp tới';
+
+        // 2. So sánh Ngày
+        if (dateA !== dateB) {
+            return isUpcoming
+                ? dateA.localeCompare(dateB) // Sắp tới: Ngày gần nhất (nhỏ nhất) lên đầu
+                : dateB.localeCompare(dateA); // Lịch sử: Ngày mới vừa qua (lớn nhất) lên đầu
+        }
+
+        // 3. Nếu cùng ngày, so sánh Giờ
+        return isUpcoming
+            ? timeA.localeCompare(timeB) // Sắp tới: 6h sáng -> 17h -> 22h
+            : timeB.localeCompare(timeA); // Lịch sử: 22h -> 17h -> 6h sáng
     });
 
     const handleChatSession = async (appt: any) => {
@@ -492,7 +503,7 @@ export default function MemberAppointmentsScreen() {
             toast.error('Lỗi', 'Thông tin phiên khám chưa sẵn sàng. Vui lòng thử lại sau giây lát.');
             return;
         }
-        
+
         try {
             toast.success("Đang xử lý", "Đang lấy đường dẫn video phiên khám...");
             const res = await getSessionRecordingUrl(sessionId);
@@ -608,10 +619,10 @@ export default function MemberAppointmentsScreen() {
             </ScrollView>
 
             {/* In-app Video Viewer */}
-            <VideoViewerModal 
-                visible={!!videoUrl} 
-                videoUrl={videoUrl || ""} 
-                onClose={() => setVideoUrl(null)} 
+            <VideoViewerModal
+                visible={!!videoUrl}
+                videoUrl={videoUrl || ""}
+                onClose={() => setVideoUrl(null)}
             />
 
         </SafeAreaView>
