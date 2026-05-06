@@ -6,12 +6,14 @@ import React, { useState } from "react";
 import { ActivityIndicator, Image, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getSessionByAppointmentId } from "@/apis/session.api";
+import { getSessionByAppointmentId, getSessionRecordingUrl } from "@/apis/session.api";
 import { useGetAppointmentDetail, useGetMemberAppointments } from "@/hooks/useAppointment";
 import { useGetMemberById } from "@/hooks/useMember";
 import { usePopup } from "@/stores/popupStore";
 import { useToast } from "@/stores/toastStore";
 import { getDecodedToken } from "@/utils/token";
+import { VideoViewerModal } from "@/components/video/VideoViewerModal";
+import { Video } from "lucide-react-native";
 
 dayjs.locale('vi');
 
@@ -30,6 +32,7 @@ function MemberAppointmentCard({
     onChat,
     onVideo,
     onViewHistory,
+    onViewRecording,
     joiningState,
 }: any) {
     const popup = usePopup();
@@ -292,6 +295,30 @@ function MemberAppointmentCard({
                                     </Text>
                                 </View>
                             </Pressable>
+
+                            {/* --- Nút 2: Xem lại Video Recording Phiên Khám --- */}
+                            <Pressable
+                                onPress={() => onViewRecording(merged, sessionId)}
+                                disabled={isSessionLoading}
+                                style={({ pressed }) => ([
+                                    {
+                                        flexDirection: 'row', alignItems: 'center', height: 58,
+                                        borderRadius: 18, paddingHorizontal: 14,
+                                        borderWidth: 2, borderColor: '#000', backgroundColor: '#D9AEF6',
+                                        shadowColor: '#000', shadowOffset: { width: pressed ? 0 : 4, height: pressed ? 0 : 4 },
+                                        shadowOpacity: 1, shadowRadius: 0, elevation: pressed ? 0 : 4,
+                                        transform: [{ translateY: pressed ? 2 : 0 }],
+                                        opacity: isSessionLoading ? 0.7 : 1
+                                    }
+                                ])}
+                            >
+                                <View style={{ padding: 5, backgroundColor: '#fff', borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#000' }}>
+                                    {isSessionLoading ? <ActivityIndicator size="small" color="#000" /> : <Video size={18} color="#000" strokeWidth={2.5} />}
+                                    <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 13, color: '#000', marginLeft: 12, flex: 1 }} numberOfLines={1}>
+                                        {isSessionLoading ? 'Đang tải phiên...' : 'Xem video phiên khám'}
+                                    </Text>
+                                </View>
+                            </Pressable>
                         </View>
                     );
                 }
@@ -325,6 +352,8 @@ export default function MemberAppointmentsScreen() {
 
     const [memberId, setMemberId] = useState<string | undefined>(undefined);
     const [loadingToken, setLoadingToken] = useState(true);
+
+    const [videoUrl, setVideoUrl] = useState<string | null>(null);
 
     React.useEffect(() => {
         const fetchToken = async () => {
@@ -458,6 +487,25 @@ export default function MemberAppointmentsScreen() {
         }
     };
 
+    const handleViewRecording = async (appt: any, sessionId: string | undefined) => {
+        if (!sessionId) {
+            toast.error('Lỗi', 'Thông tin phiên khám chưa sẵn sàng. Vui lòng thử lại sau giây lát.');
+            return;
+        }
+        
+        try {
+            toast.success("Đang xử lý", "Đang lấy đường dẫn video phiên khám...");
+            const res = await getSessionRecordingUrl(sessionId);
+            if (res.success && res.data) {
+                setVideoUrl(res.data);
+            } else {
+                toast.error("Không có video", res.message || "Phiên khám này chưa có bản ghi hình hoặc đang trong quá trình xử lý.");
+            }
+        } catch (error) {
+            toast.error("Lỗi", "Đã xảy ra lỗi khi tải video ghi hình.");
+        }
+    };
+
     const handleJoinSession = (appt: any) => {
         // Có thể navigate sang thông tin bác sĩ nếu cần, hiện tại map sang DoctorInfo Popup hoặc Route
     };
@@ -552,11 +600,20 @@ export default function MemberAppointmentsScreen() {
                             onChat={handleChatSession}
                             onVideo={handleVideoSession}
                             onViewHistory={handleOpenChatPopup}
+                            onViewRecording={handleViewRecording}
                             joiningState={joiningState}
                         />
                     ))
                 )}
             </ScrollView>
+
+            {/* In-app Video Viewer */}
+            <VideoViewerModal 
+                visible={!!videoUrl} 
+                videoUrl={videoUrl || ""} 
+                onClose={() => setVideoUrl(null)} 
+            />
+
         </SafeAreaView>
     );
 }
