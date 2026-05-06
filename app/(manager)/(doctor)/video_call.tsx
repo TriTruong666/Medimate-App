@@ -16,7 +16,7 @@ import type {
     RtcConnection,
 } from 'react-native-agora';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { cancelNoShowSession, joinSession, endSession } from '../../../apis/session.api';
+import { cancelNoShowSession, endSession, joinSession } from '../../../apis/session.api';
 import { getVideoCallToken } from '../../../apis/videoCall.api';
 import { getSignalRConnection } from '../../../hooks/useSignalR';
 import { useToast } from '../../../stores/toastStore';
@@ -514,7 +514,7 @@ export default function VideoCallScreen() {
     const [noShowDialog, setNoShowDialog] = useState(false);
     const [noShowStep, setNoShowStep] = useState<1 | 2>(1);
     const [isCancellingNoShow, setIsCancellingNoShow] = useState(false);
-    
+
     const [doctorRequestEndDialog, setDoctorRequestEndDialog] = useState(false);
     const [isEndingSession, setIsEndingSession] = useState(false);
 
