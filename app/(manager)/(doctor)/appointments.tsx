@@ -1,17 +1,17 @@
 import dayjs from "dayjs";
 import 'dayjs/locale/vi';
 import { useRouter } from "expo-router";
-import { AlertTriangle, ArrowLeft, Calendar, Check, Clock, MessageSquare, RefreshCw, Video } from "lucide-react-native";
+import { AlertTriangle, ArrowLeft, Calendar, Clock, MessageSquare, RefreshCw, Video } from "lucide-react-native";
 import React, { useState } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View, Linking } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { getSessionByAppointmentId, joinSession, getSessionRecordingUrl } from "../../../apis/session.api";
+import { getSessionByAppointmentId, getSessionRecordingUrl, joinSession } from "../../../apis/session.api";
+import { VideoViewerModal } from "../../../components/video/VideoViewerModal";
 import { useCancelAppointment, useGetAppointmentDetail, useGetMyAppointments } from "../../../hooks/useAppointment";
 import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
 import { useToast } from "../../../stores/toastStore";
 import { AppointmentDetailResponse, AppointmentResponse } from "../../../types/Appointment";
-import { VideoViewerModal } from "../../../components/video/VideoViewerModal";
 
 dayjs.locale('vi');
 
@@ -25,11 +25,11 @@ const STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
 };
 
 const PAYMENT_STATUS_CONFIG: Record<string, { label: string; bg: string }> = {
-    Pending:          { label: 'Chờ thanh toán', bg: '#E2E8F0' },
-    Paid:             { label: 'Đã thanh toán',  bg: '#A3E6A1' },
-    Refunded:         { label: 'Đang hoàn tiền',  bg: '#FFF4D1' },
-    RefundCompleted:  { label: 'Đã hoàn tiền',    bg: '#D1EFFF' },
-    Cancelled:        { label: 'Đã hủy',          bg: '#FFD1D1' },
+    Pending: { label: 'Chờ thanh toán', bg: '#E2E8F0' },
+    Paid: { label: 'Đã thanh toán', bg: '#A3E6A1' },
+    Refunded: { label: 'Đang hoàn tiền', bg: '#FFF4D1' },
+    RefundCompleted: { label: 'Đã hoàn tiền', bg: '#D1EFFF' },
+    Cancelled: { label: 'Đã hủy', bg: '#FFD1D1' },
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -575,7 +575,7 @@ export default function AppointmentsScreen() {
             toast.error('Lỗi', 'Thông tin phiên khám chưa sẵn sàng. Vui lòng thử lại sau giây lát.');
             return;
         }
-        
+
         try {
             toast.success("Đang xử lý", "Đang lấy đường dẫn video phiên khám...");
             const res = await getSessionRecordingUrl(sessionId);
@@ -718,9 +718,9 @@ export default function AppointmentsScreen() {
                             ? appointments.length
                             : appointments.filter(a =>
                                 f === 'Chờ xác nhận' ? a.status === 'Pending' :
-                                f === 'Đã xác nhận'  ? a.status === 'Approved' :
-                                f === 'Hoàn thành'   ? a.status === 'Completed' :
-                                    a.status === 'Cancelled'
+                                    f === 'Đã xác nhận' ? a.status === 'Approved' :
+                                        f === 'Hoàn thành' ? a.status === 'Completed' :
+                                            a.status === 'Cancelled'
                             ).length;
                         return (
                             <Pressable
@@ -889,10 +889,10 @@ export default function AppointmentsScreen() {
             </Modal>
 
             {/* In-app Video Viewer */}
-            <VideoViewerModal 
-                visible={!!videoUrl} 
-                videoUrl={videoUrl || ""} 
-                onClose={() => setVideoUrl(null)} 
+            <VideoViewerModal
+                visible={!!videoUrl}
+                videoUrl={videoUrl || ""}
+                onClose={() => setVideoUrl(null)}
             />
 
         </SafeAreaView>
