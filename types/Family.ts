@@ -18,9 +18,10 @@ export type SubscriptionData = {
     packageName: string; // VD: "Freemium"
     startDate: string;
     endDate: string;
-    status: "Active" | "Inactive"; // Dựa trên Swagger
+    status: "Active" | "Inactive" | "Cancelled" | "Expired";
     remainingOcrCount: number;
     ocrLimit: number;
+    price?: number; // Giá gói (0 = Freemium)
 };
 
 export type UpdateFamilyRequest = {

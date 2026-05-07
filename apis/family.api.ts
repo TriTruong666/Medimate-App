@@ -84,3 +84,14 @@ export async function deleteFamily(id: string): Promise<BaseResponse<any>> {
         throw error;
     }
 }
+
+// Hủy gói đăng ký (chủ hộ)
+export async function cancelSubscription(subscriptionId: string): Promise<BaseResponse<boolean>> {
+    try {
+        const res = await axiosClient.post(`/api/v1/families/subscriptions/${subscriptionId}/cancel`);
+        return res.data;
+    } catch (error: any) {
+        if (error.response && error.response.data) return error.response.data;
+        throw error;
+    }
+}
