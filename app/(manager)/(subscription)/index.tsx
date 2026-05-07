@@ -1,9 +1,11 @@
 import { getFamilies, getSubscription } from "@/apis/family.api";
 import { getMembershipPackages } from "@/apis/package.api";
+import { useCancelSubscription } from "@/hooks/useFamily";
 import { FamilyData, SubscriptionData } from "@/types/Family";
 import { MembershipPackage } from "@/types/Package";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
+  AlertTriangle,
   ArrowLeft,
   Bot,
   Check,
@@ -18,14 +20,18 @@ import {
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -88,6 +94,69 @@ export default function SubscriptionScreen() {
   >([]);
   const [loading, setLoading] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
+
+  // State cho Modal chi tiết gói
+  const [selectedSubModal, setSelectedSubModal] = useState<FamilySubscriptionPair | null>(null);
+
+  const { mutate: cancelSub, isPending: isCanceling } = useCancelSubscription();
+  const { data: bankAccount } = useGetUserBankAccount();
+
+  const [bankWarnVisible, setBankWarnVisible] = useState(false);
+  const [pendingCancelSub, setPendingCancelSub] = useState<SubscriptionData | null>(null);
+
+  const proceedWithCancel = (sub: SubscriptionData) => {
+    // Tính phần trăm thời gian sử dụng
+    const startDate = new Date(sub.startDate).getTime();
+    const endDate = new Date(sub.endDate).getTime();
+    const today = new Date().getTime();
+
+    let totalDays = endDate - startDate;
+    let usedDays = today - startDate;
+
+    if (usedDays < 0) usedDays = 0;
+
+    const timeUsagePercent = totalDays > 0 ? (usedDays / totalDays) * 100 : 100;
+
+    // Tính phần trăm OCR sử dụng
+    const totalOcr = sub.ocrLimit;
+    const usedOcr = Math.max(0, totalOcr - sub.remainingOcrCount);
+    const ocrUsagePercent = totalOcr > 0 ? (usedOcr / totalOcr) * 100 : 0;
+
+    const isEligibleForRefund = timeUsagePercent <= 10.0 && ocrUsagePercent <= 10.0;
+
+    let alertMessage = isEligibleForRefund
+      ? `Bạn đã sử dụng ${timeUsagePercent.toFixed(1)}% thời gian và ${ocrUsagePercent.toFixed(1)}% lượt OCR (đều ≤ 10%).\n\nBạn có chắc chắn muốn hủy gói không? Yêu cầu hoàn tiền sẽ được tạo và gửi đến Admin xử lý.`
+      : `CẢNH BÁO: Bạn đã sử dụng ${timeUsagePercent.toFixed(1)}% thời gian và ${ocrUsagePercent.toFixed(1)}% lượt OCR (vượt quá 10%).\n\nTheo chính sách, bạn SẼ KHÔNG ĐƯỢC HOÀN TIỀN nếu hủy bây giờ.\n\nBạn vẫn muốn hủy gói chứ?`;
+
+    Alert.alert(
+      "Xác nhận hủy gói",
+      alertMessage,
+      [
+        { text: "Đóng", style: "cancel" },
+        {
+          text: "Đồng ý Hủy",
+          style: "destructive",
+          onPress: () => {
+            cancelSub(sub.subscriptionId, {
+              onSuccess: () => {
+                setSelectedSubModal(null);
+                // The hook will invalidate queries and refresh the list
+              }
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const handleCancelSubscription = (sub: SubscriptionData) => {
+    if (!bankAccount) {
+      setPendingCancelSub(sub);
+      setBankWarnVisible(true);
+      return;
+    }
+    proceedWithCancel(sub);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -299,8 +368,9 @@ export default function SubscriptionScreen() {
 
                 <View className="gap-y-4">
                   {activeFamilySubs.map((item, index) => (
-                    <View
+                    <Pressable
                       key={item.family.familyId}
+                      onPress={() => setSelectedSubModal(item)}
                       style={{
                         borderWidth: 2,
                         borderColor: "#000",
@@ -382,7 +452,7 @@ export default function SubscriptionScreen() {
                           </Text>
                         </View>
                       </View>
-                    </View>
+                    </Pressable>
                   ))}
                 </View>
               </View>
@@ -601,6 +671,152 @@ export default function SubscriptionScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* ═══════ MODAL CHI TIẾT GÓI ═══════ */}
+      <Modal
+        visible={!!selectedSubModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedSubModal(null)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{
+            width: SCREEN_WIDTH - 40,
+            backgroundColor: '#fff',
+            borderRadius: 24,
+            padding: 24,
+            borderWidth: 2,
+            borderColor: '#000',
+            shadowColor: "#000",
+            shadowOffset: { width: 4, height: 4 },
+            shadowOpacity: 1,
+            shadowRadius: 0,
+            elevation: 5,
+          }}>
+            <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', fontSize: 20, marginBottom: 16, textAlign: 'center' }}>
+              Chi tiết gói hiện tại
+            </Text>
+
+            {selectedSubModal && (
+              <View style={{ gap: 12 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#666' }}>Gia đình:</Text>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold' }}>{selectedSubModal.family.familyName}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#666' }}>Tên gói:</Text>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#22C55E' }}>{selectedSubModal.subscription.packageName}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#666' }}>Lượt quét OCR:</Text>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold' }}>{selectedSubModal.subscription.remainingOcrCount} / {selectedSubModal.subscription.ocrLimit}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#666' }}>Bắt đầu:</Text>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold' }}>{new Date(selectedSubModal.subscription.startDate).toLocaleDateString('vi-VN')}</Text>
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_500Medium', color: '#666' }}>Kết thúc:</Text>
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold' }}>{new Date(selectedSubModal.subscription.endDate).toLocaleDateString('vi-VN')}</Text>
+                </View>
+
+                {/* Kiểm tra nút hủy: Nếu là Freemium (giá = 0) hoặc tên gói Freemium thì không hiện */}
+                {selectedSubModal.subscription.price !== 0 && selectedSubModal.subscription.packageName !== "Freemium" && (
+                  <TouchableOpacity
+                    onPress={() => handleCancelSubscription(selectedSubModal.subscription)}
+                    disabled={isCanceling}
+                    style={{
+                      marginTop: 20,
+                      backgroundColor: '#FF3B30',
+                      padding: 16,
+                      borderRadius: 16,
+                      borderWidth: 2,
+                      borderColor: '#000',
+                      alignItems: 'center',
+                      shadowColor: "#000",
+                      shadowOffset: { width: 2, height: 2 },
+                      shadowOpacity: 1,
+                      shadowRadius: 0,
+                    }}
+                  >
+                    {isCanceling ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#fff', fontSize: 16 }}>
+                        Hủy gói đăng ký
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                <TouchableOpacity
+                  onPress={() => setSelectedSubModal(null)}
+                  style={{
+                    marginTop: 8,
+                    backgroundColor: '#fff',
+                    padding: 16,
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: '#000',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ fontFamily: 'SpaceGrotesk_700Bold', color: '#000', fontSize: 16 }}>
+                    Đóng
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ═══════ MODAL CẢNH BÁO CHƯA CÓ BANK ACCOUNT ═══════ */}
+      <Modal visible={bankWarnVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <View style={{ backgroundColor: "#fff", width: "100%", borderRadius: 24, padding: 24, borderWidth: 2, borderColor: "#000" }}>
+            {/* Icon cảnh báo */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#FFF4D1', borderWidth: 2, borderColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={32} color="#D97706" strokeWidth={2.5} />
+              </View>
+            </View>
+
+            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, marginBottom: 10, color: "#000", textAlign: 'center' }}>
+              Chưa có tài khoản ngân hàng!
+            </Text>
+            <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#64748B", marginBottom: 8, textAlign: 'center', lineHeight: 20 }}>
+              Khi hủy gói thành viên, hệ thống sẽ kiểm tra và hoàn tiền về tài khoản ngân hàng của bạn nếu đủ điều kiện.
+            </Text>
+            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#DC2626", marginBottom: 24, textAlign: 'center' }}>
+              Bạn chưa đăng ký tài khoản ngân hàng để nhận hoàn tiền!
+            </Text>
+
+            <View style={{ gap: 10 }}>
+              {/* Nút chính: đi cập nhật bank account */}
+              <Pressable
+                onPress={() => {
+                  setBankWarnVisible(false);
+                  setPendingCancelSub(null);
+                  router.push('/(manager)/(settings)/bank-account' as any);
+                }}
+                style={{ paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#000', alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#fff" }}>Cập nhật tài khoản ngân hàng</Text>
+              </Pressable>
+
+              {/* Nút đóng */}
+              <Pressable
+                onPress={() => { setBankWarnVisible(false); setPendingCancelSub(null); }}
+                style={{ paddingVertical: 12, alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#94A3B8" }}>Không hủy</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }

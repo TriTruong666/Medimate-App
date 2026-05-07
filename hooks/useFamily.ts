@@ -139,3 +139,25 @@ export function useDeleteFamily() {
         }
     });
 }
+
+export function useCancelSubscription() {
+    const queryClient = useQueryClient();
+    const toast = useToast();
+
+    return useMutation({
+        mutationFn: (subscriptionId: string) => FamilyApi.cancelSubscription(subscriptionId),
+        onSuccess: (res) => {
+            if (res.success) {
+                // Invalidate để load lại danh sách gói của các gia đình
+                queryClient.invalidateQueries({ queryKey: ["subscription"] });
+                queryClient.invalidateQueries({ queryKey: ["families"] });
+                toast.success("Hủy gói thành công", res.message || "Gói đăng ký đã được hủy. Hệ thống đã kích hoạt lại gói Freemium.");
+            } else {
+                toast.error("Không thể hủy gói", res.message || "Đã xảy ra lỗi khi hủy gói đăng ký.");
+            }
+        },
+        onError: (error: any) => {
+            toast.error("Lỗi kết nối", error?.message || "Không thể kết nối đến máy chủ.");
+        }
+    });
+}

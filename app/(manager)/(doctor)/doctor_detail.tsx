@@ -10,7 +10,6 @@ import {
     ChevronRight,
     Heart,
     Share2,
-    Star,
     X
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -27,7 +26,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGetDoctorAvailableSlots } from "../../../hooks/useAppointment";
-import { useGetDoctorAvailabilities, useGetDoctorDetail, useGetDoctorReviews } from "../../../hooks/useDoctor";
+import { useGetDoctorAvailabilities, useGetDoctorDetail } from "../../../hooks/useDoctor";
 import { usePopup } from "../../../stores/popupStore";
 import { AvailableSlotResponse } from "../../../types/Appointment";
 
@@ -97,7 +96,7 @@ export default function DoctorDetailScreen() {
     const isCompleted = status === 'Completed' || status === 'completed' || status === 'Đã khám';
 
     const { data: doctor, isLoading: isDoctorLoading, refetch: refetchDoctor } = useGetDoctorDetail(doctorId);
-    const { data: reviewsData, isLoading: isReviewsLoading, refetch: refetchReviews } = useGetDoctorReviews(doctorId);
+
     const { data: availabilities, isLoading: isAvailLoading, refetch: refetchAvail } = useGetDoctorAvailabilities(doctorId);
     const { data: slotsData, isLoading: slotsLoading, refetch: refetchSlots } = useGetDoctorAvailableSlots(doctorId, selectedDateItem?.fullDate);
 
@@ -107,17 +106,17 @@ export default function DoctorDetailScreen() {
         setRefreshing(true);
         await Promise.all([
             refetchDoctor(),
-            refetchReviews(),
+
             refetchAvail(),
             selectedDateItem ? refetchSlots() : Promise.resolve()
         ]);
         setRefreshing(false);
-    }, [refetchDoctor, refetchReviews, refetchAvail, refetchSlots, selectedDateItem]);
+    }, [refetchDoctor, refetchAvail, refetchSlots, selectedDateItem]);
 
     const computedAverage = 0;
 
     const slots = Array.isArray(slotsData) ? slotsData : [];
-    const loading = isDoctorLoading || isReviewsLoading || isAvailLoading;
+    const loading = isDoctorLoading || isAvailLoading;
 
     // Active doctor days-of-week (English)
     const activeDays = useMemo(() => {
@@ -533,7 +532,7 @@ export default function DoctorDetailScreen() {
 
                         <View className="bg-white border-2 border-black rounded-[24px] p-6 shadow-sm mb-6">
                             <Text className="text-lg font-space-bold text-black mb-3">Thông tin công tác</Text>
-                            
+
                             <View className="mb-4">
                                 <Text className="text-xs font-space-bold text-black/40 uppercase tracking-wider mb-1">Phòng khám / Bệnh viện</Text>
                                 <Text className="text-base font-space-bold text-black">{doctor?.clinicName || 'Chưa cập nhật'}</Text>
