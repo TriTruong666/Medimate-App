@@ -832,14 +832,6 @@ export default function AppointmentsScreen() {
                                 <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#fff" }}>Cập nhật tài khoản ngân hàng</Text>
                             </Pressable>
 
-                            {/* Nút phụ: vẫn hủy dù chưa có bank */}
-                            <Pressable
-                                onPress={handleCancelAnyway}
-                                style={{ paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#DC2626', alignItems: 'center' }}
-                            >
-                                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#DC2626" }}>Vẫn hủy lịch</Text>
-                            </Pressable>
-
                             {/* Nút đóng */}
                             <Pressable
                                 onPress={() => { setBankWarnVisible(false); setPendingCancelAppt(null); }}

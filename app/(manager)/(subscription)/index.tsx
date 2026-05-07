@@ -5,6 +5,7 @@ import { FamilyData, SubscriptionData } from "@/types/Family";
 import { MembershipPackage } from "@/types/Package";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
+  AlertTriangle,
   ArrowLeft,
   Bot,
   Check,
@@ -30,6 +31,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
@@ -97,8 +99,12 @@ export default function SubscriptionScreen() {
   const [selectedSubModal, setSelectedSubModal] = useState<FamilySubscriptionPair | null>(null);
 
   const { mutate: cancelSub, isPending: isCanceling } = useCancelSubscription();
+  const { data: bankAccount } = useGetUserBankAccount();
 
-  const handleCancelSubscription = (sub: SubscriptionData) => {
+  const [bankWarnVisible, setBankWarnVisible] = useState(false);
+  const [pendingCancelSub, setPendingCancelSub] = useState<SubscriptionData | null>(null);
+
+  const proceedWithCancel = (sub: SubscriptionData) => {
     // Tính phần trăm thời gian sử dụng
     const startDate = new Date(sub.startDate).getTime();
     const endDate = new Date(sub.endDate).getTime();
@@ -141,6 +147,15 @@ export default function SubscriptionScreen() {
         }
       ]
     );
+  };
+
+  const handleCancelSubscription = (sub: SubscriptionData) => {
+    if (!bankAccount) {
+      setPendingCancelSub(sub);
+      setBankWarnVisible(true);
+      return;
+    }
+    proceedWithCancel(sub);
   };
 
   useFocusEffect(
@@ -752,6 +767,52 @@ export default function SubscriptionScreen() {
                 </TouchableOpacity>
               </View>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ═══════ MODAL CẢNH BÁO CHƯA CÓ BANK ACCOUNT ═══════ */}
+      <Modal visible={bankWarnVisible} animationType="fade" transparent>
+        <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "center", alignItems: "center", padding: 24 }}>
+          <View style={{ backgroundColor: "#fff", width: "100%", borderRadius: 24, padding: 24, borderWidth: 2, borderColor: "#000" }}>
+            {/* Icon cảnh báo */}
+            <View style={{ alignItems: 'center', marginBottom: 16 }}>
+              <View style={{ width: 64, height: 64, borderRadius: 20, backgroundColor: '#FFF4D1', borderWidth: 2, borderColor: '#000', alignItems: 'center', justifyContent: 'center' }}>
+                <AlertTriangle size={32} color="#D97706" strokeWidth={2.5} />
+              </View>
+            </View>
+
+            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 18, marginBottom: 10, color: "#000", textAlign: 'center' }}>
+              Chưa có tài khoản ngân hàng!
+            </Text>
+            <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#64748B", marginBottom: 8, textAlign: 'center', lineHeight: 20 }}>
+              Khi hủy gói thành viên, hệ thống sẽ kiểm tra và hoàn tiền về tài khoản ngân hàng của bạn nếu đủ điều kiện.
+            </Text>
+            <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#DC2626", marginBottom: 24, textAlign: 'center' }}>
+              Bạn chưa đăng ký tài khoản ngân hàng để nhận hoàn tiền!
+            </Text>
+
+            <View style={{ gap: 10 }}>
+              {/* Nút chính: đi cập nhật bank account */}
+              <Pressable
+                onPress={() => {
+                  setBankWarnVisible(false);
+                  setPendingCancelSub(null);
+                  router.push('/(manager)/(settings)/bank-account' as any);
+                }}
+                style={{ paddingVertical: 14, borderRadius: 14, borderWidth: 2, borderColor: '#000', backgroundColor: '#000', alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: "SpaceGrotesk_700Bold", fontSize: 13, color: "#fff" }}>Cập nhật tài khoản ngân hàng</Text>
+              </Pressable>
+
+              {/* Nút đóng */}
+              <Pressable
+                onPress={() => { setBankWarnVisible(false); setPendingCancelSub(null); }}
+                style={{ paddingVertical: 12, alignItems: 'center' }}
+              >
+                <Text style={{ fontFamily: "SpaceGrotesk_500Medium", fontSize: 13, color: "#94A3B8" }}>Không hủy</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>

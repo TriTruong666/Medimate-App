@@ -32,7 +32,7 @@ export default function NotificationSettingsScreen() {
             setMinimumHoursGap(currentSettings.minimumHoursGap || 4);
             setMaxDosesPerDay(currentSettings.maxDosesPerDay || 6);
             setMissedDosesThreshold(currentSettings.missedDosesThreshold || 3);
-            
+
             try {
                 const custom = JSON.parse(currentSettings.customSetting || '{}');
                 setAutoSnooze(custom.autoSnooze !== undefined ? custom.autoSnooze : true);
@@ -157,12 +157,12 @@ export default function NotificationSettingsScreen() {
                         onToggle={setAutoSnooze}
                     />
 
-                    <ToggleRow
+                    {/* <ToggleRow
                         title="Nhắc nhở qua Email"
                         description="Nhận báo cáo và nhắc nhở vào hòm thư Email cá nhân của bạn."
                         value={emailEnabled}
                         onToggle={setEmailEnabled}
-                    />
+                    /> */}
 
                     <ToggleRow
                         title="Cảnh báo Hoạt động Nhóm"
