@@ -1,6 +1,7 @@
 import { getFamilies, getSubscription } from "@/apis/family.api";
 import { getMembershipPackages } from "@/apis/package.api";
 import { useCancelSubscription } from "@/hooks/useFamily";
+import { useToast } from "@/stores/toastStore";
 import { FamilyData, SubscriptionData } from "@/types/Family";
 import { MembershipPackage } from "@/types/Package";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -33,6 +34,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGetUserBankAccount } from "../../../hooks/useUserBank";
 import { usePopup } from "../../../stores/popupStore";
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -87,6 +89,7 @@ type FamilySubscriptionPair = {
 export default function SubscriptionScreen() {
   const router = useRouter();
   const popup = usePopup();
+  const toast = useToast(); // 2. Khởi tạo toast
 
   const [packages, setPackages] = useState<MembershipPackage[]>([]);
   const [activeFamilySubs, setActiveFamilySubs] = useState<
@@ -128,36 +131,54 @@ export default function SubscriptionScreen() {
       ? `Bạn đã sử dụng ${timeUsagePercent.toFixed(1)}% thời gian và ${ocrUsagePercent.toFixed(1)}% lượt OCR (đều ≤ 10%).\n\nBạn có chắc chắn muốn hủy gói không? Yêu cầu hoàn tiền sẽ được tạo và gửi đến Admin xử lý.`
       : `CẢNH BÁO: Bạn đã sử dụng ${timeUsagePercent.toFixed(1)}% thời gian và ${ocrUsagePercent.toFixed(1)}% lượt OCR (vượt quá 10%).\n\nTheo chính sách, bạn SẼ KHÔNG ĐƯỢC HOÀN TIỀN nếu hủy bây giờ.\n\nBạn vẫn muốn hủy gói chứ?`;
 
-    Alert.alert(
-      "Xác nhận hủy gói",
-      alertMessage,
-      [
-        { text: "Đóng", style: "cancel" },
-        {
-          text: "Đồng ý Hủy",
-          style: "destructive",
-          onPress: () => {
-            cancelSub(sub.subscriptionId, {
-              onSuccess: () => {
-                setSelectedSubModal(null);
-                // The hook will invalidate queries and refresh the list
-              }
-            });
+    setTimeout(() => {
+      Alert.alert(
+        "Xác nhận hủy gói",
+        alertMessage,
+        [
+          { text: "Đóng", style: "cancel" },
+          {
+            text: "Đồng ý Hủy",
+            style: "destructive",
+            onPress: () => {
+              cancelSub(sub.subscriptionId, {
+                onSuccess: () => {
+                  setSelectedSubModal(null);
+                  // ✅ Sử dụng toast thay vì popup để tránh lỗi Type
+                  toast.success(
+                    'Thành công',
+                    'Yêu cầu hủy gói đã được gửi và đang chờ xử lý.'
+                  );
+                },
+                onError: (error: any) => {
+                  toast.error('Lỗi', error.message || 'Không thể gửi yêu cầu hủy gói.');
+                }
+              });
+            }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }, 400);
   };
 
   const handleCancelSubscription = (sub: SubscriptionData) => {
     if (!bankAccount) {
       setPendingCancelSub(sub);
-      setBankWarnVisible(true);
+
+      // BƯỚC 1: Đóng modal chi tiết gói hiện tại
+      setSelectedSubModal(null);
+
+      // BƯỚC 2: Chờ modal cũ đóng hẳn (khoảng 300-500ms) rồi mới mở modal cảnh báo
+      setTimeout(() => {
+        setBankWarnVisible(true);
+      }, 400);
+
       return;
     }
+
+    // Nếu có bank account, tiến hành quy trình hủy bình thường
     proceedWithCancel(sub);
   };
-
   useFocusEffect(
     useCallback(() => {
       let isActive = true;

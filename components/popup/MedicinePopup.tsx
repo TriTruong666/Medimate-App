@@ -71,7 +71,11 @@ export const MedicinePopup: React.FC<MedicinePopupProps> = ({
 
             <View
                 className="bg-[#F9F6FC] border-t-4 border-black rounded-t-[32px] p-6 pb-10 shadow-2xl"
-                style={{ minHeight: '65%' }}
+                style={{
+                    // Sử dụng maxHeight thay vì minHeight để tránh bị đẩy lên quá cao
+                    maxHeight: '85%',
+                    width: '100%'
+                }}
             >
                 {/* Header */}
                 <View className="flex-row items-center justify-between mb-8">
