@@ -578,6 +578,19 @@ export default function ManagerHomeScreen() {
     const { data: families, isLoading: familiesLoading } = useGetFamilies();
     const activeFamilies = families?.filter((f: any) => f.type !== 'Personal') || [];
 
+    const [hasAutoSelectedFamily, setHasAutoSelectedFamily] = useState(false);
+
+    useEffect(() => {
+        if (
+            !hasAutoSelectedFamily &&
+            !selectedFamilyId &&
+            activeFamilies.length > 0
+        ) {
+            setSelectedFamilyId(activeFamilies[0].familyId);
+            setHasAutoSelectedFamily(true);
+        }
+    }, [activeFamilies, selectedFamilyId, hasAutoSelectedFamily]);
+
     const isDateOutsideCurrentWeek = !currentWeekDays.some(d => d.format('YYYY-MM-DD') === selectedDateStr);
     const selectedDayjs = dayjs(selectedDateStr);
 
