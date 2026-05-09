@@ -8,8 +8,6 @@ import {
     Calendar,
     ChevronLeft,
     ChevronRight,
-    Heart,
-    Share2,
     X
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -219,14 +217,14 @@ export default function DoctorDetailScreen() {
                     <ArrowLeft size={22} color="#000" strokeWidth={2.5} />
                 </Pressable>
 
-                <View className="flex-row items-center gap-x-3">
+                {/* <View className="flex-row items-center gap-x-3">
                     <Pressable className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
                         <Heart size={22} color="#000" />
                     </Pressable>
                     <Pressable className="w-12 h-12 bg-white border-2 border-black rounded-2xl items-center justify-center shadow-sm">
                         <Share2 size={22} color="#000" />
                     </Pressable>
-                </View>
+                </View> */}
             </View>
 
             <ScrollView
