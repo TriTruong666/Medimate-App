@@ -103,7 +103,7 @@ export function useAppSignalR() {
                         skipNegotiation: true,
                         transport: signalR.HttpTransportType.WebSockets,
                     })
-                    .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 60000])
+                    .withAutomaticReconnect([5000, 10000, 30000, 60000])
                     .configureLogging(signalR.LogLevel.Warning)
                     .build();
 
@@ -221,7 +221,7 @@ export function useAppSignalR() {
 
                     const startPromise = connection.start();
                     const timeoutPromise = new Promise<never>((_, reject) =>
-                        setTimeout(() => reject(new Error("SignalR_Connection_Timeout")), 2000)
+                        setTimeout(() => reject(new Error("SignalR_Connection_Timeout")), 5000)
                     );
 
                     await Promise.race([startPromise, timeoutPromise]);

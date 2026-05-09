@@ -1,6 +1,6 @@
 import { useChatWithAI, useGetAIModels } from '@/hooks/data/useRAGHook';
 import type { AIModel } from '@/types/RAGAIModel';
-import { Bot, ChevronDown, Send, StopCircle, X } from 'lucide-react-native';
+import { Bot, Send, StopCircle, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
     Animated,
@@ -341,8 +341,8 @@ export default function AIChatBubble() {
                             </View>
 
                             {/* Model selector */}
-                            <Pressable
-                                onPress={() => setShowModelPicker(true)}
+                            <View
+
                                 style={{
                                     flexDirection: 'row', alignItems: 'center', gap: 6,
                                     backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 10,
@@ -350,10 +350,10 @@ export default function AIChatBubble() {
                                 }}
                             >
                                 <Text style={{ fontFamily: 'SpaceGrotesk_600SemiBold', fontSize: 12, color: '#fff', flex: 1 }} numberOfLines={1}>
-                                    {selectedModel ? `${selectedModel.name}  ·  ${selectedModel.provider}` : 'Chọn mô hình AI...'}
+                                    MediMate AI: Trí tuệ dẫn lối – Sức khỏe trọn đời.
                                 </Text>
-                                <ChevronDown size={14} color="rgba(255,255,255,0.75)" strokeWidth={2.5} />
-                            </Pressable>
+
+                            </View>
                         </View>
 
                         {/* ── Messages ── */}
